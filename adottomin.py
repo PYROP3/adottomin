@@ -93,8 +93,8 @@ def delete_entry(user):
     except:
         pass
 
-async def do_ban(channel, user):
-    await channel.guild.ban(user, reason="minor")
+async def do_ban(channel, user, reason="minor"):
+    await channel.guild.ban(user, reason=reason)
     # await channel.send(f"Ban {user.mention} | minor")
 
 @bot.event
@@ -121,7 +121,7 @@ async def on_message(msg: discord.Message):
             decr_leniency(msg.author.id)
         else:
             app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
-            await do_ban(msg.channel, msg.author)
+            await do_ban(msg.channel, msg.author, reason="didn't say age")
             delete_entry(msg.author.id)
 
 def is_valid_age(msg: str):
@@ -145,7 +145,7 @@ async def on_member_join(member: discord.Member):
     leniency = get_leniency(member.id)
     if (leniency is not None):
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
-        await do_ban(member)
+        await do_ban(member, reason="didn't say age (timeout)")
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found, user OK")
 
