@@ -46,24 +46,25 @@ app.logger.info(f"guild ID = {channel_ids[0]}")
 
 # Age regex
 age_prog = re.compile("(18|19|[2-9][0-9])") # 18, 19 or 20+
-minor_prog = re.compile("([0-9]|1[0-7])") # 0-9 or 10-17
+minor_prog = re.compile("(1[0-7]|[0-9])") # 0-9 or 10-17
 
 # Initialize db
 if not os.path.exists(validations_db_file):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
-    cur.execute(f"""
+    cur.execute('''
     CREATE TABLE validations (
         user int NOT NULL, 
-        leniency int NOT NULL
+        leniency int NOT NULL,
+        greeting int NOT NULL,
         PRIMARY KEY (user)
-    );""")
-    cur.execute(f"""
+    );''')
+    cur.execute('''
     CREATE TABLE age_data (
         user int NOT NULL, 
-        age int NOT NULL
+        age int NOT NULL,
         PRIMARY KEY (user)
-    );""")
+    );''')
     con.commit()
     con.close()
 
@@ -75,10 +76,10 @@ def get_leniency(user):
     if res is None: return None
     return int(res[1])
 
-def create_entry(user):
+def create_entry(user, greeting_id):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
-    cur.execute("INSERT INTO validations VALUES (?, ?)", [user, LENIENCY_COUNT])
+    cur.execute("INSERT INTO validations VALUES (?, ?, ?)", [user, LENIENCY_COUNT, greeting_id])
     con.commit()
     con.close()
 
@@ -93,22 +94,27 @@ def delete_entry(user):
     try:
         con = sqlite3.connect(validations_db_file)
         cur = con.cursor()
+        res = cur.execute("SELECT * FROM validations WHERE user = :id", {"id": user}).fetchone()
         cur.execute("DELETE FROM validations WHERE user=:id", {"id": user})
         con.commit()
         con.close()
+        return int(res[2]) # Return greeting ID in case it should be deleted
     except:
-        pass
+        return None
 
 def set_age(user, age):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
-    cur.execute("INSERT INTO age_data VALUES (?, ?)", [user, age])
-    con.commit()
+    try:
+        cur.execute("INSERT INTO age_data VALUES (?, ?)", [user, age])
+        con.commit()
+    except sqlite3.IntegrityError:
+        app.logger.warning(f"Duplicated user id {user} in age_data")
     con.close()
 
 async def do_ban(channel, user, reason="minor"):
-    await channel.guild.ban(user, reason=reason)
-    # await channel.send(f"Ban {user.mention} | minor")
+    await channel.guild.ban(user, reason=reason.capitalize())
+    await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
 
 @bot.event
 async def on_ready():
@@ -119,29 +125,44 @@ async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
     app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    handle_age(msg)
+    await handle_age(msg)
 
 async def handle_age(msg: discord.Message):
     leniency = get_leniency(msg.author.id)
-    if leniency is None or leniency <= 0: return
+    if leniency is None or leniency < 0: return
     
     app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
     if is_valid_age(msg.content):
         age = get_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
+
         delete_entry(msg.author.id)
+
         set_age(msg.author.id, age)
+
         await msg.channel.send(f"Thank you {msg.author.mention}! Welcome to the server!")
 
     elif is_insta_ban(msg.content):
         age = get_ban_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
+
         await do_ban(msg.channel, msg.author)
-        delete_entry(msg.author.id)
+
+        greeting = delete_entry(msg.author.id)
+
         set_age(msg.author.id, age)
 
+        if greeting is not None: 
+            try:
+                channel = bot.get_channel(channel_ids[0])
+                greeting_msg = await channel.fetch_message(greeting)
+                await greeting_msg.delete()
+            except Exception as e:
+                app.logger.warning(f"[{msg.channel.guild.name} / {msg.channel}] failed to delete greeting {greeting}")
+                app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {e}")
+
     elif leniency > 0:
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message")
+        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
         decr_leniency(msg.author.id)
 
     else:
@@ -168,8 +189,8 @@ async def on_member_join(member: discord.Member):
     channel = bot.get_channel(channel_ids[0])
     app.logger.debug(f"[{channel.guild.name} / {channel}] {member} just joined")
 
-    create_entry(member.id)
-    await channel.send(f"Hello {member.mention}! May I ask your age, pls?")
+    greeting = await channel.send(f"Hello {member.mention}! May I ask your age, pls?")
+    create_entry(member.id, greeting.id)
 
     await asyncio.sleep(LENIENCY_TIME_S)
 
@@ -177,11 +198,21 @@ async def on_member_join(member: discord.Member):
     leniency = get_leniency(member.id)
     if (leniency is not None):
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
-        await do_ban(member, reason="didn't say age (timeout)")
+        await do_ban(channel, member, reason="didn't say age (timeout)")
+        
+        try:
+            await greeting.delete()
+        except discord.NotFound:
+            app.logger.debug(f"[{channel.guild.name} / {channel}] Greeting {greeting.id} already deleted")
+        except Exception as e:
+            app.logger.warning(f"[{channel.guild.name} / {channel}] failed to delete greeting {greeting.id}")
+            app.logger.debug(f"[{channel.guild.name} / {channel}] {e}")
+
     else:
-        app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found, user OK")
+        app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found")
 
     delete_entry(member.id)
+    set_age(member.id, -1)
     
     app.logger.debug(f"[{channel.guild.name} / {channel}] Exit on_member_join")
 
