@@ -60,6 +60,11 @@ if not os.path.exists(validations_db_file):
         PRIMARY KEY (user)
     );''')
     cur.execute('''
+    CREATE TABLE kicks (
+        user int NOT NULL, 
+        PRIMARY KEY (user)
+    );''')
+    cur.execute('''
     CREATE TABLE age_data (
         user int NOT NULL, 
         age int NOT NULL,
@@ -102,7 +107,38 @@ def delete_entry(user):
     except:
         return None
 
-def set_age(user, age):
+def create_kick(user):
+    con = sqlite3.connect(validations_db_file)
+    cur = con.cursor()
+    try:
+        cur.execute("INSERT INTO kicks VALUES (?)", [user])
+        con.commit()
+    except sqlite3.IntegrityError:
+        app.logger.warning(f"Duplicated user id {user} in kicks")
+    con.close()
+
+def is_kicked(user):
+    try:
+        con = sqlite3.connect(validations_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT * FROM kicks WHERE user = :id", {"id": user}).fetchone()
+        con.commit()
+        con.close()
+        return res is not None
+    except:
+        return False
+
+def remove_kick(user):
+    con = sqlite3.connect(validations_db_file)
+    cur = con.cursor()
+    try:
+        cur.execute("DELETE FROM validations WHERE user=:id", {"id": user})
+        con.commit()
+    except:
+        pass
+    con.close()
+
+def set_age(user, age, force=False):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
     try:
@@ -110,11 +146,27 @@ def set_age(user, age):
         con.commit()
     except sqlite3.IntegrityError:
         app.logger.warning(f"Duplicated user id {user} in age_data")
+        if force:
+            app.logger.debug(f"Updating {user} age in age_data -> {age}")
+            cur.execute("UPDATE age_data SET age=:age WHERE user=:id", {"id": user, "age": age})
+            con.commit()
     con.close()
 
 async def do_ban(channel, user, reason="minor"):
-    await channel.guild.ban(user, reason=reason.capitalize())
-    await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
+    try:
+        await channel.guild.ban(user, reason=reason.capitalize())
+        await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
+    except:
+        app.logger.error(f"Failed to ban user id {user}!")
+        await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
+
+async def do_kick(channel, user, reason="minor"):
+    try:
+        await channel.guild.kick(user, reason=reason.capitalize())
+        await channel.send(f"User {user.mention} kicked | {reason.capitalize()}")
+    except:
+        app.logger.error(f"Failed to kick user id {user}! ")
+        await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
 
 @bot.event
 async def on_ready():
@@ -135,31 +187,16 @@ async def handle_age(msg: discord.Message):
     if is_valid_age(msg.content):
         age = get_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
-
+        
         delete_entry(msg.author.id)
-
-        set_age(msg.author.id, age)
+        set_age(msg.author.id, age, force=True)
 
         await msg.channel.send(f"Thank you {msg.author.mention}! Welcome to the server!")
 
     elif is_insta_ban(msg.content):
         age = get_ban_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
-
-        await do_ban(msg.channel, msg.author)
-
-        greeting = delete_entry(msg.author.id)
-
-        set_age(msg.author.id, age)
-
-        if greeting is not None: 
-            try:
-                channel = bot.get_channel(channel_ids[0])
-                greeting_msg = await channel.fetch_message(greeting)
-                await greeting_msg.delete()
-            except Exception as e:
-                app.logger.warning(f"[{msg.channel.guild.name} / {msg.channel}] failed to delete greeting {greeting}")
-                app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {e}")
+        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True)
 
     elif leniency > 0:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
@@ -167,9 +204,37 @@ async def handle_age(msg: discord.Message):
 
     else:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
-        await do_ban(msg.channel, msg.author, reason="didn't say age")
-        delete_entry(msg.author.id)
-        set_age(msg.author.id, -1)
+        await kick_or_ban(msg.author, msg.channel)
+
+async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False):
+    if force_ban or is_kicked(member.id):
+        app.logger.debug(f"[{channel.guild.name} / {channel}] Will ban user (force={force_ban})")
+        await do_ban(channel, member, reason="didn't say age")
+        remove_kick(member.id)
+
+    else:
+        app.logger.debug(f"[{channel.guild.name} / {channel}] User was NOT previously kicked")
+        await do_kick(channel, member, reason="didn't say age")
+        create_kick(member.id)
+
+    greeting = delete_entry(member.id)
+    await try_delete_greeting(greeting, channel)
+    set_age(member.id, age, force=force_update_age)
+
+async def try_delete_greeting(greeting, channel):
+    if greeting is None: return
+
+    try:
+        channel = bot.get_channel(channel_ids[0])
+        greeting_msg = await channel.fetch_message(greeting)
+        await greeting_msg.delete()
+
+    except discord.NotFound:
+        app.logger.debug(f"[{channel.guild.name} / {channel}] Greeting {greeting} already deleted")
+
+    except Exception as e:
+        app.logger.warning(f"[{channel.guild.name} / {channel}] failed to delete greeting {greeting}")
+        app.logger.debug(f"[{channel.guild.name} / {channel}] {e}")
 
 def is_valid_age(msg: str):
     return age_prog.search(msg) is not None
@@ -198,21 +263,12 @@ async def on_member_join(member: discord.Member):
     leniency = get_leniency(member.id)
     if (leniency is not None):
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
-        await do_ban(channel, member, reason="didn't say age (timeout)")
-        
-        try:
-            await greeting.delete()
-        except discord.NotFound:
-            app.logger.debug(f"[{channel.guild.name} / {channel}] Greeting {greeting.id} already deleted")
-        except Exception as e:
-            app.logger.warning(f"[{channel.guild.name} / {channel}] failed to delete greeting {greeting.id}")
-            app.logger.debug(f"[{channel.guild.name} / {channel}] {e}")
+        await kick_or_ban(member, channel)
 
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found")
 
     delete_entry(member.id)
-    set_age(member.id, -1)
     
     app.logger.debug(f"[{channel.guild.name} / {channel}] Exit on_member_join")
 
