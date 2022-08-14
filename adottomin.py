@@ -55,7 +55,13 @@ if not os.path.exists(validations_db_file):
     cur.execute(f"""
     CREATE TABLE validations (
         user int NOT NULL, 
-        leniency int NOT NULL, 
+        leniency int NOT NULL
+        PRIMARY KEY (user)
+    );""")
+    cur.execute(f"""
+    CREATE TABLE age_data (
+        user int NOT NULL, 
+        age int NOT NULL
         PRIMARY KEY (user)
     );""")
     con.commit()
@@ -72,14 +78,14 @@ def get_leniency(user):
 def create_entry(user):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
-    res = cur.execute("INSERT INTO validations VALUES (?, ?)", [user, LENIENCY_COUNT])
+    cur.execute("INSERT INTO validations VALUES (?, ?)", [user, LENIENCY_COUNT])
     con.commit()
     con.close()
 
 def decr_leniency(user):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
-    res = cur.execute("UPDATE validations SET leniency=leniency - 1 WHERE user=:id", {"id": user})
+    cur.execute("UPDATE validations SET leniency=leniency - 1 WHERE user=:id", {"id": user})
     con.commit()
     con.close()
 
@@ -87,11 +93,18 @@ def delete_entry(user):
     try:
         con = sqlite3.connect(validations_db_file)
         cur = con.cursor()
-        res = cur.execute("DELETE FROM validations WHERE user=:id", {"id": user})
+        cur.execute("DELETE FROM validations WHERE user=:id", {"id": user})
         con.commit()
         con.close()
     except:
         pass
+
+def set_age(user, age):
+    con = sqlite3.connect(validations_db_file)
+    cur = con.cursor()
+    cur.execute("INSERT INTO age_data VALUES (?, ?)", [user, age])
+    con.commit()
+    con.close()
 
 async def do_ban(channel, user, reason="minor"):
     await channel.guild.ban(user, reason=reason)
@@ -105,30 +118,49 @@ async def on_ready():
 async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
     app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
+
+    handle_age(msg)
+
+async def handle_age(msg: discord.Message):
     leniency = get_leniency(msg.author.id)
-    if leniency is not None and leniency > 0:
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
-        if is_valid_age(msg.content):
-            app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age")
-            delete_entry(msg.author.id)
-            await msg.channel.send(f"Thank you {msg.author.mention}! Welcome to the server!")
-        elif is_insta_ban(msg.content):
-            app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age")
-            await do_ban(msg.channel, msg.author)
-            delete_entry(msg.author.id)
-        elif leniency > 0:
-            app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message")
-            decr_leniency(msg.author.id)
-        else:
-            app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
-            await do_ban(msg.channel, msg.author, reason="didn't say age")
-            delete_entry(msg.author.id)
+    if leniency is None or leniency <= 0: return
+    
+    app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
+    if is_valid_age(msg.content):
+        age = get_age(msg.content)
+        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
+        delete_entry(msg.author.id)
+        set_age(msg.author.id, age)
+        await msg.channel.send(f"Thank you {msg.author.mention}! Welcome to the server!")
+
+    elif is_insta_ban(msg.content):
+        age = get_ban_age(msg.content)
+        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
+        await do_ban(msg.channel, msg.author)
+        delete_entry(msg.author.id)
+        set_age(msg.author.id, age)
+
+    elif leniency > 0:
+        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message")
+        decr_leniency(msg.author.id)
+
+    else:
+        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
+        await do_ban(msg.channel, msg.author, reason="didn't say age")
+        delete_entry(msg.author.id)
+        set_age(msg.author.id, -1)
 
 def is_valid_age(msg: str):
     return age_prog.search(msg) is not None
 
+def get_age(msg: str):
+    return int(age_prog.search(msg).group())
+
 def is_insta_ban(msg: str): # TODO add filters? racism, etc.
     return minor_prog.search(msg) is not None
+
+def get_ban_age(msg: str):
+    return int(minor_prog.search(msg).group())
 
 @bot.event
 async def on_member_join(member: discord.Member):
