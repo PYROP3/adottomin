@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import discord
 from discord.member import Member
 import discord_slash
@@ -26,7 +27,8 @@ LENIENCY_COUNT = 3 # messages before ban
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
-validations_db_file = bot_home + 'validations.db'
+validations_version = 1
+validations_db_file = bot_home + f'validations_v{validations_version}.db'
 
 _ids = os.getenv('GUILD_IDS') or ""
 _guild_ids = [int(id) for id in _ids.split('.') if id != ""]
@@ -34,6 +36,9 @@ guild_ids = _guild_ids if len(_guild_ids) else None
 _ids = os.getenv('CHANNEL_IDS') or ""
 _channel_ids = [int(id) for id in _ids.split('.') if id != ""]
 channel_ids = _channel_ids if len(_channel_ids) else None
+_ids = os.getenv('AGE_ROLE_IDS') or ""
+_role_ids = [int(id) for id in _ids.split('.') if id != ""]
+role_ids = _role_ids if len(_role_ids) else []
 
 bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
@@ -41,8 +46,8 @@ app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 
-app.logger.info(f"channel ID = {channel_ids[0]}")
-app.logger.info(f"guild ID = {channel_ids[0]}")
+# app.logger.info(f"channel ID = {channel_ids[0]}")
+# app.logger.info(f"guild ID = {channel_ids[0]}")
 
 # Age regex
 age_prog = re.compile("(18|19|[2-9][0-9])") # 18, 19 or 20+
@@ -54,20 +59,21 @@ if not os.path.exists(validations_db_file):
     cur = con.cursor()
     cur.execute('''
     CREATE TABLE validations (
-        user int NOT NULL, 
+        user int NOT NULL,
         leniency int NOT NULL,
         greeting int NOT NULL,
         PRIMARY KEY (user)
     );''')
     cur.execute('''
     CREATE TABLE kicks (
-        user int NOT NULL, 
+        user int NOT NULL,
         PRIMARY KEY (user)
     );''')
     cur.execute('''
     CREATE TABLE age_data (
-        user int NOT NULL, 
+        user int NOT NULL,
         age int NOT NULL,
+        date TIMESTAMP,
         PRIMARY KEY (user)
     );''')
     con.commit()
@@ -142,13 +148,13 @@ def set_age(user, age, force=False):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
     try:
-        cur.execute("INSERT INTO age_data VALUES (?, ?)", [user, age])
+        cur.execute("INSERT INTO age_data VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
         con.commit()
     except sqlite3.IntegrityError:
         app.logger.warning(f"Duplicated user id {user} in age_data")
         if force:
             app.logger.debug(f"Updating {user} age in age_data -> {age}")
-            cur.execute("UPDATE age_data SET age=:age WHERE user=:id", {"id": user, "age": age})
+            cur.execute("UPDATE age_data SET age=:age, date=:date WHERE user=:id", {"id": user, "age": age, "date": datetime.datetime.now()})
             con.commit()
     con.close()
 
@@ -158,15 +164,15 @@ async def do_ban(channel, user, reason="minor"):
         await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
     except:
         app.logger.error(f"Failed to ban user id {user}!")
-        await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
+        # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
 
 async def do_kick(channel, user, reason="minor"):
     try:
         await channel.guild.kick(user, reason=reason.capitalize())
         await channel.send(f"User {user.mention} kicked | {reason.capitalize()}")
     except:
-        app.logger.error(f"Failed to kick user id {user}! ")
-        await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
+        app.logger.error(f"Failed to kick user id {user}!")
+        # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
 
 @bot.event
 async def on_ready():
@@ -196,7 +202,7 @@ async def handle_age(msg: discord.Message):
     elif is_insta_ban(msg.content):
         age = get_ban_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
-        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True)
+        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason="minor")
 
     elif leniency > 0:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
@@ -204,17 +210,17 @@ async def handle_age(msg: discord.Message):
 
     else:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
-        await kick_or_ban(msg.author, msg.channel)
+        await kick_or_ban(msg.author, msg.channel, reason="didn't say age")
 
-async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False):
+async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False, reason="minor"):
     if force_ban or is_kicked(member.id):
         app.logger.debug(f"[{channel.guild.name} / {channel}] Will ban user (force={force_ban})")
-        await do_ban(channel, member, reason="didn't say age")
+        await do_ban(channel, member, reason=reason)
         remove_kick(member.id)
 
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] User was NOT previously kicked")
-        await do_kick(channel, member, reason="didn't say age")
+        await do_kick(channel, member, reason=reason)
         create_kick(member.id)
 
     greeting = delete_entry(member.id)
@@ -261,9 +267,20 @@ async def on_member_join(member: discord.Member):
 
     # check
     leniency = get_leniency(member.id)
-    if (leniency is not None):
+    if (leniency is not None): # user hasn't answered yet
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
-        await kick_or_ban(member, channel)
+        age_role = None
+        for role in member.roles: # check if user at least has one of the correct tags
+            if role in _role_ids:
+                age_role = role
+                break
+
+        if age_role is None:
+            app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
+            await kick_or_ban(member, channel, reason="didn't say age")
+        else:
+            app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
+            set_age(member.id, age_role, force=True) # since we don't know the exact age, save the role ID instead
 
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found")
