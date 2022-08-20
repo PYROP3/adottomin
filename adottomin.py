@@ -39,6 +39,7 @@ channel_ids = _channel_ids if len(_channel_ids) else None
 _ids = os.getenv('AGE_ROLE_IDS') or ""
 _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
+tally_channel = os.getenv('TALLY_CHANNEL_ID')
 
 bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
@@ -158,10 +159,18 @@ def set_age(user, age, force=False):
             con.commit()
     con.close()
 
+async def do_tally():
+    if tally_channel is None: return
+    try:
+        await bot.get_channel(tally_channel).send(f"x")
+    except:
+        app.logger.error(f"Failed to tally!")
+
 async def do_ban(channel, user, reason="minor"):
     try:
         await channel.guild.ban(user, reason=reason.capitalize())
         await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
+        await do_tally()
     except:
         app.logger.error(f"Failed to ban user id {user}!")
         # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
