@@ -171,6 +171,8 @@ async def do_ban(channel, user, reason="minor"):
         await channel.guild.ban(user, reason=reason.capitalize())
         await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
         await do_tally()
+    except discord.NotFound:
+        app.logger.debug(f"User id {user} already left!")
     except:
         app.logger.error(f"Failed to ban user id {user}!")
         # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
@@ -179,6 +181,8 @@ async def do_kick(channel, user, reason="minor"):
     try:
         await channel.guild.kick(user, reason=reason.capitalize())
         await channel.send(f"User {user.mention} kicked | {reason.capitalize()}")
+    except discord.NotFound:
+        app.logger.debug(f"User id {user} already left!")
     except:
         app.logger.error(f"Failed to kick user id {user}!")
         # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
