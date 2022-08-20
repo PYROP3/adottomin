@@ -50,8 +50,8 @@ app.logger.addHandler(logging.StreamHandler(sys.stdout))
 # app.logger.info(f"guild ID = {channel_ids[0]}")
 
 # Age regex
-age_prog = re.compile("(18|19|[2-9][0-9])") # 18, 19 or 20+
-minor_prog = re.compile("(1[0-7]|[0-9])") # 0-9 or 10-17
+age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
+minor_prog = re.compile(r"(?: |^)\b(1[0-7]|[0-9])\b") # 0-9 or 10-17
 
 # Initialize db
 if not os.path.exists(validations_db_file):
