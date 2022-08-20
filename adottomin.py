@@ -25,6 +25,11 @@ if TOKEN is None:
 LENIENCY_TIME_S = 30 # time to reply
 LENIENCY_COUNT = 3 # messages before ban
 
+REASON_MINOR = "minor"
+REASON_TIMEOUT = "did not say age"
+MSG_GREETING = "Hello {}! May I ask your age, pls?"
+MSG_WELCOME = "Thank you {}! Welcome to the server!"
+
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
 validations_version = 1
@@ -166,7 +171,7 @@ async def do_tally():
     except:
         app.logger.error(f"Failed to tally!")
 
-async def do_ban(channel, user, reason="minor"):
+async def do_ban(channel, user, reason=REASON_MINOR):
     try:
         await channel.guild.ban(user, reason=reason.capitalize())
         await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
@@ -177,7 +182,7 @@ async def do_ban(channel, user, reason="minor"):
         app.logger.error(f"Failed to ban user id {user}!")
         # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
 
-async def do_kick(channel, user, reason="minor"):
+async def do_kick(channel, user, reason=REASON_TIMEOUT):
     try:
         await channel.guild.kick(user, reason=reason.capitalize())
         await channel.send(f"User {user.mention} kicked | {reason.capitalize()}")
@@ -210,12 +215,12 @@ async def handle_age(msg: discord.Message):
         delete_entry(msg.author.id)
         set_age(msg.author.id, age, force=True)
 
-        await msg.channel.send(f"Thank you {msg.author.mention}! Welcome to the server!")
+        await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
 
     elif is_insta_ban(msg.content):
         age = get_ban_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
-        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason="minor")
+        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
     elif leniency > 0:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
@@ -223,9 +228,9 @@ async def handle_age(msg: discord.Message):
 
     else:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
-        await kick_or_ban(msg.author, msg.channel, reason="didn't say age")
+        await kick_or_ban(msg.author, msg.channel, reason=REASON_TIMEOUT)
 
-async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False, reason="minor"):
+async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
     if force_ban or is_kicked(member.id):
         app.logger.debug(f"[{channel.guild.name} / {channel}] Will ban user (force={force_ban})")
         await do_ban(channel, member, reason=reason)
@@ -273,7 +278,7 @@ async def on_member_join(member: discord.Member):
     channel = bot.get_channel(channel_ids[0])
     app.logger.debug(f"[{channel.guild.name} / {channel}] {member} just joined")
 
-    greeting = await channel.send(f"Hello {member.mention}! May I ask your age, pls?")
+    greeting = await channel.send(MSG_GREETING.format(member.mention))
     create_entry(member.id, greeting.id)
 
     await asyncio.sleep(LENIENCY_TIME_S)
@@ -290,7 +295,7 @@ async def on_member_join(member: discord.Member):
 
         if age_role is None:
             app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
-            await kick_or_ban(member, channel, reason="didn't say age")
+            await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
         else:
             app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
             set_age(member.id, age_role, force=True) # since we don't know the exact age, save the role ID instead
