@@ -211,7 +211,13 @@ async def handle_age(msg: discord.Message):
     if leniency is None or leniency < 0: return
     
     app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
-    if is_valid_age(msg.content):
+
+    if is_insta_ban(msg.content):
+        age = get_ban_age(msg.content)
+        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
+        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
+
+    elif is_valid_age(msg.content):
         age = get_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
         
@@ -219,11 +225,6 @@ async def handle_age(msg: discord.Message):
         set_age(msg.author.id, age, force=True)
 
         await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
-
-    elif is_insta_ban(msg.content):
-        age = get_ban_age(msg.content)
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
-        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
     elif leniency > 0:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
