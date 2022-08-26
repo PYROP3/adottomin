@@ -22,7 +22,7 @@ if TOKEN is None:
     print("DISCORD_TOKEN env var not set! Exiting")
     exit(1)
 
-LENIENCY_TIME_S = 1200 # time to reply
+LENIENCY_TIME_S = 5 * 60 # time to reply
 LENIENCY_COUNT = 3 # messages before ban
 
 REASON_MINOR = "minor"
@@ -202,7 +202,7 @@ async def on_ready():
 @bot.event
 async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
-    app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
+    # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
     await handle_age(msg)
 
