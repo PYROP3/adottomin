@@ -44,7 +44,7 @@ channel_ids = _channel_ids if len(_channel_ids) else None
 _ids = os.getenv('AGE_ROLE_IDS') or ""
 _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
-tally_channel = os.getenv('TALLY_CHANNEL_ID')
+tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 
 bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
@@ -52,8 +52,10 @@ app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 
-# app.logger.info(f"channel ID = {channel_ids[0]}")
-# app.logger.info(f"guild ID = {channel_ids[0]}")
+app.logger.info(f"Channel ID = {channel_ids[0]}")
+app.logger.info(f"Guild ID = {guild_ids[0]}")
+app.logger.info(f"Role IDs = {role_ids}")
+app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 # Age regex
 age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
