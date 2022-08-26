@@ -22,7 +22,7 @@ if TOKEN is None:
     print("DISCORD_TOKEN env var not set! Exiting")
     exit(1)
 
-LENIENCY_TIME_S = 30 # time to reply
+LENIENCY_TIME_S = 1200 # time to reply
 LENIENCY_COUNT = 3 # messages before ban
 
 REASON_MINOR = "minor"
@@ -58,6 +58,7 @@ app.logger.addHandler(logging.StreamHandler(sys.stdout))
 # Age regex
 age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
 minor_prog = re.compile(r"(?: |^)\b(1[0-7]|[0-9])\b") # 0-9 or 10-17
+minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
 
 # Initialize db
 if not os.path.exists(validations_db_file):
@@ -267,7 +268,7 @@ def get_age(msg: str):
     return int(age_prog.search(msg).group())
 
 def is_insta_ban(msg: str): # TODO add filters? racism, etc.
-    return minor_prog.search(msg) is not None
+    return minor_prog.search(msg) is not None or minor_prog_2.search(msg) is not None
 
 def get_ban_age(msg: str):
     return int(minor_prog.search(msg).group())
