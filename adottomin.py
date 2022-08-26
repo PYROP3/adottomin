@@ -300,7 +300,7 @@ async def on_member_join(member: discord.Member):
 
         if age_role is None:
             app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
-            await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
+            # await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
         else:
             app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
             set_age(member.id, age_role, force=True) # since we don't know the exact age, save the role ID instead
