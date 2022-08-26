@@ -291,8 +291,10 @@ async def on_member_join(member: discord.Member):
     if (leniency is not None): # user hasn't answered yet
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
         age_role = None
+        member = bot.get_user(member.id) # fetch the user data again cuz of cached roles
+        app.logger.debug(f"[{channel.guild.name} / {channel}] User roles => {member.roles}")
         for role in member.roles: # check if user at least has one of the correct tags
-            if role in _role_ids:
+            if role.id in _role_ids:
                 age_role = role
                 break
 
