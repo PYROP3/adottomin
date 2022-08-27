@@ -5,6 +5,7 @@ from discord.member import Member
 import discord_slash
 import logging
 import os
+from os.path import exists
 import sys
 from discord import flags
 from dotenv import load_dotenv
@@ -22,6 +23,7 @@ if TOKEN is None:
     print("DISCORD_TOKEN env var not set! Exiting")
     exit(1)
 
+RAID_MODE_CTRL = "raid.txt"
 RAID_MODE = False
 
 LENIENCY_TIME_S = 5 * 60 # time to reply
@@ -33,6 +35,11 @@ REASON_RAID = "raid"
 MSG_GREETING = "Hello {}! May I ask your age, pls?"
 MSG_WELCOME = "Thank you {}! Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
 MSG_WELCOME_NO_TAGS = "Thank you {}! Welcome to the server!"
+MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
+MSG_RAID_MODE_ON = "[TEST ONLY, PLEASE IGNORE] {} just turned raid mode on, brace for impact!"
+MSG_RAID_MODE_OFF = "[TEST ONLY, PLEASE IGNORE] {} just turned raid mode off, we live to see another day!"
+MSG_RAID_MODE_ON_ALREADY = "Raid mode is already on"
+MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
@@ -49,6 +56,8 @@ _ids = os.getenv('AGE_ROLE_IDS') or ""
 _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
+
+divine_role_id = 1008695237281058898
 
 bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
@@ -171,6 +180,19 @@ def set_age(user, age, force=False):
             con.commit()
     con.close()
 
+def is_raid_mode():
+    return exists(RAID_MODE_CTRL)
+
+def set_raid_mode():
+    if is_raid_mode(): return False
+    open(RAID_MODE_CTRL, "w").close()
+    return True
+
+def unset_raid_mode():
+    if not is_raid_mode(): return False
+    os.remove(RAID_MODE_CTRL)
+    return True
+
 async def do_tally():
     if tally_channel is None: return
     try:
@@ -286,7 +308,7 @@ async def on_member_join(member: discord.Member):
     channel = bot.get_channel(channel_ids[0])
     app.logger.debug(f"[{channel.guild.name} / {channel}] {member} just joined")
     
-    if RAID_MODE:
+    if RAID_MODE or is_raid_mode():
         app.logger.info(f"[{channel.guild.name} / {channel}] Raid mode ON: {member}")
         await kick_or_ban(member, channel, reason=REASON_RAID)
         return
@@ -324,5 +346,30 @@ async def on_member_join(member: discord.Member):
     delete_entry(member.id)
     
     app.logger.debug(f"[{channel.guild.name} / {channel}] Exit on_member_join")
+
+opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
+@slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)
+async def _raidmode(ctx: SlashContext, **kwargs):
+    if not (divine_role_id in [role.id for role in ctx.author.roles]):
+        app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.member} cannot use raidmode")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    args = [kwargs[k] for k in kwargs if kwargs[k] is not None]
+    turn_on = args[0]
+    if turn_on:
+        if set_raid_mode():
+            app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} enabled raidmode")
+            await ctx.send(content=MSG_RAID_MODE_ON.format(ctx.author.mention), hidden=False)
+        else:
+            app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} enabled raidmode (already enabled)")
+            await ctx.send(content=MSG_RAID_MODE_ON_ALREADY, hidden=True)
+    else:
+        if unset_raid_mode():
+            app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} disabled raidmode")
+            await ctx.send(content=MSG_RAID_MODE_OFF.format(ctx.author.mention), hidden=False)
+        else:
+            app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} disabled raidmode (already disabled)")
+            await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
 bot.run(TOKEN)
