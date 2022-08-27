@@ -22,13 +22,17 @@ if TOKEN is None:
     print("DISCORD_TOKEN env var not set! Exiting")
     exit(1)
 
+RAID_MODE = False
+
 LENIENCY_TIME_S = 5 * 60 # time to reply
-LENIENCY_COUNT = 3 # messages before ban
+LENIENCY_COUNT = 5 # messages before ban
 
 REASON_MINOR = "minor"
 REASON_TIMEOUT = "did not say age"
+REASON_RAID = "raid"
 MSG_GREETING = "Hello {}! May I ask your age, pls?"
-MSG_WELCOME = "Thank you {}! Welcome to the server!"
+MSG_WELCOME = "Thank you {}! Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
+MSG_WELCOME_NO_TAGS = "Thank you {}! Welcome to the server!"
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
@@ -50,7 +54,7 @@ bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.al
 slash = SlashCommand(bot, sync_commands=True)
 app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
-app.logger.addHandler(logging.StreamHandler(sys.stdout))
+# app.logger.addHandler(logging.StreamHandler(sys.stdout))
 
 app.logger.info(f"Channel ID = {channel_ids[0]}")
 app.logger.info(f"Guild ID = {guild_ids[0]}")
@@ -59,7 +63,7 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 # Age regex
 age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
-minor_prog = re.compile(r"(?: |^)\b(1[0-7]|[0-9])\b") # 0-9 or 10-17
+minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
 minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
 
 # Initialize db
@@ -147,7 +151,7 @@ def remove_kick(user):
     con = sqlite3.connect(validations_db_file)
     cur = con.cursor()
     try:
-        cur.execute("DELETE FROM validations WHERE user=:id", {"id": user})
+        cur.execute("DELETE FROM kicks WHERE user=:id", {"id": user})
         con.commit()
     except:
         pass
@@ -171,8 +175,8 @@ async def do_tally():
     if tally_channel is None: return
     try:
         await bot.get_channel(tally_channel).send(f"x")
-    except:
-        app.logger.error(f"Failed to tally!")
+    except Exception as e:
+        app.logger.error(f"Failed to tally! {e}")
 
 async def do_ban(channel, user, reason=REASON_MINOR):
     try:
@@ -280,6 +284,11 @@ async def on_member_join(member: discord.Member):
     if member.id == bot.user.id: return
     channel = bot.get_channel(channel_ids[0])
     app.logger.debug(f"[{channel.guild.name} / {channel}] {member} just joined")
+    
+    if RAID_MODE:
+        app.logger.info(f"[{channel.guild.name} / {channel}] Raid mode ON: {member}")
+        await kick_or_ban(member, channel, reason=REASON_RAID)
+        return
 
     greeting = await channel.send(MSG_GREETING.format(member.mention))
     create_entry(member.id, greeting.id)
@@ -291,19 +300,22 @@ async def on_member_join(member: discord.Member):
     if (leniency is not None): # user hasn't answered yet
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
         age_role = None
-        member = bot.get_guild(guild_ids[0]).fetch_member(member.id) # fetch the user data again cuz of cached roles
-        app.logger.debug(f"[{channel.guild.name} / {channel}] User roles => {member.roles}")
-        for role in member.roles: # check if user at least has one of the correct tags
-            if role.id in _role_ids:
-                age_role = role
-                break
+        try:
+            member = await bot.get_guild(guild_ids[0]).fetch_member(member.id) # fetch the user data again cuz of cached roles
+            app.logger.debug(f"[{channel.guild.name} / {channel}] User roles => {member.roles}")
+            for role in member.roles: # check if user at least has one of the correct tags
+                if role.id in _role_ids:
+                    age_role = role
+                    break
 
-        if age_role is None:
-            app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
-            # await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
-        else:
-            app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
-            set_age(member.id, age_role, force=True) # since we don't know the exact age, save the role ID instead
+            if age_role is None:
+                app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
+                await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
+            else:
+                app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
+                set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
+        except discord.NotFound:
+            app.logger.debug(f"[{channel.guild.name} / {channel}] {member} already quit")
 
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found")
