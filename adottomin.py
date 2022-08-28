@@ -378,6 +378,35 @@ async def _raidmode(ctx: SlashContext, **kwargs):
             app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} disabled raidmode (already disabled)")
             await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
+async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
+    user = kwargs["user"]
+    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested {user} {meme_code}")
+    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] avatar={user.avatar}")
+
+    av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
+
+    icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
+    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] icon_name={icon_name}")
+
+    file = open(icon_name, "wb")
+    file.write(requests.get(av_url).content)
+    file.close()
+
+    meme_name = meme_function(icon_name)
+    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
+    meme_file = discord.File(meme_name, filename=f"{user.name}_{meme_code}.png")
+    embed = discord.Embed()
+    embed.set_image(url=f"attachment://{meme_name}")
+    
+    os.remove(icon_name)
+
+    msg = "Enjoy your fresh meme"
+    if (user.id == ctx.author_id):
+        msg = "Lmao did you really make it for yourself??"
+    await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
+
+    os.remove(meme_name)
+
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="supremacy", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _supremacy(ctx: SlashContext, **kwargs):
@@ -412,63 +441,11 @@ async def _supremacy(ctx: SlashContext, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="deeznuts", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _deeznuts(ctx: SlashContext, **kwargs):
-    user = kwargs["user"]
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested {user} deeznuts")
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] avatar={user.avatar}")
-
-    av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
-
-    icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] icon_name={icon_name}")
-
-    file = open(icon_name, "wb")
-    file.write(requests.get(av_url).content)
-    file.close()
-
-    meme_name = memes.generate_nuts(icon_name)
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
-    meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
-    embed = discord.Embed()
-    embed.set_image(url=f"attachment://{meme_name}")
-    
-    os.remove(icon_name)
-
-    msg = "Enjoy your fresh meme"
-    if (user.id == ctx.author_id):
-        msg = "Lmao did you really make it for yourself??"
-    await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
-
-    os.remove(meme_name)
+    await _meme(ctx, memes.generate_nuts, "deeznuts", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="pills", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _pills(ctx: SlashContext, **kwargs):
-    user = kwargs["user"]
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested {user} deeznuts")
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] avatar={user.avatar}")
-
-    av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
-
-    icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] icon_name={icon_name}")
-
-    file = open(icon_name, "wb")
-    file.write(requests.get(av_url).content)
-    file.close()
-
-    meme_name = memes.generate_pills(icon_name)
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
-    meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
-    embed = discord.Embed()
-    embed.set_image(url=f"attachment://{meme_name}")
-    
-    os.remove(icon_name)
-
-    msg = "Enjoy your fresh meme"
-    if (user.id == ctx.author_id):
-        msg = "Lmao did you really make it for yourself??"
-    await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
-
-    os.remove(meme_name)
+    await _meme(ctx, memes.generate_pills, "pills", **kwargs)
 
 bot.run(TOKEN)
