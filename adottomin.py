@@ -14,8 +14,12 @@ from threading import Thread
 from discord.ext import commands
 from discord_slash import SlashCommand, SlashContext
 import sqlite3
-import time
 import re
+import random
+import string
+import requests
+
+import memes
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -40,6 +44,8 @@ MSG_RAID_MODE_ON = "[TEST ONLY, PLEASE IGNORE] {} just turned raid mode on, brac
 MSG_RAID_MODE_OFF = "[TEST ONLY, PLEASE IGNORE] {} just turned raid mode off, we live to see another day!"
 MSG_RAID_MODE_ON_ALREADY = "Raid mode is already on"
 MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
+
+AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
@@ -371,5 +377,36 @@ async def _raidmode(ctx: SlashContext, **kwargs):
         else:
             app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} disabled raidmode (already disabled)")
             await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
+@slash.slash(name="supremacy", description="Ask miguel", options=opts, guild_ids=guild_ids)
+async def _supremacy(ctx: SlashContext, **kwargs):
+    user = kwargs["user"]
+    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested {user} supremacy")
+    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] avatar={user.avatar}")
+
+    av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
+
+    icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
+    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] icon_name={icon_name}")
+
+    file = open(icon_name, "wb")
+    file.write(requests.get(av_url).content)
+    file.close()
+
+    meme_name = memes.generate_sup(user.display_name(), icon_name)
+    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
+    meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
+    embed = discord.Embed()
+    embed.set_image(url=f"attachment://{meme_name}")
+    
+    os.remove(icon_name)
+
+    msg = "Enjoy your fresh meme"
+    if (user.id == ctx.author_id):
+        msg = "Lmao did you really make it for yourself??"
+    await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
+
+    os.remove(meme_name)
 
 bot.run(TOKEN)
