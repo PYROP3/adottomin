@@ -423,7 +423,7 @@ async def _supremacy(ctx: SlashContext, **kwargs):
     file.write(requests.get(av_url).content)
     file.close()
 
-    meme_name = memes.generate_sup(user.display_name(), icon_name)
+    meme_name = memes.generate_sup(user.display_name, icon_name)
     app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
     meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
     embed = discord.Embed()
@@ -447,5 +447,21 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="pills", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _pills(ctx: SlashContext, **kwargs):
     await _meme(ctx, memes.generate_pills, "pills", **kwargs)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
+@slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
+async def _shipme(ctx: SlashContext, **kwargs):
+    user = kwargs["user"]
+    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested ship with {user}")
+    if (user.id == ctx.author_id):
+        await ctx.send(content=f"No selfcest, {ctx.author}", hidden=False)
+
+    smaller = min(int(user.id), int(ctx.author_id))
+    bigger = max(int(user.id), int(ctx.author_id))
+    code = hash(f"{smaller}/{bigger}")
+    pct = code % 101
+    nice = " (nice!)" if pct == 69 else ""
+
+    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} is {pct}%{nice} :3", hidden=False)
 
 bot.run(TOKEN)
