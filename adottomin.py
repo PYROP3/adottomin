@@ -227,6 +227,12 @@ async def do_kick(channel, user, reason=REASON_TIMEOUT):
         app.logger.error(f"Failed to kick user id {user}!")
         # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
 
+def _percent_from(content, daily=True):
+    if daily:
+        content += f"/{datetime.datetime.now().strftime('%d/%m/%Y')}"
+    pct = hash(content) % 101
+    return (pct, " (nice!)" if pct == 69 else "")
+
 @bot.event
 async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
@@ -458,11 +464,9 @@ async def _shipme(ctx: SlashContext, **kwargs):
 
     smaller = min(int(user.id), int(ctx.author_id))
     bigger = max(int(user.id), int(ctx.author_id))
-    code = hash(f"{smaller}/{bigger}")
-    pct = code % 101
-    nice = " (nice!)" if pct == 69 else ""
+    pct, nice = _percent_from(f"{smaller}/{bigger}")
 
-    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} is {pct}%{nice} :3", hidden=False)
+    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {pct}%{nice} :3", hidden=False)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
 @slash.slash(name="gayrate", description="Rate your gae!", options=opts, guild_ids=guild_ids)
@@ -470,10 +474,8 @@ async def _gayrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
     app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested gayrate for {user}")
 
-    code = hash(f"{int(user.id)}")
-    pct = code % 101
-    nice = " (nice!)" if pct == 69 else ""
+    pct, nice = _percent_from(f"{int(user.id)}")
 
-    await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay!{nice} :3", hidden=False)
+    await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", hidden=False)
 
 bot.run(TOKEN)
