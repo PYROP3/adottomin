@@ -478,4 +478,19 @@ async def _gayrate(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", hidden=False)
 
+opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
+@slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
+async def _horny(ctx: SlashContext, **kwargs):
+    user = kwargs["user"] if "user" in kwargs else None
+    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested No Horny for {user}")
+
+    content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
+
+    meme_name = memes.no_horny
+    meme_file = discord.File(meme_name, filename=meme_name)
+    embed = discord.Embed()
+    embed.set_image(url=f"attachment://{meme_name}")
+
+    await ctx.send(content=content, file=meme_file, embed=embed, hidden=False)
+
 bot.run(TOKEN)

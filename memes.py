@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 sup_template = "meme_stuff/supremacy_template.png"
 nuts_template = "meme_stuff/nuts_template.png"
 pills_template = "meme_stuff/pills_template.png"
+no_horny = "meme_stuff/no_horny.png"
 
 string_len = 20
 
