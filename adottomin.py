@@ -1,4 +1,5 @@
 import asyncio
+import age_handling
 import datetime
 import db
 import discord
@@ -34,12 +35,6 @@ RAID_MODE = False
 LENIENCY_TIME_S = 5 * 60 # time to reply
 LENIENCY_COUNT = 5 # messages before ban
 
-REASON_MINOR = "minor"
-REASON_TIMEOUT = "did not say age"
-REASON_RAID = "raid"
-MSG_GREETING = "Hello {}! May I ask your age, pls?"
-MSG_WELCOME = "Thank you {}! Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
-MSG_WELCOME_NO_TAGS = "Thank you {}! Welcome to the server!"
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 MSG_RAID_MODE_ON = "{} just turned raid mode **ON**, brace for impact!"
 MSG_RAID_MODE_OFF = "{} just turned raid mode **OFF**, we live to see another day!"
@@ -74,12 +69,8 @@ app.logger.info(f"Guild ID = {guild_ids[0]}")
 app.logger.info(f"Role IDs = {role_ids}")
 app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
-# Age regex
-age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
-minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
-minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
-
 sql = db.database(LENIENCY_COUNT, app.logger)
+age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -93,34 +84,6 @@ def unset_raid_mode():
     if not is_raid_mode(): return False
     os.remove(RAID_MODE_CTRL)
     return True
-
-async def do_tally():
-    if tally_channel is None: return
-    try:
-        await bot.get_channel(tally_channel).send(f"x")
-    except Exception as e:
-        app.logger.error(f"Failed to tally! {e}")
-
-async def do_ban(channel, user, reason=REASON_MINOR):
-    try:
-        await channel.guild.ban(user, reason=reason.capitalize())
-        await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
-        await do_tally()
-    except discord.NotFound:
-        app.logger.debug(f"User id {user} already left!")
-    except:
-        app.logger.error(f"Failed to ban user id {user}!")
-        # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
-
-async def do_kick(channel, user, reason=REASON_TIMEOUT):
-    try:
-        await channel.guild.kick(user, reason=reason.capitalize())
-        await channel.send(f"User {user.mention} kicked | {reason.capitalize()}")
-    except discord.NotFound:
-        app.logger.debug(f"User id {user} already left!")
-    except:
-        app.logger.error(f"Failed to kick user id {user}!")
-        # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
 
 def _percent_from(content, daily=True):
     if daily:
@@ -137,77 +100,7 @@ async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    await handle_age(msg)
-
-async def handle_age(msg: discord.Message):
-    leniency = sql.get_leniency(msg.author.id)
-    if leniency is None or leniency < 0: return
-    
-    app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
-
-    if is_insta_ban(msg.content):
-        age = get_ban_age(msg.content)
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
-        await kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
-
-    elif is_valid_age(msg.content):
-        age = get_age(msg.content)
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
-        
-        sql.delete_entry(msg.author.id)
-        sql.set_age(msg.author.id, age, force=True)
-
-        await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
-
-    elif leniency > 0:
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
-        sql.decr_leniency(msg.author.id)
-
-    else:
-        app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
-        await kick_or_ban(msg.author, msg.channel, reason=REASON_TIMEOUT)
-
-async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
-    if force_ban or sql.is_kicked(member.id):
-        app.logger.debug(f"[{channel.guild.name} / {channel}] Will ban user (force={force_ban})")
-        await do_ban(channel, member, reason=reason)
-        sql.remove_kick(member.id)
-
-    else:
-        app.logger.debug(f"[{channel.guild.name} / {channel}] User was NOT previously kicked")
-        await do_kick(channel, member, reason=reason)
-        sql.create_kick(member.id)
-
-    greeting = sql.delete_entry(member.id)
-    await try_delete_greeting(greeting, channel)
-    sql.set_age(member.id, age, force=force_update_age)
-
-async def try_delete_greeting(greeting, channel):
-    if greeting is None: return
-
-    try:
-        channel = bot.get_channel(channel_ids[0])
-        greeting_msg = await channel.fetch_message(greeting)
-        await greeting_msg.delete()
-
-    except discord.NotFound:
-        app.logger.debug(f"[{channel.guild.name} / {channel}] Greeting {greeting} already deleted")
-
-    except Exception as e:
-        app.logger.warning(f"[{channel.guild.name} / {channel}] failed to delete greeting {greeting}")
-        app.logger.debug(f"[{channel.guild.name} / {channel}] {e}")
-
-def is_valid_age(msg: str):
-    return age_prog.search(msg) is not None
-
-def get_age(msg: str):
-    return int(age_prog.search(msg).group())
-
-def is_insta_ban(msg: str): # TODO add filters? racism, etc.
-    return minor_prog.search(msg) is not None or minor_prog_2.search(msg) is not None
-
-def get_ban_age(msg: str):
-    return int(minor_prog.search(msg).group())
+    await age_handler.handle_age(msg)
 
 @bot.event
 async def on_member_join(member: discord.Member):
@@ -217,10 +110,10 @@ async def on_member_join(member: discord.Member):
     
     if RAID_MODE or is_raid_mode():
         app.logger.info(f"[{channel.guild.name} / {channel}] Raid mode ON: {member}")
-        await kick_or_ban(member, channel, reason=REASON_RAID)
+        await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
         return
 
-    greeting = await channel.send(MSG_GREETING.format(member.mention))
+    greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
     sql.create_entry(member.id, greeting.id)
 
     await asyncio.sleep(LENIENCY_TIME_S)
@@ -240,7 +133,7 @@ async def on_member_join(member: discord.Member):
 
             if age_role is None:
                 app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
-                await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
+                await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_TIMEOUT)
             else:
                 app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
                 sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
@@ -355,7 +248,8 @@ async def _shipme(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
     app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested ship with {user}")
     if (user.id == ctx.author_id):
-        await ctx.send(content=f"No selfcest, {ctx.author}", hidden=False)
+        await ctx.send(content=f"No selfcest, {ctx.author.mention}!", hidden=False)
+        return
 
     smaller = min(int(user.id), int(ctx.author_id))
     bigger = max(int(user.id), int(ctx.author_id))
