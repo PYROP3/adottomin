@@ -1,27 +1,22 @@
 import asyncio
-import age_handling
 import datetime
-import db
 import discord
-from discord.member import Member
 import discord_slash
 import logging
 import os
+import random
+import requests
+import string
+
+import age_handling
+import db
+import memes
+
 from os.path import exists
-import sys
-from discord import flags
 from dotenv import load_dotenv
 from flask import Flask
-from threading import Thread
 from discord.ext import commands
 from discord_slash import SlashCommand, SlashContext
-import sqlite3
-import re
-import random
-import string
-import requests
-
-import memes
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
