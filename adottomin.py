@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import db
 import discord
 from discord.member import Member
 import discord_slash
@@ -49,9 +50,6 @@ AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
-validations_version = 1
-validations_db_file = bot_home + f'validations_v{validations_version}.db'
-
 _ids = os.getenv('GUILD_IDS') or ""
 _guild_ids = [int(id) for id in _ids.split('.') if id != ""]
 guild_ids = _guild_ids if len(_guild_ids) else None
@@ -81,110 +79,7 @@ age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
 minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
 minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
 
-# Initialize db
-if not os.path.exists(validations_db_file):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    cur.execute('''
-    CREATE TABLE validations (
-        user int NOT NULL,
-        leniency int NOT NULL,
-        greeting int NOT NULL,
-        PRIMARY KEY (user)
-    );''')
-    cur.execute('''
-    CREATE TABLE kicks (
-        user int NOT NULL,
-        PRIMARY KEY (user)
-    );''')
-    cur.execute('''
-    CREATE TABLE age_data (
-        user int NOT NULL,
-        age int NOT NULL,
-        date TIMESTAMP,
-        PRIMARY KEY (user)
-    );''')
-    con.commit()
-    con.close()
-
-def get_leniency(user):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    res = cur.execute("SELECT * FROM validations WHERE user = :id", {"id": user}).fetchone()
-    con.close()
-    if res is None: return None
-    return int(res[1])
-
-def create_entry(user, greeting_id):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    cur.execute("INSERT INTO validations VALUES (?, ?, ?)", [user, LENIENCY_COUNT, greeting_id])
-    con.commit()
-    con.close()
-
-def decr_leniency(user):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    cur.execute("UPDATE validations SET leniency=leniency - 1 WHERE user=:id", {"id": user})
-    con.commit()
-    con.close()
-
-def delete_entry(user):
-    try:
-        con = sqlite3.connect(validations_db_file)
-        cur = con.cursor()
-        res = cur.execute("SELECT * FROM validations WHERE user = :id", {"id": user}).fetchone()
-        cur.execute("DELETE FROM validations WHERE user=:id", {"id": user})
-        con.commit()
-        con.close()
-        return int(res[2]) # Return greeting ID in case it should be deleted
-    except:
-        return None
-
-def create_kick(user):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    try:
-        cur.execute("INSERT INTO kicks VALUES (?)", [user])
-        con.commit()
-    except sqlite3.IntegrityError:
-        app.logger.warning(f"Duplicated user id {user} in kicks")
-    con.close()
-
-def is_kicked(user):
-    try:
-        con = sqlite3.connect(validations_db_file)
-        cur = con.cursor()
-        res = cur.execute("SELECT * FROM kicks WHERE user = :id", {"id": user}).fetchone()
-        con.commit()
-        con.close()
-        return res is not None
-    except:
-        return False
-
-def remove_kick(user):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    try:
-        cur.execute("DELETE FROM kicks WHERE user=:id", {"id": user})
-        con.commit()
-    except:
-        pass
-    con.close()
-
-def set_age(user, age, force=False):
-    con = sqlite3.connect(validations_db_file)
-    cur = con.cursor()
-    try:
-        cur.execute("INSERT INTO age_data VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
-        con.commit()
-    except sqlite3.IntegrityError:
-        app.logger.warning(f"Duplicated user id {user} in age_data")
-        if force:
-            app.logger.debug(f"Updating {user} age in age_data -> {age}")
-            cur.execute("UPDATE age_data SET age=:age, date=:date WHERE user=:id", {"id": user, "age": age, "date": datetime.datetime.now()})
-            con.commit()
-    con.close()
+sql = db.database(LENIENCY_COUNT, app.logger)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -245,7 +140,7 @@ async def on_message(msg: discord.Message):
     await handle_age(msg)
 
 async def handle_age(msg: discord.Message):
-    leniency = get_leniency(msg.author.id)
+    leniency = sql.get_leniency(msg.author.id)
     if leniency is None or leniency < 0: return
     
     app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
@@ -259,33 +154,33 @@ async def handle_age(msg: discord.Message):
         age = get_age(msg.content)
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
         
-        delete_entry(msg.author.id)
-        set_age(msg.author.id, age, force=True)
+        sql.delete_entry(msg.author.id)
+        sql.set_age(msg.author.id, age, force=True)
 
         await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
 
     elif leniency > 0:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
-        decr_leniency(msg.author.id)
+        sql.decr_leniency(msg.author.id)
 
     else:
         app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
         await kick_or_ban(msg.author, msg.channel, reason=REASON_TIMEOUT)
 
 async def kick_or_ban(member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
-    if force_ban or is_kicked(member.id):
+    if force_ban or sql.is_kicked(member.id):
         app.logger.debug(f"[{channel.guild.name} / {channel}] Will ban user (force={force_ban})")
         await do_ban(channel, member, reason=reason)
-        remove_kick(member.id)
+        sql.remove_kick(member.id)
 
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] User was NOT previously kicked")
         await do_kick(channel, member, reason=reason)
-        create_kick(member.id)
+        sql.create_kick(member.id)
 
-    greeting = delete_entry(member.id)
+    greeting = sql.delete_entry(member.id)
     await try_delete_greeting(greeting, channel)
-    set_age(member.id, age, force=force_update_age)
+    sql.set_age(member.id, age, force=force_update_age)
 
 async def try_delete_greeting(greeting, channel):
     if greeting is None: return
@@ -326,12 +221,12 @@ async def on_member_join(member: discord.Member):
         return
 
     greeting = await channel.send(MSG_GREETING.format(member.mention))
-    create_entry(member.id, greeting.id)
+    sql.create_entry(member.id, greeting.id)
 
     await asyncio.sleep(LENIENCY_TIME_S)
 
     # check
-    leniency = get_leniency(member.id)
+    leniency = sql.get_leniency(member.id)
     if (leniency is not None): # user hasn't answered yet
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
         age_role = None
@@ -348,14 +243,14 @@ async def on_member_join(member: discord.Member):
                 await kick_or_ban(member, channel, reason=REASON_TIMEOUT)
             else:
                 app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
-                set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
+                sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
         except discord.NotFound:
             app.logger.debug(f"[{channel.guild.name} / {channel}] {member} already quit")
 
     else:
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found")
 
-    delete_entry(member.id)
+    sql.delete_entry(member.id)
     
     app.logger.debug(f"[{channel.guild.name} / {channel}] Exit on_member_join")
 
