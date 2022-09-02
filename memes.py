@@ -1,4 +1,4 @@
-import sys
+import datetime
 import random
 import string
 from PIL import Image, ImageDraw, ImageFont
@@ -62,3 +62,9 @@ def generate_pills(icon):
         im.save(name, "PNG")
 
     return name
+
+def percent_from(content, daily=True):
+    if daily:
+        content += f"/{datetime.datetime.now().strftime('%d/%m/%Y')}"
+    pct = hash(content) % 101
+    return (pct, " (nice!)" if pct == 69 else "")

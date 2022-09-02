@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import discord
 import discord_slash
 import logging
@@ -79,12 +78,6 @@ def unset_raid_mode():
     if not is_raid_mode(): return False
     os.remove(RAID_MODE_CTRL)
     return True
-
-def _percent_from(content, daily=True):
-    if daily:
-        content += f"/{datetime.datetime.now().strftime('%d/%m/%Y')}"
-    pct = hash(content) % 101
-    return (pct, " (nice!)" if pct == 69 else "")
 
 @bot.event
 async def on_ready():
@@ -248,7 +241,7 @@ async def _shipme(ctx: SlashContext, **kwargs):
 
     smaller = min(int(user.id), int(ctx.author_id))
     bigger = max(int(user.id), int(ctx.author_id))
-    pct, nice = _percent_from(f"{smaller}/{bigger}")
+    pct, nice = memes.percent_from(f"{smaller}/{bigger}")
 
     await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {pct}%{nice} :3", hidden=False)
 
@@ -258,7 +251,7 @@ async def _gayrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
     app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested gayrate for {user}")
 
-    pct, nice = _percent_from(f"{int(user.id)}")
+    pct, nice = memes.percent_from(f"{int(user.id)}")
 
     await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", hidden=False)
 
