@@ -58,6 +58,18 @@ app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
 # app.logger.addHandler(logging.StreamHandler(sys.stdout))
 
+def log_debug(ctx, msg):
+    app.logger.debug(f"[{ctx.channel}] {msg}")
+
+def log_info(ctx, msg):
+    app.logger.info(f"[{ctx.channel}] {msg}")
+
+def log_warn(ctx, msg):
+    app.logger.warning(f"[{ctx.channel}] {msg}")
+
+def log_error(ctx, msg):
+    app.logger.error(f"[{ctx.channel}] {msg}")
+
 app.logger.info(f"Channel ID = {channel_ids[0]}")
 app.logger.info(f"Guild ID = {guild_ids[0]}")
 app.logger.info(f"Role IDs = {role_ids}")
@@ -139,7 +151,7 @@ opts = [discord_slash.manage_commands.create_option(name="active", description="
 @slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)
 async def _raidmode(ctx: SlashContext, **kwargs):
     if not (divine_role_id in [role.id for role in ctx.author.roles]):
-        app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.member} cannot use raidmode")
+        log_debug(ctx, f"{ctx.member} cannot use raidmode")
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
@@ -147,35 +159,35 @@ async def _raidmode(ctx: SlashContext, **kwargs):
     turn_on = args[0]
     if turn_on:
         if set_raid_mode():
-            app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} enabled raidmode")
+            log_info(ctx, f"{ctx.author} enabled raidmode")
             await ctx.send(content=MSG_RAID_MODE_ON.format(ctx.author.mention), hidden=False)
         else:
-            app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} enabled raidmode (already enabled)")
+            log_debug(ctx, f"{ctx.author} enabled raidmode (already enabled)")
             await ctx.send(content=MSG_RAID_MODE_ON_ALREADY, hidden=True)
     else:
         if unset_raid_mode():
-            app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} disabled raidmode")
+            log_info(ctx, f"{ctx.author} disabled raidmode")
             await ctx.send(content=MSG_RAID_MODE_OFF.format(ctx.author.mention), hidden=False)
         else:
-            app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} disabled raidmode (already disabled)")
+            log_debug(ctx, f"{ctx.author} disabled raidmode (already disabled)")
             await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
 async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     user = kwargs["user"]
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested {user} {meme_code}")
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] avatar={user.avatar}")
+    log_info(ctx, f"{ctx.author} requested {user} {meme_code}")
+    log_debug(ctx, f"avatar={user.avatar}")
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
     icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] icon_name={icon_name}")
+    log_debug(ctx, f"icon_name={icon_name}")
 
     file = open(icon_name, "wb")
     file.write(requests.get(av_url).content)
     file.close()
 
     meme_name = meme_function(icon_name)
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
+    log_debug(ctx, f"meme_name={meme_name}")
     meme_file = discord.File(meme_name, filename=f"{user.name}_{meme_code}.png")
     embed = discord.Embed()
     embed.set_image(url=f"attachment://{meme_name}")
@@ -195,20 +207,20 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="supremacy", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _supremacy(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested {user} supremacy")
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] avatar={user.avatar}")
+    log_info(ctx, f"{ctx.author} requested {user} supremacy")
+    log_debug(ctx, f"avatar={user.avatar}")
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
     icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] icon_name={icon_name}")
+    log_debug(ctx, f"icon_name={icon_name}")
 
     file = open(icon_name, "wb")
     file.write(requests.get(av_url).content)
     file.close()
 
     meme_name = memes.generate_sup(user.display_name, icon_name)
-    app.logger.debug(f"[{ctx.channel.guild.name} / {ctx.channel}] meme_name={meme_name}")
+    log_debug(ctx, f"meme_name={meme_name}")
     meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
     embed = discord.Embed()
     embed.set_image(url=f"attachment://{meme_name}")
@@ -236,7 +248,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
 async def _shipme(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested ship with {user}")
+    log_info(ctx, f"{ctx.author} requested ship with {user}")
     if (user.id == ctx.author_id):
         await ctx.send(content=f"No selfcest, {ctx.author.mention}!", hidden=False)
         return
@@ -255,7 +267,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="gayrate", description="Rate your gae!", options=opts, guild_ids=guild_ids)
 async def _gayrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested gayrate for {user}")
+    log_info(ctx, f"{ctx.author} requested gayrate for {user}")
     if (user.id == bot.user.id):
         await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
         return
@@ -268,7 +280,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="hornyrate", description="Rate your horny!", options=opts, guild_ids=guild_ids)
 async def _hornyrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested hornyrate for {user}")
+    log_info(ctx, f"{ctx.author} requested hornyrate for {user}")
     if (user.id == bot.user.id):
         await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
         return
@@ -289,7 +301,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
 async def _horny(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else None
-    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested No Horny for {user}")
+    log_info(ctx, f"{ctx.author} requested No Horny for {user}")
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
 
