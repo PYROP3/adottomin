@@ -185,6 +185,8 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     msg = "Enjoy your fresh meme"
     if (user.id == ctx.author_id):
         msg = "Lmao did you really make it for yourself??"
+    if (user.id == bot.user.id):
+        msg = f"Awww thank you, {ctx.author.mention}~"
     await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
 
     os.remove(meme_name)
@@ -239,9 +241,13 @@ async def _shipme(ctx: SlashContext, **kwargs):
         await ctx.send(content=f"No selfcest, {ctx.author.mention}!", hidden=False)
         return
 
+    if (user.id == bot.user.id):
+        await ctx.send(content=f"I'm not shipping myself with you, {ctx.author.mention}~", hidden=False)
+        return
+
     smaller = min(int(user.id), int(ctx.author_id))
     bigger = max(int(user.id), int(ctx.author_id))
-    pct, nice = memes.percent_from(f"{smaller}/{bigger}")
+    pct, nice = memes.percent_from(f"ship/{smaller}/{bigger}")
 
     await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {pct}%{nice} :3", hidden=False)
 
@@ -250,10 +256,34 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 async def _gayrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
     app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested gayrate for {user}")
+    if (user.id == bot.user.id):
+        await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
+        return
 
-    pct, nice = memes.percent_from(f"{int(user.id)}")
+    pct, nice = memes.percent_from(f"gay/{int(user.id)}")
 
     await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", hidden=False)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
+@slash.slash(name="hornyrate", description="Rate your horny!", options=opts, guild_ids=guild_ids)
+async def _hornyrate(ctx: SlashContext, **kwargs):
+    user = kwargs["user"] if "user" in kwargs else ctx.author
+    app.logger.info(f"[{ctx.channel.guild.name} / {ctx.channel}] {ctx.author} requested hornyrate for {user}")
+    if (user.id == bot.user.id):
+        await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
+        return
+
+    pct, nice = memes.percent_from(f"horny/{int(user.id)}")
+    if pct == 69:
+        emote = ":sunglasses:"
+    elif pct < 33:
+        emote = ":angel:"
+    elif pct < 66:
+        emote = ":slight_smile:"
+    else:
+        emote = ":smiling_imp:"
+
+    await ctx.send(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", hidden=False)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
 @slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
