@@ -7,6 +7,7 @@ REASON_SPAM = "spam"
 REASON_RAID = "raid"
 
 MSG_GREETING = ":NekoPat: Hello {}! May I ask your age, pls?"
+MSG_TRY_AGAIN = "Try again, {}"
 MSG_WELCOME = "Thank you {}! :NekoPat: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
 MSG_WELCOME_NO_TAGS = "Thank you {}! :NekoPat: Welcome to the server!"
 
@@ -42,6 +43,8 @@ class age_handler:
                 self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
                 self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
                 self.sql.decr_leniency(msg.author.id)
+
+                await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
             else:
                 self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
             
