@@ -10,6 +10,8 @@ MSG_GREETING = ":NekoPat: Hello {}! May I ask your age, pls?"
 MSG_WELCOME = "Thank you {}! :NekoPat: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
 MSG_WELCOME_NO_TAGS = "Thank you {}! :NekoPat: Welcome to the server!"
 
+AGE_MAX = 50
+
 class age_handler:
     def __init__(self, bot, sql, logger, greeting_channel, tally_channel):
         self.bot = bot
@@ -19,7 +21,7 @@ class age_handler:
         self.tally_channel = tally_channel
         
         # Age regex
-        self.age_prog = re.compile(r"(18|19|[2-9][0-9])") # 18, 19 or 20+
+        self.age_prog = re.compile(r"(18|19|[2-9][0-9]+)") # 18, 19 or 20+
         self.minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
 
@@ -36,12 +38,17 @@ class age_handler:
 
         elif self.is_valid_age(msg.content):
             age = self.get_age(msg.content)
-            self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
+            if age > AGE_MAX:
+                self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
+                self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
+                self.sql.decr_leniency(msg.author.id)
+            else:
+                self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
             
-            self.sql.delete_entry(msg.author.id)
-            self.sql.set_age(msg.author.id, age, force=True)
+                self.sql.delete_entry(msg.author.id)
+                self.sql.set_age(msg.author.id, age, force=True)
 
-            await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
+                await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
 
         elif leniency > 0:
             self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
