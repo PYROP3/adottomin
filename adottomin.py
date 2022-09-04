@@ -109,7 +109,7 @@ async def on_message(msg: discord.Message):
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
     await age_handler.handle_age(msg)
-    await _hi_dad(msg)
+    # await _hi_dad(msg)
 
 @bot.event
 async def on_member_join(member: discord.Member):
