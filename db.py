@@ -4,7 +4,7 @@ import sqlite3
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 validations_version = 1
-validations_db_file = bot_home + f'validations_v{validations_version}.db'
+validations_db_file = bot_home + f'/validations_v{validations_version}.db'
 
 class database:
     def __init__(self, max_leniency, logger):
