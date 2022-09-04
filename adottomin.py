@@ -91,6 +91,14 @@ def unset_raid_mode():
     os.remove(RAID_MODE_CTRL)
     return True
 
+async def _hi_dad(msg):
+    try:
+        hi_dad = memes.hi_dad(msg.content)
+        if hi_dad is None: return
+        await msg.reply(content=hi_dad)
+    except Exception as e:
+        app.logger.error(f"[{msg.channel}] Error in hi_dad: {e}")
+
 @bot.event
 async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
@@ -101,6 +109,7 @@ async def on_message(msg: discord.Message):
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
     await age_handler.handle_age(msg)
+    await _hi_dad(msg)
 
 @bot.event
 async def on_member_join(member: discord.Member):

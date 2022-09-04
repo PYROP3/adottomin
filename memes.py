@@ -1,5 +1,6 @@
 import datetime
 import random
+import re
 import string
 from PIL import Image, ImageDraw, ImageFont
 
@@ -68,3 +69,14 @@ def percent_from(content, daily=True):
         content += f"/{datetime.datetime.now().strftime('%d/%m/%Y')}"
     pct = hash(content) % 101
     return (pct, " (nice!)" if pct == 69 else "")
+
+dad_program = re.compile(r"im|i'm|i am|Im|I'm|I am")
+def hi_dad(msg):
+    res = dad_program.search(msg)
+    if res is None: return None
+    sp = res.span()
+    words = msg[sp[0] + sp[1] + 1:].split()
+    name = words[0]
+    if (len(words) > 1):
+        name += f" {words[1]}"
+    return f"Hi {name}, I'm dad! :sunglasses:"

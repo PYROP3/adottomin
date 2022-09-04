@@ -9,7 +9,9 @@ validations_db_file = bot_home + f'validations_v{validations_version}.db'
 class database:
     def __init__(self, max_leniency, logger):
         # Initialize db
+        self.logger.debug(f"Checking db file '{validations_db_file}'")
         if not os.path.exists(validations_db_file):
+            self.logger.info(f"CREATING db file '{validations_db_file}'")
             con = sqlite3.connect(validations_db_file)
             cur = con.cursor()
             cur.execute('''
