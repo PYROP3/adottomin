@@ -3,11 +3,12 @@ import re
 
 REASON_MINOR = "minor"
 REASON_TIMEOUT = "did not say age"
+REASON_SPAM = "spam"
 REASON_RAID = "raid"
 
-MSG_GREETING = "Hello {}! May I ask your age, pls?"
-MSG_WELCOME = "Thank you {}! Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
-MSG_WELCOME_NO_TAGS = "Thank you {}! Welcome to the server!"
+MSG_GREETING = ":NekoPat: Hello {}! May I ask your age, pls?"
+MSG_WELCOME = "Thank you {}! :NekoPat: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
+MSG_WELCOME_NO_TAGS = "Thank you {}! :NekoPat: Welcome to the server!"
 
 class age_handler:
     def __init__(self, bot, sql, logger, greeting_channel, tally_channel):

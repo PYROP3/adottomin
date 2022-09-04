@@ -123,17 +123,22 @@ async def on_member_join(member: discord.Member):
     if (leniency is not None): # user hasn't answered yet
         app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
         age_role = None
+        role_count = 0
         try:
             member = await bot.get_guild(guild_ids[0]).fetch_member(member.id) # fetch the user data again cuz of cached roles
             app.logger.debug(f"[{channel.guild.name} / {channel}] User roles => {member.roles}")
             for role in member.roles: # check if user at least has one of the correct tags
                 if role.id in _role_ids:
-                    age_role = role
-                    break
+                    if age_role is None:
+                        age_role = role
+                    role_count += 1
 
             if age_role is None:
                 app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
                 await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_TIMEOUT)
+            elif role_count > 2:
+                app.logger.debug(f"[{channel.guild.name} / {channel}] Too many roles")
+                await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_SPAM)
             else:
                 app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
                 sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
