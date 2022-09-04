@@ -6,10 +6,10 @@ REASON_TIMEOUT = "did not say age"
 REASON_SPAM = "spam"
 REASON_RAID = "raid"
 
-MSG_GREETING = ":NekoPat: Hello {}! May I ask your age, pls?"
+MSG_GREETING = ":wave: Hello {}! May I ask your age, pls?"
 MSG_TRY_AGAIN = "Try again, {}"
-MSG_WELCOME = "Thank you {}! :NekoPat: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
-MSG_WELCOME_NO_TAGS = "Thank you {}! :NekoPat: Welcome to the server!"
+MSG_WELCOME = "Thank you {}! :space_invader: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
+MSG_WELCOME_NO_TAGS = "Thank you {}! :space_invader: Welcome to the server!"
 
 AGE_MAX = 50
 
