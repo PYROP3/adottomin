@@ -9,6 +9,7 @@ import string
 
 import age_handling
 import db
+import graphlytics
 import memes
 
 from os.path import exists
@@ -51,6 +52,8 @@ role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 
 divine_role_id = 1008695237281058898
+
+admin_id = 173963470042038272
 
 bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
@@ -325,5 +328,24 @@ async def _horny(ctx: SlashContext, **kwargs):
     embed.set_image(url=f"attachment://{meme_name}")
 
     await ctx.send(content=content, file=meme_file, embed=embed, hidden=False)
+
+opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
+@slash.slash(name="report", description="Get analytics data for new users", options=opts, guild_ids=guild_ids)
+async def _report(ctx: SlashContext, **kwargs):
+    log_info(ctx, f"{ctx.author} requested report")
+    if (ctx.author_id != admin_id):
+        log_debug(ctx, f"{ctx.member} cannot get report")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    report_name = graphlytics.generate_new_user_graph(app.logger, kwargs["range"] if "range" in kwargs else None)
+    log_debug(ctx, f"report_name={report_name}")
+    report_file = discord.File(report_name, filename=f"user_report.png")
+    embed = discord.Embed()
+    embed.set_image(url=f"attachment://{report_name}")
+
+    await ctx.send(content=f"Here's the report you requested~", file=report_file, embed=embed, hidden=False)
+
+    os.remove(report_name)
 
 bot.run(TOKEN)
