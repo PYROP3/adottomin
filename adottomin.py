@@ -194,6 +194,8 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     log_info(ctx, f"{ctx.author} requested {user} {meme_code}")
     log_debug(ctx, f"avatar={user.avatar}")
 
+    message = await ctx.send(content="I'll be right back with your meme~", hidden=False)
+
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
     icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
@@ -206,17 +208,16 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     meme_name = meme_function(icon_name)
     log_debug(ctx, f"meme_name={meme_name}")
     meme_file = discord.File(meme_name, filename=f"{user.name}_{meme_code}.png")
-    embed = discord.Embed()
-    embed.set_image(url=f"attachment://{meme_name}")
     
     os.remove(icon_name)
 
-    msg = "Enjoy your fresh meme"
+    msg = "Enjoy your fresh meme~"
     if (user.id == ctx.author_id):
         msg = "Lmao did you really make it for yourself??"
     if (user.id == bot.user.id):
         msg = f"Awww thank you, {ctx.author.mention}~"
-    await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
+
+    await message.edit(content=msg, file=meme_file)
 
     os.remove(meme_name)
 
@@ -226,6 +227,8 @@ async def _supremacy(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
     log_info(ctx, f"{ctx.author} requested {user} supremacy")
     log_debug(ctx, f"avatar={user.avatar}")
+
+    message = await ctx.send(content="I'll be right back with your meme~", hidden=False)
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
@@ -239,15 +242,16 @@ async def _supremacy(ctx: SlashContext, **kwargs):
     meme_name = memes.generate_sup(user.display_name, icon_name)
     log_debug(ctx, f"meme_name={meme_name}")
     meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
-    embed = discord.Embed()
-    embed.set_image(url=f"attachment://{meme_name}")
     
     os.remove(icon_name)
 
-    msg = "Enjoy your fresh meme"
+    msg = "Enjoy your fresh meme~"
     if (user.id == ctx.author_id):
         msg = "Lmao did you really make it for yourself??"
-    await ctx.send(content=msg, file=meme_file, embed=embed, hidden=False)
+    if (user.id == bot.user.id):
+        msg = f"Awww thank you, {ctx.author.mention}~"
+
+    await message.edit(content=msg, file=meme_file)
 
     os.remove(meme_name)
 
@@ -322,12 +326,14 @@ async def _horny(ctx: SlashContext, **kwargs):
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
 
+    message = await ctx.send(content=content, hidden=False)
+
     meme_name = memes.no_horny
     meme_file = discord.File(meme_name, filename=meme_name)
     embed = discord.Embed()
     embed.set_image(url=f"attachment://{meme_name}")
 
-    await ctx.send(content=content, file=meme_file, embed=embed, hidden=False)
+    await message.edit(file=meme_file)
 
 opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 @slash.slash(name="report", description="Get analytics data for new users", options=opts, guild_ids=guild_ids)
@@ -343,8 +349,6 @@ async def _report(ctx: SlashContext, **kwargs):
     report_name = graphlytics.generate_new_user_graph(app.logger, kwargs["range"] if "range" in kwargs else None)
     log_debug(ctx, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
-    # embed = discord.Embed()
-    # embed.set_image(url=f"attachment://{report_name}")
 
     await message.edit(content=f"Here you go~", file=report_file)
 
