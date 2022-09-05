@@ -13,6 +13,8 @@ MSG_WELCOME_NO_TAGS = "Thank you {}! :space_invader: Welcome to the server!"
 
 AGE_MAX = 50
 
+DELETE_GREETINGS = False
+
 class age_handler:
     def __init__(self, bot, sql, logger, greeting_channel, tally_channel):
         self.bot = bot
@@ -63,12 +65,12 @@ class age_handler:
 
     async def kick_or_ban(self, member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
         if force_ban or self.sql.is_kicked(member.id):
-            self.logger.debug(f"[{channel.guild.name} / {channel}] Will ban user (force={force_ban})")
+            self.logger.debug(f"[{channel}] Will ban user (force={force_ban})")
             await self.do_ban(channel, member, reason=reason)
             self.sql.remove_kick(member.id)
 
         else:
-            self.logger.debug(f"[{channel.guild.name} / {channel}] User was NOT previously kicked")
+            self.logger.debug(f"[{channel}] User was NOT previously kicked")
             await self.do_kick(channel, member, reason=reason)
             self.sql.create_kick(member.id)
 
@@ -79,17 +81,21 @@ class age_handler:
     async def try_delete_greeting(self, greeting, channel):
         if greeting is None: return
 
+        if not DELETE_GREETINGS:
+            self.logger.debug(f"[{channel}] Will NOT delete greeting {greeting}")
+            return
+
         try:
             channel = self.bot.get_channel(self.greeting_channel)
             greeting_msg = await channel.fetch_message(greeting)
             await greeting_msg.delete()
 
         except discord.NotFound:
-            self.logger.debug(f"[{channel.guild.name} / {channel}] Greeting {greeting} already deleted")
+            self.logger.debug(f"[{channel}] Greeting {greeting} already deleted")
 
         except Exception as e:
-            self.logger.warning(f"[{channel.guild.name} / {channel}] failed to delete greeting {greeting}")
-            self.logger.debug(f"[{channel.guild.name} / {channel}] {e}")
+            self.logger.warning(f"[{channel}] failed to delete greeting {greeting}")
+            self.logger.debug(f"[{channel}] {e}")
 
     def is_valid_age(self, msg: str):
         return self.age_prog.search(msg) is not None
