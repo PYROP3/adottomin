@@ -333,7 +333,7 @@ opts = [discord_slash.manage_commands.create_option(name="range", description="M
 @slash.slash(name="report", description="Get analytics data for new users", options=opts, guild_ids=guild_ids)
 async def _report(ctx: SlashContext, **kwargs):
     log_info(ctx, f"{ctx.author} requested report")
-    if (ctx.author_id != admin_id):
+    if (ctx.author_id != admin_id) or not (divine_role_id in [role.id for role in ctx.author.roles]):
         log_debug(ctx, f"{ctx.member} cannot get report")
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
