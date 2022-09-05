@@ -23,7 +23,7 @@ def generate_new_user_graph(logger, time_range=None):
     con = sqlite3.connect(db.validations_db_file)
     cur = con.cursor()
 
-    min_date = datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
+    min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
 
     data = cur.execute("SELECT * FROM age_data WHERE date > :date", {"date": min_date}).fetchall()
     con.close()
