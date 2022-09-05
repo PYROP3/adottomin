@@ -338,13 +338,15 @@ async def _report(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
+    message = await ctx.send(content=f"One sec~", hidden=False)
+
     report_name = graphlytics.generate_new_user_graph(app.logger, kwargs["range"] if "range" in kwargs else None)
     log_debug(ctx, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
-    embed = discord.Embed()
-    embed.set_image(url=f"attachment://{report_name}")
+    # embed = discord.Embed()
+    # embed.set_image(url=f"attachment://{report_name}")
 
-    await ctx.send(content=f"Here's the report you requested~", file=report_file, embed=embed, hidden=False)
+    await message.edit(content=f"Here you go~", file=report_file)
 
     os.remove(report_name)
 
