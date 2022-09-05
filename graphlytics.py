@@ -72,30 +72,20 @@ def generate_new_user_graph(logger, time_range=None):
 
     width = 0.75
     xaxis = [str(d) for d in list(start_date + datetime.timedelta(n) for n in range(day_count))]
-    print(len(xaxis))
-    print(str(xaxis))
     bottoms = [0 for _ in xaxis]
     bar = [len(x) for x in split['unknown']]
-    print(str(bar))
-    print(str(bottoms))
     ax.bar(xaxis, bar, width, bottom=bottoms, label="Unknown", color="grey")
     for i in range(len(xaxis)):
         bottoms[i] += bar[i]
     bar = [len(x) for x in split['minor']]
-    print(str(bar))
-    print(str(bottoms))
     ax.bar(xaxis, bar, width, bottom=bottoms, label="Minors", color="red")
     for i in range(len(xaxis)):
         bottoms[i] += bar[i]
     bar = [len(x) for x in split['tags']]
-    print(str(bar))
-    print(str(bottoms))
     ax.bar(xaxis, bar, width, bottom=bottoms, label="Tags", color="darkgreen")
     for i in range(len(xaxis)):
         bottoms[i] += bar[i]
     bar = [len(x) for x in split['adult']]
-    print(str(bar))
-    print(str(bottoms))
     ax.bar(xaxis, bar, width, bottom=bottoms, label="Adults", color="green")
 
     ax.set_ylabel('Users')
