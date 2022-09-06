@@ -274,7 +274,18 @@ async def _shipme(ctx: SlashContext, **kwargs):
     bigger = max(int(user.id), int(ctx.author_id))
     pct, nice = memes.percent_from(f"ship/{smaller}/{bigger}")
 
-    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {pct}%{nice} :3", hidden=False)
+    if pct == 69:
+        emote = ":sunglasses:"
+    elif pct < 33:
+        emote = ":broken_heart:"
+    elif pct < 66:
+        emote = ":heart:"
+    elif pct < 100:
+        emote = ":two_hearts:"
+    else:
+        emote = ":revolving_hearts:"
+
+    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {emote} {pct}%{nice} :3", hidden=False)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
 @slash.slash(name="gayrate", description="Rate your gae!", options=opts, guild_ids=guild_ids)
