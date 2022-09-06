@@ -28,7 +28,12 @@ RAID_MODE_CTRL = "raid.txt"
 RAID_MODE = False
 
 LENIENCY_TIME_S = 5 * 60 # time to reply
+LENIENCY_REMINDER_TIME_S = 3 * 60 # time before sending a reminder (can be None)
 LENIENCY_COUNT = 5 # messages before ban
+LENIENCY_REMINDER = 3 # messages before asking again (can be None)
+
+assert (LENIENCY_REMINDER_TIME_S is None) or (LENIENCY_REMINDER_TIME_S < LENIENCY_TIME_S), "Reminder time must be smaller than total time"
+assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Reminder count must be smaller than total leniency"
 
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 MSG_RAID_MODE_ON = "{} just turned raid mode **ON**, brace for impact!"
@@ -79,7 +84,7 @@ app.logger.info(f"Role IDs = {role_ids}")
 app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
-age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel)
+age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -114,55 +119,35 @@ async def on_message(msg: discord.Message):
     await age_handler.handle_age(msg)
     # await _hi_dad(msg)
 
+
 @bot.event
 async def on_member_join(member: discord.Member):
     if member.id == bot.user.id: return
     channel = bot.get_channel(channel_ids[0])
-    app.logger.debug(f"[{channel.guild.name} / {channel}] {member} just joined")
+    app.logger.debug(f"[{channel}] {member} just joined")
     
     if RAID_MODE or is_raid_mode():
-        app.logger.info(f"[{channel.guild.name} / {channel}] Raid mode ON: {member}")
+        app.logger.info(f"[{channel}] Raid mode ON: {member}")
         await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
         return
 
     greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
     sql.create_entry(member.id, greeting.id)
 
-    await asyncio.sleep(LENIENCY_TIME_S)
+    must_continue = True
+    if (LENIENCY_REMINDER_TIME_S is not None):
+        app.logger.debug(f"[{channel}] {member} Sending reminder message")
+        must_continue = await age_handler.do_age_check(channel, is_reminder=True)
+        if not must_continue:
+            app.logger.debug(f"[{channel}] Early exit on_member_join")
+            return
+        else:
+            await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
 
-    # check
-    leniency = sql.get_leniency(member.id)
-    if (leniency is not None): # user hasn't answered yet
-        app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data found")
-        age_role = None
-        role_count = 0
-        try:
-            member = await bot.get_guild(guild_ids[0]).fetch_member(member.id) # fetch the user data again cuz of cached roles
-            app.logger.debug(f"[{channel.guild.name} / {channel}] User roles => {member.roles}")
-            for role in member.roles: # check if user at least has one of the correct tags
-                if role.id in _role_ids:
-                    if age_role is None:
-                        age_role = role
-                    role_count += 1
-
-            if age_role is None:
-                app.logger.debug(f"[{channel.guild.name} / {channel}] No age role")
-                await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_TIMEOUT)
-            elif role_count > 2:
-                app.logger.debug(f"[{channel.guild.name} / {channel}] Too many roles")
-                await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_SPAM)
-            else:
-                app.logger.debug(f"[{channel.guild.name} / {channel}] Found age role: {age_role}")
-                sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
-        except discord.NotFound:
-            app.logger.debug(f"[{channel.guild.name} / {channel}] {member} already quit")
-
-    else:
-        app.logger.debug(f"[{channel.guild.name} / {channel}] Leniency data NOT found")
-
-    sql.delete_entry(member.id)
+    await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
+    await age_handler.do_age_check(channel)
     
-    app.logger.debug(f"[{channel.guild.name} / {channel}] Exit on_member_join")
+    app.logger.debug(f"[{channel}] Exit on_member_join")
 
 opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
 @slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)

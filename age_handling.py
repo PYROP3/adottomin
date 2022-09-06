@@ -8,6 +8,7 @@ REASON_RAID = "raid"
 
 MSG_GREETING = ":wave: Hello {}! May I ask your age, pls?"
 MSG_TRY_AGAIN = "Try again, {}"
+MSG_GREETING_REMINDER = "Hey {}! Could you tell me your age? Or I'll have to do something drastic~"
 MSG_WELCOME = "Thank you {}! :space_invader: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
 MSG_WELCOME_NO_TAGS = "Thank you {}! :space_invader: Welcome to the server!"
 
@@ -16,12 +17,14 @@ AGE_MAX = 50
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql, logger, greeting_channel, tally_channel):
+    def __init__(self, bot, sql, logger, greeting_channel, tally_channel, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
         self.logger = logger
         self.greeting_channel = greeting_channel
         self.tally_channel = tally_channel
+        self.valid_role_ids = valid_role_ids
+        self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
         
         # Age regex
         self.age_prog = re.compile(r"(18|19|[2-9][0-9]+)") # 18, 19 or 20+
@@ -58,6 +61,9 @@ class age_handler:
         elif leniency > 0:
             self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
             self.sql.decr_leniency(msg.author.id)
+
+            if leniency == self.leniency_reminder:
+                await msg.channel.send(MSG_GREETING_REMINDER.format(msg.author.mention))
 
         else:
             self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
@@ -136,3 +142,47 @@ class age_handler:
         except:
             self.logger.error(f"Failed to kick user id {user}!")
             # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
+
+    async def do_age_check(self, channel, is_reminder=False):
+        leniency = self.sql.get_leniency(member.id)
+        must_continue = True
+        if (leniency is not None): # user hasn't answered yet
+            self.logger.debug(f"[{channel}] Leniency data found")
+            age_role = None
+            role_count = 0
+            try:
+                member = await channel.guild.fetch_member(member.id) # fetch the user data again cuz of cached roles
+                self.logger.debug(f"[{channel}] User roles => {member.roles}")
+                for role in member.roles: # check if user at least has one of the correct tags
+                    if role.id in self.valid_role_ids:
+                        if age_role is None:
+                            age_role = role
+                        role_count += 1
+
+                if age_role is None:
+                    self.logger.debug(f"[{channel}] No age role")
+                    if not is_reminder:
+                        await age_handler.kick_or_ban(member, channel, reason=REASON_TIMEOUT)
+
+                elif role_count > 2:
+                    self.logger.debug(f"[{channel}] Too many roles")
+                    await age_handler.kick_or_ban(member, channel, reason=REASON_SPAM)
+                    must_continue = False
+
+                else:
+                    self.logger.debug(f"[{channel}] Found age role: {age_role}")
+                    self.sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
+                    must_continue = False
+
+            except discord.NotFound:
+                self.logger.debug(f"[{channel}] {member} already quit")
+                must_continue = False
+
+        else:
+            self.logger.debug(f"[{channel}] Leniency data NOT found")
+            must_continue = False
+
+        if not must_continue:
+            self.sql.delete_entry(member.id)
+
+        return must_continue
