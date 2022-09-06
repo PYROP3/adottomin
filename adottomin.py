@@ -137,7 +137,7 @@ async def on_member_join(member: discord.Member):
     must_continue = True
     if (LENIENCY_REMINDER_TIME_S is not None):
         app.logger.debug(f"[{channel}] {member} Sending reminder message")
-        must_continue = await age_handler.do_age_check(channel, is_reminder=True)
+        must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
         if not must_continue:
             app.logger.debug(f"[{channel}] Early exit on_member_join")
             return
@@ -145,7 +145,7 @@ async def on_member_join(member: discord.Member):
             await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
 
     await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
-    await age_handler.do_age_check(channel)
+    await age_handler.do_age_check(channel, member)
     
     app.logger.debug(f"[{channel}] Exit on_member_join")
 

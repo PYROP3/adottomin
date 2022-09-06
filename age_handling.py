@@ -143,7 +143,7 @@ class age_handler:
             self.logger.error(f"Failed to kick user id {user}!")
             # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
 
-    async def do_age_check(self, channel, is_reminder=False):
+    async def do_age_check(self, channel, member, is_reminder=False):
         leniency = self.sql.get_leniency(member.id)
         must_continue = True
         if (leniency is not None): # user hasn't answered yet
