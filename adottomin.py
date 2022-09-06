@@ -397,7 +397,7 @@ opts += [discord_slash.manage_commands.create_option(name="all", description="Ge
 @slash.slash(name="getStrikes", description="Check the user's previous strikes", options=opts, guild_ids=guild_ids)
 async def _get_strikes(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
-    get_all = "all" in kwargs["user"] and kwargs["user"]
+    get_all = "all" in kwargs and kwargs["all"]
     log_info(ctx, f"{ctx.author} requested strikes for {user}")
     if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
         log_debug(ctx, f"{ctx.author} cannot get strikes")
