@@ -5,6 +5,7 @@ REASON_MINOR = "minor"
 REASON_TIMEOUT = "did not say age"
 REASON_SPAM = "spam"
 REASON_RAID = "raid"
+REASON_WARNINGS = "you've been warned"
 
 MSG_GREETING = ":wave: Hello {}! May I ask your age, pls?"
 MSG_TRY_AGAIN = "Try again, {}"
@@ -122,11 +123,12 @@ class age_handler:
         except Exception as e:
             self.logger.error(f"Failed to tally! {e}")
 
-    async def do_ban(self, channel, user, reason=REASON_MINOR):
+    async def do_ban(self, channel, user, reason=REASON_MINOR, tally=True):
         try:
             await channel.guild.ban(user, reason=reason.capitalize())
             await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
-            await self.do_tally()
+            if tally:
+                await self.do_tally()
         except discord.NotFound:
             self.logger.debug(f"User id {user} already left!")
         except:

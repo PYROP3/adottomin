@@ -32,6 +32,9 @@ LENIENCY_REMINDER_TIME_S = 3 * 60 # time before sending a reminder (can be None)
 LENIENCY_COUNT = 5 # messages before ban
 LENIENCY_REMINDER = 3 # messages before asking again (can be None)
 
+WARNING_VALIDITY_DAYS = 30
+WARNINGS_BEFORE_BAN = 3
+
 assert (LENIENCY_REMINDER_TIME_S is None) or (LENIENCY_REMINDER_TIME_S < LENIENCY_TIME_S), "Reminder time must be smaller than total time"
 assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Reminder count must be smaller than total leniency"
 
@@ -40,6 +43,7 @@ MSG_RAID_MODE_ON = "{} just turned raid mode **ON**, brace for impact!"
 MSG_RAID_MODE_OFF = "{} just turned raid mode **OFF**, we live to see another day!"
 MSG_RAID_MODE_ON_ALREADY = "Raid mode is already on"
 MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
+MSG_CANT_DO_IT = "I can't do that to that user~ :3"
 
 AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
@@ -57,6 +61,7 @@ role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 
 divine_role_id = 1008695237281058898
+secretary_id = 1002385294152179743
 
 admin_id = 173963470042038272
 
@@ -136,6 +141,7 @@ async def on_member_join(member: discord.Member):
 
     must_continue = True
     if (LENIENCY_REMINDER_TIME_S is not None):
+        app.logger.debug(f"[{channel}] {member} Waiting to send reminder")
         await asyncio.sleep(LENIENCY_REMINDER_TIME_S)
         must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
         if not must_continue:
@@ -339,5 +345,66 @@ async def _report(ctx: SlashContext, **kwargs):
     await message.edit(content=f"Here you go~", file=report_file)
 
     os.remove(report_name)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="User to warn", option_type=6, required=True)]
+opts += [discord_slash.manage_commands.create_option(name="reason", description="Why are they being warned", option_type=3, required=False)]
+@slash.slash(name="strike", description="Warn a user for bad behavior, auto bans if there are too many strikes", options=opts, guild_ids=guild_ids)
+async def _strike(ctx: SlashContext, **kwargs):
+    user = kwargs["user"]
+    reason = kwargs["reason"] if "reason" in kwargs else ""
+    log_info(ctx, f"{ctx.author} requested strike for {user}: '{reason}'")
+    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+        log_debug(ctx, f"{ctx.author} cannot warn people")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    _user_roles = [role.id for role in user.roles]
+    if (divine_role_id in _user_roles or secretary_id in _user_roles):
+        log_debug(ctx, f"{user} cannot be warned")
+        await ctx.send(content=MSG_CANT_DO_IT, hidden=True)
+        return
+
+    active_strikes = sql.create_warning(user, reason, WARNING_VALIDITY_DAYS)
+
+    if active_strikes < WARNINGS_BEFORE_BAN:
+        log_info(ctx, f"{user} now has {active_strikes} active strikes")
+        msg = f"{user.mention} is being warned by {ctx.author.mention}! That's {active_strikes} strikes so far~"
+        if len(reason) > 0:
+            msg += f" Reason: {reason}"
+        await ctx.send(content=msg, hidden=False)
+    else:
+        log_info(ctx, f"{user} now has {active_strikes} active strikes, and will be banned")
+        msg = f"{user.mention} is being warned by {ctx.author.mention}! That's {active_strikes} strikes, and so you must go~"
+        if len(reason) > 0:
+            msg += f" Reason: {reason}"
+        await ctx.send(content=msg, hidden=False)
+        await age_handler.do_ban(ctx.channel, user, reason=age_handling.REASON_WARNINGS, tally=False)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
+opts += [discord_slash.manage_commands.create_option(name="all", description="Get all strikes (only gets active strikes by default)", option_type=5, required=False)]
+@slash.slash(name="getStrikes", description="Check the user's previous strikes", options=opts, guild_ids=guild_ids)
+async def _get_strikes(ctx: SlashContext, **kwargs):
+    user = kwargs["user"]
+    get_all = "all" in kwargs["user"] and kwargs["user"]
+    log_info(ctx, f"{ctx.author} requested strikes for {user}")
+    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+        log_debug(ctx, f"{ctx.author} cannot get strikes")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    strikes = sql.get_warnings(user, None if get_all else WARNING_VALIDITY_DAYS)
+
+    if (len(strikes) > 0):
+        msg = f":warning: Here are {user.mention}'s strikes~\n```\n"
+        for reason, date in strikes:
+            msg += f"{date}: {reason}\n"
+        msg += "```"
+    else:
+        msg = f":angel: {user.mention} doesn't have any"
+        if not get_all:
+            msg += " active"
+        msg += f" strikes~"
+
+    await ctx.send(content=msg, hidden=False)
 
 bot.run(TOKEN)

@@ -5,6 +5,8 @@ import sqlite3
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 validations_version = 1
 validations_db_file = bot_home + f'/validations_v{validations_version}.db'
+warnings_version = 1
+warnings_db_file = bot_home + f'/warnings_v{warnings_version}.db'
 
 class database:
     def __init__(self, max_leniency, logger):
@@ -32,6 +34,19 @@ class database:
                 age int NOT NULL,
                 date TIMESTAMP,
                 PRIMARY KEY (user)
+            );''')
+            con.commit()
+            con.close()
+
+        if not os.path.exists(warnings_db_file):
+            logger.info(f"CREATING db file '{warnings_db_file}'")
+            con = sqlite3.connect(warnings_db_file)
+            cur = con.cursor()
+            cur.execute('''
+            CREATE TABLE warnings (
+                user int NOT NULL,
+                reason TEXT,
+                date TIMESTAMP
             );''')
             con.commit()
             con.close()
@@ -117,3 +132,21 @@ class database:
                 cur.execute("UPDATE age_data SET age=:age, date=:date WHERE user=:id", {"id": user, "age": age, "date": datetime.datetime.now()})
                 con.commit()
         con.close()
+
+    def create_warning(self, user, reason="", time_range=None):
+        con = sqlite3.connect(warnings_db_file)
+        cur = con.cursor()
+        cur.execute("INSERT INTO warnings VALUES (?, ?, ?)", [user, reason, datetime.datetime.now()])
+        con.commit()
+        min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
+        data = cur.execute("SELECT * FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
+        con.close()
+        return len(data)
+    
+    def get_warnings(self, user, time_range=None):
+        con = sqlite3.connect(warnings_db_file)
+        cur = con.cursor()
+        min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
+        data = cur.execute("SELECT reason, date FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
+        con.close()
+        return data
