@@ -57,7 +57,9 @@ class age_handler:
                 self.sql.delete_entry(msg.author.id)
                 self.sql.set_age(msg.author.id, age, force=True)
 
-                await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
+                embed = discord.Embed()
+                embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
+                await msg.channel.send(MSG_WELCOME.format(msg.author.mention), embed=embed)
 
         elif leniency > 0:
             self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
