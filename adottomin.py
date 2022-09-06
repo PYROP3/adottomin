@@ -44,6 +44,8 @@ MSG_RAID_MODE_OFF = "{} just turned raid mode **OFF**, we live to see another da
 MSG_RAID_MODE_ON_ALREADY = "Raid mode is already on"
 MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
 MSG_CANT_DO_IT = "I can't do that to that user~ :3"
+MSG_USER_ALREADY_MAXED = "That user is already at max tier!"
+MSG_CONGRATULATIONS_PROMOTION = "Congratulations on your promotion to tier {}, {}!"
 
 AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
@@ -62,6 +64,11 @@ tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 
 divine_role_id = 1008695237281058898
 secretary_role_id = 1002385294152179743
+friends_role_ids = [
+    1002382914526400703, # Tier 1
+    1002676012573794394, # Tier 2
+    1002676963485417592 # Tier 3
+]
 
 admin_id = 173963470042038272
 
@@ -418,5 +425,43 @@ async def _get_strikes(ctx: SlashContext, **kwargs):
         msg += f" strikes~"
 
     await ctx.send(content=msg, hidden=False)
+
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="User to promote", option_type=6, required=True)]
+@slash.slash(name="promote", description="Promote a user to the next tier", options=opts, guild_ids=guild_ids)
+async def _promote(ctx: SlashContext, **kwargs):
+    user = kwargs["user"]
+    reason = kwargs["reason"] if "reason" in kwargs else ""
+    _author_roles = [role.id for role in ctx.author.roles]
+    log_info(ctx, f"{ctx.author} requested promotion for {user}")
+    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+        log_debug(ctx, f"{ctx.author} cannot promote people")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    _user_roles = [role.id for role in user.roles]
+    if friends_role_ids[2] in _user_roles:
+        log_debug(ctx, f"{user} already at max tier")
+        await ctx.send(content=MSG_USER_ALREADY_MAXED, hidden=True)
+        return
+
+    if friends_role_ids[1] in _user_roles:
+        log_debug(ctx, f"{user} will be promoted to tier 3")
+        msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
+        new_role = friends_role_ids[2]
+        
+    else:
+        log_debug(ctx, f"{user} will be promoted to tier 2")
+        msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
+        new_role = friends_role_ids[1]
+        
+    try:
+        member = await ctx.guild.get_member(user.id)
+        await member.add_roles([new_role], reason=f"{ctx.author} said so")
+        await ctx.send(content=msg, hidden=False)
+    except discord.HTTPException as e:
+        log_error(ctx, f"Failed to give role {new_role} to {user}")
+        log_debug(ctx, e)
+        await ctx.send(content="I still can't give promotions and it's probably Khris' fault~", hidden=True)
 
 bot.run(TOKEN)
