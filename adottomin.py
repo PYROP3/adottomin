@@ -376,7 +376,7 @@ async def _strike(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_CANT_DO_IT, hidden=True)
         return
 
-    active_strikes = sql.create_warning(user, reason, WARNING_VALIDITY_DAYS)
+    active_strikes = sql.create_warning(user.id, reason, WARNING_VALIDITY_DAYS)
 
     if active_strikes < WARNINGS_BEFORE_BAN:
         log_info(ctx, f"{user} now has {active_strikes} active strikes")
@@ -404,7 +404,7 @@ async def _get_strikes(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
-    strikes = sql.get_warnings(user, None if get_all else WARNING_VALIDITY_DAYS)
+    strikes = sql.get_warnings(user.id, None if get_all else WARNING_VALIDITY_DAYS)
 
     if (len(strikes) > 0):
         msg = f":warning: Here are {user.mention}'s strikes~\n```\n"
