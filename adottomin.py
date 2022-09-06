@@ -61,7 +61,7 @@ role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 
 divine_role_id = 1008695237281058898
-secretary_id = 1002385294152179743
+secretary_role_id = 1002385294152179743
 
 admin_id = 173963470042038272
 
@@ -363,14 +363,15 @@ opts += [discord_slash.manage_commands.create_option(name="reason", description=
 async def _strike(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
     reason = kwargs["reason"] if "reason" in kwargs else ""
+    _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested strike for {user}: '{reason}'")
-    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot warn people")
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
     _user_roles = [role.id for role in user.roles]
-    if (divine_role_id in _user_roles or secretary_id in _user_roles):
+    if (divine_role_id in _user_roles or secretary_role_id in _user_roles):
         log_debug(ctx, f"{user} cannot be warned")
         await ctx.send(content=MSG_CANT_DO_IT, hidden=True)
         return
