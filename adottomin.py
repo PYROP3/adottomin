@@ -456,7 +456,7 @@ async def _promote(ctx: SlashContext, **kwargs):
         new_role = friends_role_ids[1]
         
     try:
-        member = await ctx.guild.get_member(user.id)
+        member = ctx.guild.get_member(user.id)
         await member.add_roles([new_role], reason=f"{ctx.author} said so")
         await ctx.send(content=msg, hidden=False)
     except discord.HTTPException as e:
