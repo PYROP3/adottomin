@@ -448,16 +448,17 @@ async def _promote(ctx: SlashContext, **kwargs):
     if friends_role_ids[1] in _user_roles:
         log_debug(ctx, f"{user} will be promoted to tier 3")
         msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
-        new_role = friends_role_ids[2]
+        new_role_id = friends_role_ids[2]
         
     else:
         log_debug(ctx, f"{user} will be promoted to tier 2")
         msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
-        new_role = friends_role_ids[1]
+        new_role_id = friends_role_ids[1]
         
     try:
         member = ctx.guild.get_member(user.id)
-        await member.add_roles([new_role], reason=f"{ctx.author} said so")
+        new_role = ctx.guild.get_role(new_role_id)
+        await member.add_roles(new_role, reason=f"{ctx.author} said so")
         await ctx.send(content=msg, hidden=False)
     except discord.HTTPException as e:
         log_error(ctx, f"Failed to give role {new_role} to {user}")
