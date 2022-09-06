@@ -446,9 +446,11 @@ async def _promote(ctx: SlashContext, **kwargs):
         return
 
     if friends_role_ids[1] in _user_roles:
-        log_debug(ctx, f"{user} will be promoted to tier 3")
-        msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
-        new_role_id = friends_role_ids[2]
+        log_debug(ctx, f"{user} will NOT be promoted to tier 3")
+        await ctx.send(content="Khris said no promotions to t3~", hidden=True)
+        return
+        # msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
+        # new_role_id = friends_role_ids[2]
         
     else:
         log_debug(ctx, f"{user} will be promoted to tier 2")
