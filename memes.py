@@ -1,7 +1,9 @@
 import datetime
 import random
 import re
+import requests
 import string
+from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
 
 sup_template = "meme_stuff/supremacy_template.png"
@@ -80,3 +82,28 @@ def hi_dad(msg):
     if (len(words) > 1):
         name += f" {words[1]}"
     return f"Hi {name}, I'm dad! :sunglasses:"
+
+def get_formatted_definition(contents):
+    clean_term = contents.replace(" ", "+")
+    url = f"https://www.urbandictionary.com/define.php?term={clean_term}"
+
+    definition = BeautifulSoup(requests.get(url).content, 'html.parser').find("div", {"class": "definition"})
+
+    # Term itself
+    word_txt = definition.find("div", {"class": "flex"}).text
+
+    # Meaning
+    meaning = definition.find("div", {"class": "meaning"})
+    for elem in meaning.find_all(["br"]):
+        elem.replace_with('\n')
+    meaning_txt = meaning.text.replace("\n\n", "\n")
+    meaning_txt = "".join([f"\t{line}\n" for line in meaning_txt.split("\n")]).rstrip()
+
+    # Example
+    example = definition.find("div", {"class": "example"})
+    for elem in example.find_all(["br"]):
+        elem.replace_with('\n')
+    example_txt = example.text.replace("\n\n", "\n")
+    example_txt = "".join([f"> {line}\n" for line in example_txt.split("\n")]).rstrip()
+
+    return f"**{word_txt}**\n\n{meaning_txt}\n\n{example_txt}"

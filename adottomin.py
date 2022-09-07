@@ -356,6 +356,16 @@ async def _hornyrate(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", hidden=False)
 
+opts = [discord_slash.manage_commands.create_option(name="expression", description="What to search", option_type=3, required=False)]
+@slash.slash(name="boomersplain", description="Explain it like you're a boomer", options=opts, guild_ids=guild_ids)
+async def _boomersplain(ctx: SlashContext, **kwargs):
+    term = kwargs["expression"]
+    log_info(ctx, f"{ctx.author} requested definition for {term}")
+
+    formatted_definition = memes.get_formatted_definition(term)
+
+    await ctx.send(content=formatted_definition, hidden=False)
+
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
 @slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
 async def _horny(ctx: SlashContext, **kwargs):
