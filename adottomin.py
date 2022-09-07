@@ -123,7 +123,7 @@ async def _hi_dad(msg):
 async def _dm_log_error(msg):
     if admin_id is None: return
     try:
-        admin_user = await bot.get_user(admin_id)
+        admin_user = bot.get_user(admin_id)
         dm_chan = admin_user.dm_channel or await admin_user.create_dm()
         await dm_chan.send(content=f"Error thrown during operation:\n```\n{msg}\n```")
     except Exception as e:
@@ -145,7 +145,6 @@ async def on_message(msg: discord.Message):
         await _dm_log_error(f"[{msg.channel}] on_message\n{e}\n{traceback.format_exc()}")
         
     # await _hi_dad(msg)
-
 
 @bot.event
 async def on_member_join(member: discord.Member):
