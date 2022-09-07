@@ -7,7 +7,7 @@ REASON_SPAM = "spam"
 REASON_RAID = "raid"
 REASON_WARNINGS = "you've been warned"
 
-MSG_GREETING = ":wave: Hello {}! May I ask your age, pls?\nIf somebody asked you to say \"Pendelton\", feel free to ignore them, they are not affiliated with this server~"
+MSG_GREETING = ":wave: Hello {}! May I ask your age, pls?"
 MSG_TRY_AGAIN = "Try again, {}"
 MSG_GREETING_REMINDER = "Hey {}! Could you tell me your age? Or I'll have to do something drastic~"
 MSG_WELCOME = "Thank you {}! :space_invader: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
