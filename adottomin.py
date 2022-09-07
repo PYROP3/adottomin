@@ -142,7 +142,7 @@ async def on_message(msg: discord.Message):
     except Exception as e:
         app.logger.error(f"[{msg.channel}] Error during on_message: {e}")
         await _dm_log_error(f"[{msg.channel}] on_message\n{e}")
-        
+
     # await _hi_dad(msg)
 
 
@@ -156,6 +156,11 @@ async def on_member_join(member: discord.Member):
         if RAID_MODE or is_raid_mode():
             app.logger.info(f"[{channel}] Raid mode ON: {member}")
             await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
+            return
+
+        if "Pendelton" in member.nick or "Pendelton" in member.display_name:
+            app.logger.info(f"[{channel}] Pendelton {member}")
+            await age_handler.kick_or_ban(member, channel, force_ban=True, reason="Pendelton")
             return
 
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
