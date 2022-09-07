@@ -70,7 +70,7 @@ friends_role_ids = [
     1002676963485417592 # Tier 3
 ]
 
-admin_id = 173963470042038272
+admin_id = int(os.getenv('ADMIN_ID'))
 
 bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
@@ -119,6 +119,15 @@ async def _hi_dad(msg):
     except Exception as e:
         app.logger.error(f"[{msg.channel}] Error in hi_dad: {e}")
 
+async def _dm_log_error(msg):
+    if admin_id is None: return
+    try:
+        admin_user = await bot.get_user(admin_id)
+        dm_chan = admin_user.dm_channel or await admin_user.create_dm()
+        await dm_chan.send(content=f"Error thrown during operation:\n```\n{msg}\n```")
+    except Exception as e:
+        app.logger.error(f"Error while trying to log error: {e}")
+
 @bot.event
 async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
@@ -150,16 +159,22 @@ async def on_member_join(member: discord.Member):
     if (LENIENCY_REMINDER_TIME_S is not None):
         app.logger.debug(f"[{channel}] {member} Waiting to send reminder")
         await asyncio.sleep(LENIENCY_REMINDER_TIME_S)
-        must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
-        if not must_continue:
-            app.logger.debug(f"[{channel}] Early exit on_member_join")
-            return
-        else:
-            app.logger.debug(f"[{channel}] {member} Sending reminder message")
-            await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
+        try:
+            must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
+            if not must_continue:
+                app.logger.debug(f"[{channel}] Early exit on_member_join")
+                return
+            else:
+                app.logger.debug(f"[{channel}] {member} Sending reminder message")
+                await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
+        except Exception as e:
+            await _dm_log_error(f"[reminder] do_age_check\n{e}")
 
     await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
-    await age_handler.do_age_check(channel, member)
+    try:
+        await age_handler.do_age_check(channel, member)
+    except Exception as e:
+        await _dm_log_error(f"[final] do_age_check\n{e}")
     
     app.logger.debug(f"[{channel}] Exit on_member_join")
 

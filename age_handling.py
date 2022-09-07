@@ -74,12 +74,12 @@ class age_handler:
 
     async def kick_or_ban(self, member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
         if force_ban or self.sql.is_kicked(member.id):
-            self.logger.debug(f"[{channel}] Will ban user (force={force_ban})")
+            self.logger.debug(f"[{channel}] {member} Will ban user (force={force_ban})")
             await self.do_ban(channel, member, reason=reason)
             self.sql.remove_kick(member.id)
 
         else:
-            self.logger.debug(f"[{channel}] User was NOT previously kicked")
+            self.logger.debug(f"[{channel}] {member} User was NOT previously kicked")
             await self.do_kick(channel, member, reason=reason)
             self.sql.create_kick(member.id)
 
@@ -151,12 +151,12 @@ class age_handler:
         leniency = self.sql.get_leniency(member.id)
         must_continue = True
         if (leniency is not None): # user hasn't answered yet
-            self.logger.debug(f"[{channel}] Leniency data found")
+            self.logger.debug(f"[{channel}] {member} Leniency data found")
             age_role = None
             role_count = 0
             try:
                 member = await channel.guild.fetch_member(member.id) # fetch the user data again cuz of cached roles
-                self.logger.debug(f"[{channel}] User roles => {member.roles}")
+                self.logger.debug(f"[{channel}] {member} User roles => {member.roles}")
                 for role in member.roles: # check if user at least has one of the correct tags
                     if role.id in self.valid_role_ids:
                         if age_role is None:
@@ -164,17 +164,17 @@ class age_handler:
                         role_count += 1
 
                 if age_role is None:
-                    self.logger.debug(f"[{channel}] No age role")
+                    self.logger.debug(f"[{channel}] {member} No age role")
                     if not is_reminder:
                         await age_handler.kick_or_ban(member, channel, reason=REASON_TIMEOUT)
 
                 elif role_count > 2:
-                    self.logger.debug(f"[{channel}] Too many roles")
+                    self.logger.debug(f"[{channel}] {member} Too many roles")
                     await age_handler.kick_or_ban(member, channel, reason=REASON_SPAM)
                     must_continue = False
 
                 else:
-                    self.logger.debug(f"[{channel}] Found age role: {age_role}")
+                    self.logger.debug(f"[{channel}] {member} Found age role: {age_role}")
                     self.sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
                     must_continue = False
 
@@ -183,7 +183,7 @@ class age_handler:
                 must_continue = False
 
         else:
-            self.logger.debug(f"[{channel}] Leniency data NOT found")
+            self.logger.debug(f"[{channel}] {member} Leniency data NOT found")
             must_continue = False
 
         if not must_continue:
