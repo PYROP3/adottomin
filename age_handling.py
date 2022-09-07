@@ -166,11 +166,11 @@ class age_handler:
                 if age_role is None:
                     self.logger.debug(f"[{channel}] {member} No age role")
                     if not is_reminder:
-                        await age_handler.kick_or_ban(member, channel, reason=REASON_TIMEOUT)
+                        await self.kick_or_ban(member, channel, reason=REASON_TIMEOUT)
 
                 elif role_count > 2:
                     self.logger.debug(f"[{channel}] {member} Too many roles")
-                    await age_handler.kick_or_ban(member, channel, reason=REASON_SPAM)
+                    await self.kick_or_ban(member, channel, reason=REASON_SPAM)
                     must_continue = False
 
                 else:
