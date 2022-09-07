@@ -6,6 +6,7 @@ import os
 import random
 import requests
 import string
+import traceback
 
 import age_handling
 import db
@@ -117,7 +118,7 @@ async def _hi_dad(msg):
         if hi_dad is None: return
         await msg.reply(content=hi_dad)
     except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error in hi_dad: {e}")
+        app.logger.error(f"[{msg.channel}] Error in hi_dad: {e}\n{traceback.format_exc()}")
 
 async def _dm_log_error(msg):
     if admin_id is None: return
@@ -126,7 +127,7 @@ async def _dm_log_error(msg):
         dm_chan = admin_user.dm_channel or await admin_user.create_dm()
         await dm_chan.send(content=f"Error thrown during operation:\n```\n{msg}\n```")
     except Exception as e:
-        app.logger.error(f"Error while trying to log error: {e}")
+        app.logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
 
 @bot.event
 async def on_ready():
@@ -140,8 +141,8 @@ async def on_message(msg: discord.Message):
     try:
         await age_handler.handle_age(msg)
     except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during on_message: {e}")
-        await _dm_log_error(f"[{msg.channel}] on_message\n{e}")
+        app.logger.error(f"[{msg.channel}] Error during on_message: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"[{msg.channel}] on_message\n{e}\n{traceback.format_exc()}")
         
     # await _hi_dad(msg)
 
@@ -174,21 +175,21 @@ async def on_member_join(member: discord.Member):
                     app.logger.debug(f"[{channel}] {member} Sending reminder message")
                     await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
             except Exception as e:
-                app.logger.error(f"[{channel}] Error during on_member_join: {e}")
-                await _dm_log_error(f"[{channel}] [reminder] do_age_check\n{e}")
+                app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+                await _dm_log_error(f"[{channel}] [reminder] do_age_check\n{e}\n{traceback.format_exc()}")
 
         await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
         try:
             await age_handler.do_age_check(channel, member)
         except Exception as e:
-            app.logger.error(f"[{channel}] Error during on_member_join: {e}")
-            await _dm_log_error(f"[{channel}] [final] do_age_check\n{e}")
+            app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{channel}] [final] do_age_check\n{e}\n{traceback.format_exc()}")
         
         app.logger.debug(f"[{channel}] Exit on_member_join")
 
     except Exception as e:
-        app.logger.error(f"[{channel}] Error during on_member_join: {e}")
-        await _dm_log_error(f"[{channel}] on_member_join\n{e}")
+        app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
         app.logger.debug(f"[{channel}] Error exit on_member_join")
 
 opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
