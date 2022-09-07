@@ -151,7 +151,7 @@ async def on_member_join(member: discord.Member):
     try:
         if member.id == bot.user.id: return
         channel = bot.get_channel(channel_ids[0])
-        app.logger.debug(f"[{channel}] {member} just joined")
+        app.logger.info(f"[{channel}] {member} just joined")
         
         if RAID_MODE or is_raid_mode():
             app.logger.info(f"[{channel}] Raid mode ON: {member}")
@@ -455,7 +455,6 @@ async def _get_strikes(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=msg, hidden=False)
 
-
 opts = [discord_slash.manage_commands.create_option(name="user", description="User to promote", option_type=6, required=True)]
 @slash.slash(name="promote", description="Promote a user to the next tier", options=opts, guild_ids=guild_ids)
 async def _promote(ctx: SlashContext, **kwargs):
@@ -495,5 +494,33 @@ async def _promote(ctx: SlashContext, **kwargs):
         log_error(ctx, f"Failed to give role {new_role} to {user}")
         log_debug(ctx, e)
         await ctx.send(content="I still can't give promotions and it's probably Khris' fault~", hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
+@slash.slash(name="age", description="Check a user's reported age", options=opts, guild_ids=guild_ids)
+async def _age(ctx: SlashContext, **kwargs):
+    user = kwargs["user"]
+    _author_roles = [role.id for role in ctx.author.roles]
+    log_info(ctx, f"{ctx.author} requested age for {user}")
+    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+        log_debug(ctx, f"{ctx.author} cannot check ages")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+        
+    age_data = sql.get_age(user.id)
+    if age_data is None:
+        msg = f"{user.mention} joined before the glorious Botto revolution"
+    elif age_data < 5:
+        msg = f"{user.mention}'s age is unknown"
+    elif age_data < 1000:
+        msg = f"{user.mention} said they were {age_data} years old"
+    else:
+        _tag = ctx.guild.get_role(age_data)
+        if _tag is None:
+            msg = f"{user.mention} has an unknown tag ({age_data})"
+        else:
+            msg = f"{user.mention} selected the {_tag} role"
+
+    log_debug(ctx, f"{msg}")
+    await ctx.send(content=msg, hidden=True)
 
 bot.run(TOKEN)

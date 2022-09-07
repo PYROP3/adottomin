@@ -134,6 +134,17 @@ class database:
                 con.commit()
         con.close()
 
+    def get_age(self, user):
+        try:
+            con = sqlite3.connect(validations_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT age FROM age_data WHERE user = :id", {"id": user}).fetchone()
+            con.commit()
+            con.close()
+            return res[0]
+        except:
+            return None
+
     def create_warning(self, user, moderator, reason="", time_range=None):
         con = sqlite3.connect(warnings_db_file)
         cur = con.cursor()
