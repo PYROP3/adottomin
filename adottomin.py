@@ -137,46 +137,59 @@ async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    await age_handler.handle_age(msg)
+    try:
+        await age_handler.handle_age(msg)
+    except Exception as e:
+        app.logger.error(f"[{msg.channel}] Error during on_message: {e}")
+        await _dm_log_error(f"[{msg.channel}] on_message\n{e}")
+        
     # await _hi_dad(msg)
 
 
 @bot.event
 async def on_member_join(member: discord.Member):
-    if member.id == bot.user.id: return
-    channel = bot.get_channel(channel_ids[0])
-    app.logger.debug(f"[{channel}] {member} just joined")
-    
-    if RAID_MODE or is_raid_mode():
-        app.logger.info(f"[{channel}] Raid mode ON: {member}")
-        await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
-        return
-
-    greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
-    sql.create_entry(member.id, greeting.id)
-
-    must_continue = True
-    if (LENIENCY_REMINDER_TIME_S is not None):
-        app.logger.debug(f"[{channel}] {member} Waiting to send reminder")
-        await asyncio.sleep(LENIENCY_REMINDER_TIME_S)
-        try:
-            must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
-            if not must_continue:
-                app.logger.debug(f"[{channel}] Early exit on_member_join")
-                return
-            else:
-                app.logger.debug(f"[{channel}] {member} Sending reminder message")
-                await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
-        except Exception as e:
-            await _dm_log_error(f"[reminder] do_age_check\n{e}")
-
-    await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
     try:
-        await age_handler.do_age_check(channel, member)
+        if member.id == bot.user.id: return
+        channel = bot.get_channel(channel_ids[0])
+        app.logger.debug(f"[{channel}] {member} just joined")
+        
+        if RAID_MODE or is_raid_mode():
+            app.logger.info(f"[{channel}] Raid mode ON: {member}")
+            await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
+            return
+
+        greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
+        sql.create_entry(member.id, greeting.id)
+
+        must_continue = True
+        if (LENIENCY_REMINDER_TIME_S is not None):
+            app.logger.debug(f"[{channel}] {member} Waiting to send reminder")
+            await asyncio.sleep(LENIENCY_REMINDER_TIME_S)
+            try:
+                must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
+                if not must_continue:
+                    app.logger.debug(f"[{channel}] Early exit on_member_join")
+                    return
+                else:
+                    app.logger.debug(f"[{channel}] {member} Sending reminder message")
+                    await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
+            except Exception as e:
+                app.logger.error(f"[{channel}] Error during on_member_join: {e}")
+                await _dm_log_error(f"[{channel}] [reminder] do_age_check\n{e}")
+
+        await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
+        try:
+            await age_handler.do_age_check(channel, member)
+        except Exception as e:
+            app.logger.error(f"[{channel}] Error during on_member_join: {e}")
+            await _dm_log_error(f"[{channel}] [final] do_age_check\n{e}")
+        
+        app.logger.debug(f"[{channel}] Exit on_member_join")
+
     except Exception as e:
-        await _dm_log_error(f"[final] do_age_check\n{e}")
-    
-    app.logger.debug(f"[{channel}] Exit on_member_join")
+        app.logger.error(f"[{channel}] Error during on_member_join: {e}")
+        await _dm_log_error(f"[{channel}] on_member_join\n{e}")
+        app.logger.debug(f"[{channel}] Error exit on_member_join")
 
 opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
 @slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)
