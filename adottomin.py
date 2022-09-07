@@ -383,7 +383,7 @@ async def _strike(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_CANT_DO_IT, hidden=True)
         return
 
-    active_strikes = sql.create_warning(user.id, reason, WARNING_VALIDITY_DAYS)
+    active_strikes = sql.create_warning(user.id, ctx.author_id, reason, WARNING_VALIDITY_DAYS)
 
     if active_strikes < WARNINGS_BEFORE_BAN:
         log_info(ctx, f"{user} now has {active_strikes} active strikes")
@@ -415,8 +415,9 @@ async def _get_strikes(ctx: SlashContext, **kwargs):
 
     if (len(strikes) > 0):
         msg = f":warning: Here are {user.mention}'s strikes~\n```\n"
-        for reason, date in strikes:
-            msg += f"{date}: {reason}\n"
+        for moderator, reason, date in strikes:
+            mod = bot.get_user(moderator)
+            msg += f"{date} by {mod.mention}: {reason}\n"
         msg += "```"
     else:
         msg = f":angel: {user.mention} doesn't have any"
