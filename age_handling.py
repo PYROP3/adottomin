@@ -36,23 +36,23 @@ class age_handler:
         leniency = self.sql.get_leniency(msg.author.id)
         if leniency is None or leniency < 0: return
         
-        self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is still on watchlist, parsing message")
+        self.logger.debug(f"[{msg.channel}] {msg.author} is still on watchlist, parsing message")
 
         if self.is_insta_ban(msg.content):
             age = self.get_ban_age(msg.content)
-            self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid age ({age})")
+            self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid age ({age})")
             await self.kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
         elif self.is_valid_age(msg.content):
             age = self.get_age(msg.content)
             if age > AGE_MAX:
-                self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
-                self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
+                self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
+                self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
                 self.sql.decr_leniency(msg.author.id)
 
                 await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
             else:
-                self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a valid age ({age})")
+                self.logger.debug(f"[{msg.channel}] {msg.author} said a valid age ({age})")
             
                 self.sql.delete_entry(msg.author.id)
                 self.sql.set_age(msg.author.id, age, force=True)
@@ -62,14 +62,14 @@ class age_handler:
                 await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
 
         elif leniency > 0:
-            self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
+            self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
             self.sql.decr_leniency(msg.author.id)
 
             if leniency == self.leniency_reminder:
                 await msg.channel.send(MSG_GREETING_REMINDER.format(msg.author.mention))
 
         else:
-            self.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} is out of messages")
+            self.logger.debug(f"[{msg.channel}] {msg.author} is out of messages")
             await self.kick_or_ban(msg.author, msg.channel, reason=REASON_TIMEOUT)
 
     async def kick_or_ban(self, member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
