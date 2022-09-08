@@ -558,7 +558,7 @@ async def _idage(ctx: SlashContext, **kwargs):
         
     user = bot.get_user(user_id)
     age_data = sql.get_age(user_id)
-    mention = f"{user.mention}"
+    mention = f"{user_id}" if user is None else f"{user.mention}"
 
     msg = _get_message_for_age(ctx, age_data, mention)
 
