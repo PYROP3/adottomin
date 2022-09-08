@@ -538,15 +538,22 @@ async def _age(ctx: SlashContext, **kwargs):
     log_debug(ctx, f"{msg}")
     await ctx.send(content=msg, hidden=True)
 
-opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=4, required=True)]
+opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
 @slash.slash(name="agealt", description="Check a user's reported age (search by id)", options=opts, guild_ids=guild_ids)
 async def _idage(ctx: SlashContext, **kwargs):
-    user_id = kwargs["user_id"]
+    _user_id = kwargs["user_id"]
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested age for ID {user}")
+    log_info(ctx, f"{ctx.author} requested age for ID {_user_id}")
     if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot check ages")
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    try:
+        user_id = int(_user_id)
+    except ValueError:
+        log_debug(ctx, f"{ctx.author} {_user_id} casting failed")
+        await ctx.send(content="That is not a valid ID", hidden=True)
         return
         
     user = bot.get_user(user_id)
