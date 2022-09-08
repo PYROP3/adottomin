@@ -129,6 +129,20 @@ async def _dm_log_error(msg):
     except Exception as e:
         app.logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
 
+def _get_message_for_age(ctx: SlashContext, age_data, mention):
+    if age_data is None:
+        return f"{mention} joined before the glorious Botto revolution"
+    elif age_data < 5:
+        return f"{mention}'s age is unknown"
+    elif age_data < 1000:
+        return f"{mention} said they were {age_data} years old"
+    else:
+        _tag = ctx.guild.get_role(age_data)
+        if _tag is None:
+            return f"{mention} has an unknown tag ({age_data})"
+        else:
+            return f"{mention} selected the {_tag} role"
+
 @bot.event
 async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
@@ -516,25 +530,30 @@ async def _age(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
         
-    if type(user) == type(1):
-        age_data = sql.get_age(user)
-        mention = user
-    else:
-        age_data = sql.get_age(user.id)
-        mention = user.mention
+    age_data = sql.get_age(user.id)
+    mention = user.mention
 
-    if age_data is None:
-        msg = f"{mention} joined before the glorious Botto revolution"
-    elif age_data < 5:
-        msg = f"{mention}'s age is unknown"
-    elif age_data < 1000:
-        msg = f"{mention} said they were {age_data} years old"
-    else:
-        _tag = ctx.guild.get_role(age_data)
-        if _tag is None:
-            msg = f"{mention} has an unknown tag ({age_data})"
-        else:
-            msg = f"{mention} selected the {_tag} role"
+    msg = _get_message_for_age(ctx, age_data, mention)
+
+    log_debug(ctx, f"{msg}")
+    await ctx.send(content=msg, hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=4, required=True)]
+@slash.slash(name="agealt", description="Check a user's reported age (search by id)", options=opts, guild_ids=guild_ids)
+async def _idage(ctx: SlashContext, **kwargs):
+    user_id = kwargs["user_id"]
+    _author_roles = [role.id for role in ctx.author.roles]
+    log_info(ctx, f"{ctx.author} requested age for ID {user}")
+    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+        log_debug(ctx, f"{ctx.author} cannot check ages")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+        
+    user = bot.get_user(user_id)
+    age_data = sql.get_age(user_id)
+    mention = f"{user.mention}"
+
+    msg = _get_message_for_age(ctx, age_data, mention)
 
     log_debug(ctx, f"{msg}")
     await ctx.send(content=msg, hidden=True)
