@@ -231,11 +231,11 @@ async def _raidmode(ctx: SlashContext, **kwargs):
             await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
 async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
+    await ctx.defer()
+
     user = kwargs["user"]
     log_info(ctx, f"{ctx.author} requested {user} {meme_code}")
     log_debug(ctx, f"avatar={user.avatar}")
-
-    await ctx.defer()
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
@@ -265,11 +265,11 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="supremacy", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _supremacy(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
     user = kwargs["user"]
     log_info(ctx, f"{ctx.author} requested {user} supremacy")
     log_debug(ctx, f"avatar={user.avatar}")
-
-    await ctx.defer()
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
@@ -383,36 +383,36 @@ async def _boomersplain(ctx: SlashContext, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
 @slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
 async def _horny(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
     user = kwargs["user"] if "user" in kwargs else None
     log_info(ctx, f"{ctx.author} requested No Horny for {user}")
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
-
-    message = await ctx.send(content=content, hidden=False)
 
     meme_name = memes.no_horny
     meme_file = discord.File(meme_name, filename=meme_name)
     embed = discord.Embed()
     embed.set_image(url=f"attachment://{meme_name}")
 
-    await message.edit(file=meme_file)
+    await ctx.send(content=content, file=meme_file)
 
 opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 @slash.slash(name="report", description="Get analytics data for new users", options=opts, guild_ids=guild_ids)
 async def _report(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
     log_info(ctx, f"{ctx.author} requested report")
     if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
         log_debug(ctx, f"{ctx.author} cannot get report")
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
-    message = await ctx.send(content=f"One sec~", hidden=False)
-
     report_name = graphlytics.generate_new_user_graph(app.logger, kwargs["range"] if "range" in kwargs else None)
     log_debug(ctx, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
 
-    await message.edit(content=f"Here you go~", file=report_file)
+    await ctx.send(content=f"Here you go~", file=report_file)
 
     os.remove(report_name)
 
@@ -522,6 +522,8 @@ async def _promote(ctx: SlashContext, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
 @slash.slash(name="age", description="Check a user's reported age", options=opts, guild_ids=guild_ids)
 async def _age(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
     user = kwargs["user"]
     _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested age for {user}")
@@ -541,6 +543,8 @@ async def _age(ctx: SlashContext, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
 @slash.slash(name="agealt", description="Check a user's reported age (search by id)", options=opts, guild_ids=guild_ids)
 async def _idage(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+    
     _user_id = kwargs["user_id"]
     _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested age for ID {_user_id}")
