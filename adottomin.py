@@ -516,20 +516,25 @@ async def _age(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
         
-    _id = user if type(user) == type(1) else user.id
-    age_data = sql.get_age(_id)
+    if type(user) == type(1):
+        age_data = sql.get_age(user)
+        mention = user
+    else:
+        age_data = sql.get_age(user.id)
+        mention = user.mention
+
     if age_data is None:
-        msg = f"{user.mention} joined before the glorious Botto revolution"
+        msg = f"{mention} joined before the glorious Botto revolution"
     elif age_data < 5:
-        msg = f"{user.mention}'s age is unknown"
+        msg = f"{mention}'s age is unknown"
     elif age_data < 1000:
-        msg = f"{user.mention} said they were {age_data} years old"
+        msg = f"{mention} said they were {age_data} years old"
     else:
         _tag = ctx.guild.get_role(age_data)
         if _tag is None:
-            msg = f"{user.mention} has an unknown tag ({age_data})"
+            msg = f"{mention} has an unknown tag ({age_data})"
         else:
-            msg = f"{user.mention} selected the {_tag} role"
+            msg = f"{mention} selected the {_tag} role"
 
     log_debug(ctx, f"{msg}")
     await ctx.send(content=msg, hidden=True)
