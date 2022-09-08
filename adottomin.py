@@ -516,7 +516,8 @@ async def _age(ctx: SlashContext, **kwargs):
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
         
-    age_data = sql.get_age(user.id)
+    _id = user if type(user) == type(1) else user.id
+    age_data = sql.get_age(_id)
     if age_data is None:
         msg = f"{user.mention} joined before the glorious Botto revolution"
     elif age_data < 5:
