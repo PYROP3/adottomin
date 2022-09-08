@@ -235,7 +235,7 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     log_info(ctx, f"{ctx.author} requested {user} {meme_code}")
     log_debug(ctx, f"avatar={user.avatar}")
 
-    message = await ctx.send(content="I'll be right back with your meme~", hidden=False)
+    await ctx.defer()
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
@@ -258,7 +258,7 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     if (user.id == bot.user.id):
         msg = f"Awww thank you, {ctx.author.mention}~"
 
-    await message.edit(content=msg, file=meme_file)
+    await ctx.send(content="I'll be right back with your meme~", content=msg, file=meme_file)
 
     os.remove(meme_name)
 
@@ -269,7 +269,7 @@ async def _supremacy(ctx: SlashContext, **kwargs):
     log_info(ctx, f"{ctx.author} requested {user} supremacy")
     log_debug(ctx, f"avatar={user.avatar}")
 
-    message = await ctx.send(content="I'll be right back with your meme~", hidden=False)
+    await ctx.defer()
 
     av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
 
@@ -292,7 +292,7 @@ async def _supremacy(ctx: SlashContext, **kwargs):
     if (user.id == bot.user.id):
         msg = f"Awww thank you, {ctx.author.mention}~"
 
-    await message.edit(content=msg, file=meme_file)
+    await ctx.send(content="I'll be right back with your meme~", content=msg, file=meme_file)
 
     os.remove(meme_name)
 
