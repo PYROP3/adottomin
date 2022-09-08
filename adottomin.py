@@ -258,7 +258,7 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
     if (user.id == bot.user.id):
         msg = f"Awww thank you, {ctx.author.mention}~"
 
-    await ctx.send(content="I'll be right back with your meme~", content=msg, file=meme_file)
+    await ctx.send(content=msg, file=meme_file)
 
     os.remove(meme_name)
 
@@ -292,7 +292,7 @@ async def _supremacy(ctx: SlashContext, **kwargs):
     if (user.id == bot.user.id):
         msg = f"Awww thank you, {ctx.author.mention}~"
 
-    await ctx.send(content="I'll be right back with your meme~", content=msg, file=meme_file)
+    await ctx.send(content=msg, file=meme_file)
 
     os.remove(meme_name)
 
