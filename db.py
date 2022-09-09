@@ -66,7 +66,11 @@ class database:
     def create_entry(self, user, greeting_id):
         con = sqlite3.connect(validations_db_file)
         cur = con.cursor()
-        cur.execute("INSERT INTO validations VALUES (?, ?, ?)", [user, self.max_leniency, greeting_id])
+        try:
+            cur.execute("INSERT INTO validations VALUES (?, ?, ?)", [user, self.max_leniency, greeting_id])
+        except sqlite3.IntegrityError:
+            self.logger.warning(f"[create_entry] Duplicated key {user} in validations, overwriting...")
+            cur.execute("UPDATE validations SET leniency=:leniency, greeting=:greeting_id WHERE user=:id", {"id": user, "leniency": self.max_leniency, "greeting_id": greeting_id})
         con.commit()
         con.close()
 
