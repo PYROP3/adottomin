@@ -522,7 +522,7 @@ async def _promote(ctx: SlashContext, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
 @slash.slash(name="age", description="Check a user's reported age", options=opts, guild_ids=guild_ids)
 async def _age(ctx: SlashContext, **kwargs):
-    await ctx.defer()
+    await ctx.defer(hidden=True)
 
     user = kwargs["user"]
     _author_roles = [role.id for role in ctx.author.roles]
@@ -543,7 +543,7 @@ async def _age(ctx: SlashContext, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
 @slash.slash(name="agealt", description="Check a user's reported age (search by id)", options=opts, guild_ids=guild_ids)
 async def _idage(ctx: SlashContext, **kwargs):
-    await ctx.defer()
+    await ctx.defer(hidden=True)
     
     _user_id = kwargs["user_id"]
     _author_roles = [role.id for role in ctx.author.roles]
