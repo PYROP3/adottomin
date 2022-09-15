@@ -1,3 +1,5 @@
 .env
 *.db
 __pycache__/
+
+copypasta_data.py

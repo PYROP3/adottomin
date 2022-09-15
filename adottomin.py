@@ -9,6 +9,7 @@ import string
 import traceback
 
 import age_handling
+import copypasta_utils
 import db
 import graphlytics
 import memes
@@ -568,5 +569,26 @@ async def _idage(ctx: SlashContext, **kwargs):
 
     log_debug(ctx, f"{msg}")
     await ctx.send(content=msg, hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="pasta", description="Copy pasta", option_type=3, required=True, choices=copypasta_utils.AVAILABLE_PASTAS)]
+opts += [discord_slash.manage_commands.create_option(name="name", description="Who your pasta is about", option_type=3, required=True)]
+opts += [discord_slash.manage_commands.create_option(name="pronouns", description="Which pronouns to use", option_type=3, required=True, choices=copypasta_utils.PRON_OPTS)]
+@slash.slash(name="pasta", description="Generate a copy pasta", options=opts, guild_ids=guild_ids)
+async def _pasta(ctx: SlashContext, **kwargs):
+    _pasta = kwargs["pasta"]
+    _name = kwargs["name"]
+    _pronouns = kwargs["pronouns"]
+    log_info(ctx, f"{ctx.author} requested copypasta: {_pasta} for {_name} ({_pronouns})")
+
+    if "botto" in _name.lower():
+        await ctx.send(content=f"I'm not gonna write myself into your copypasta, {ctx.author.mention}~", hidden=False)
+        return
+
+    try:
+        msg = f"{ctx.author.mention} says: \"" + copypasta_utils.fill_copypasta(_pasta, _name, _pronouns) + "\""
+    except KeyError:
+        msg = "Hmm I can't fill that pasta with the data you provided..."
+
+    await ctx.send(content=msg, hidden=False)
 
 bot.run(TOKEN)
