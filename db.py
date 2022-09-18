@@ -7,6 +7,8 @@ validations_version = 1
 validations_db_file = bot_home + f'/validations_v{validations_version}.db'
 warnings_version = 2
 warnings_db_file = bot_home + f'/warnings_v{warnings_version}.db'
+offline_ping_blocklist_version = 1
+offline_ping_blocklist_db_file = bot_home + f'/offline_ping_blocklist_v{offline_ping_blocklist_version}.db'
 
 class database:
     def __init__(self, max_leniency, logger):
@@ -48,6 +50,18 @@ class database:
                 moderator int NOT NULL,
                 reason TEXT,
                 date TIMESTAMP
+            );''')
+            con.commit()
+            con.close()
+
+        if not os.path.exists(offline_ping_blocklist_db_file):
+            logger.info(f"CREATING db file '{offline_ping_blocklist_db_file}'")
+            con = sqlite3.connect(offline_ping_blocklist_db_file)
+            cur = con.cursor()
+            cur.execute('''
+            CREATE TABLE blocklist (
+                user int NOT NULL,
+                PRIMARY KEY (user)
             );''')
             con.commit()
             con.close()
@@ -166,3 +180,34 @@ class database:
         data = cur.execute("SELECT moderator, reason, date FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
         con.close()
         return data
+
+    def add_to_offline_ping_blocklist(self, user):
+        con = sqlite3.connect(offline_ping_blocklist_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO blocklist VALUES (?)", [user])
+            con.commit()
+        except sqlite3.IntegrityError:
+            self.logger.warning(f"Duplicated user id {user} in blocklist")
+        con.close()
+
+    def remove_from_offline_ping_blocklist(self, user):
+        con = sqlite3.connect(offline_ping_blocklist_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("DELETE FROM blocklist WHERE user=:id", {"id": user})
+            con.commit()
+        except:
+            pass
+        con.close()
+
+    def is_in_offline_ping_blocklist(self, user):
+        try:
+            con = sqlite3.connect(offline_ping_blocklist_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT user FROM blocklist WHERE user = :id", {"id": user}).fetchone()
+            con.commit()
+            con.close()
+            return res is not None
+        except:
+            return False

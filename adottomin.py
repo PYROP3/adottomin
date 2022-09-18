@@ -9,6 +9,7 @@ import string
 import traceback
 
 import age_handling
+import bot_utils
 import copypasta_utils
 import db
 import graphlytics
@@ -99,6 +100,7 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
 age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+utils = bot_utils.utils(bot, sql, app.logger)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -156,10 +158,14 @@ async def on_message(msg: discord.Message):
     try:
         await age_handler.handle_age(msg)
     except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during on_message: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message\n{e}\n{traceback.format_exc()}")
-        
-    # await _hi_dad(msg)
+        app.logger.error(f"[{msg.channel}] Error during handle_age: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"[{msg.channel}] on_message::handle_age\n{e}\n{traceback.format_exc()}")
+
+    try:
+        await utils.handle_offline_mentions(msg)
+    except Exception as e:
+        app.logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
 
 @bot.event
 async def on_member_join(member: discord.Member):
@@ -590,5 +596,18 @@ async def _pasta(ctx: SlashContext, **kwargs):
         msg = "Hmm I can't fill that pasta with the data you provided..."
 
     await ctx.send(content=msg, hidden=False)
+
+opts = [discord_slash.manage_commands.create_option(name="enable", description="Enable (on) or disable (off) notifications", option_type=3, required=True, choices=["on", "off"])]
+@slash.slash(name="offlinepings", description="Update settings on whether to notify you about pings while you're offline", options=opts, guild_ids=guild_ids)
+async def _offlinepings(ctx: SlashContext, **kwargs):
+    _state = kwargs["enable"]
+    log_info(ctx, f"{ctx.author} requested offlinepings: {_state}")
+
+    if _state == "on":
+        sql.remove_from_offline_ping_blocklist(ctx.author_id)
+        await ctx.send(content="Okay, I'll let you know if you're pinged~", hidden=True)
+    else:
+        sql.add_to_offline_ping_blocklist(ctx.author_id)
+        await ctx.send(content="Okay, I won't send you notifications if you're pinged~", hidden=True)
 
 bot.run(TOKEN)
