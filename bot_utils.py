@@ -34,7 +34,8 @@ class utils:
                         self.logger.warning(f"Error while trying to get message contents: {e}\n{traceback.format_exc()}")
                     
             msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
-            self.logger.debug(f"[_dm_user] Trying to send to {user_id}: [{msg}]")
+            self.logger.info(f"[_dm_user] Trying to send notification to {user_id}")
+            self.logger.debug(f"[_dm_user] [{msg}]")
             await dm_chan.send(content=msg)
         except discord.Forbidden as e:
             self.logger.warn(f"Forbidden from sending message to user {user_id}")
