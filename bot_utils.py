@@ -29,8 +29,9 @@ class utils:
                     try:
                         _sender = "you" if (user_id == ref_msg.author_id) else "someone else"
                         msg += f"As a reply to a message {_sender} sent:\n{quote_each_line(ref_msg.content)}\n"
-                    except:
+                    except Exception as e:
                         msg += f"As a reply to a deleted message\n"
+                        self.logger.warning(f"Error while trying to get message contents: {e}\n{traceback.format_exc()}")
                     
             msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
             self.logger.debug(f"[_dm_user] Trying to send to {user_id}: [{msg}]")
@@ -38,7 +39,7 @@ class utils:
         except discord.Forbidden as e:
             self.logger.warn(f"Forbidden from sending message to user {user_id}")
         except Exception as e:
-            self.logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
+            self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
     async def handle_offline_mentions(self, msg: discord.Message):
         for member in msg.mentions:
