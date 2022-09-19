@@ -20,7 +20,7 @@ class utils:
         try:
             user = self.bot.get_user(user_id)
             dm_chan = user.dm_channel or await user.create_dm()
-            msg = f"Hi {user.name}! {pinger.display_name} pinged you while you were offline:\n{quote_each_line(original_msg.content)}\n"
+            msg = f"Hi {user.name}! {pinger.mention} pinged you while you were offline:\n{quote_each_line(original_msg.content)}\n"
             if original_msg.reference is not None:
                 ref_msg = original_msg.reference.resolved
                 if ref_msg is None:
