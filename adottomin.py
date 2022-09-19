@@ -648,4 +648,31 @@ async def _activity(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"This functionality is not available yet, try again later~")
 
+opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
+opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
+@slash.slash(name="rawsql", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
+async def _rawsql(ctx: SlashContext, **kwargs):
+    await ctx.defer(hidden=True)
+    
+    _file = kwargs["file"]
+    _query = kwargs["query"]
+    log_info(ctx, f"{ctx.author} requested sql query for {_file}")
+    if (ctx.author_id != admin_id):
+        log_debug(ctx, f"{ctx.author} cannot query db")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    try:
+        data = sql.raw_sql(_file, _query)
+    except Exception as e:
+        log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
+        await _dm_log_error(f"[{ctx.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
+        await ctx.send(content="Failed to execute query", hidden=True)
+        return
+        
+    msg = "Here are the results:\n```\n"
+    msg += "\n".join(" | ".join(line) for line in data)
+    msg += "\n```"
+    await ctx.send(content=msg, hidden=True)
+
 bot.run(TOKEN)

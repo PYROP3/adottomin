@@ -12,6 +12,13 @@ offline_ping_blocklist_db_file = bot_home + f'/offline_ping_blocklist_v{offline_
 activity_version = 2
 activity_db_file = bot_home + f'/activity_v{activity_version}.db'
 
+sql_files = [
+    validations_db_file,
+    warnings_db_file,
+    offline_ping_blocklist_db_file,
+    activity_db_file
+]
+
 class database:
     def __init__(self, max_leniency, logger):
         # Initialize db
@@ -84,6 +91,13 @@ class database:
         
         self.logger = logger
         self.max_leniency = max_leniency
+
+    def raw_sql(self, file, query):
+        con = sqlite3.connect(file)
+        cur = con.cursor()
+        res = cur.execute(query).fetchall()
+        con.close()
+        return res
 
     def get_leniency(self, user):
         con = sqlite3.connect(validations_db_file)
