@@ -142,7 +142,7 @@ def generate_custom_bingo(name, items):
 
         draw = ImageDraw.Draw(im)
 
-        draw_text_with_bbox(f"{name}'s bingo~", font, (im.shape[0]//2, name_y), name_bbox, draw, im)
+        draw_text_with_bbox(f"{name}'s bingo~", font, (im.size[0]//2, name_y), name_bbox, draw, im)
 
         _lin = 0
         _col = 0
