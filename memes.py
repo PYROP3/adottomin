@@ -40,7 +40,7 @@ def get_wrapped_text(text: str, font: ImageFont.ImageFont,
                 lines.append(word)
         while len(lines[0]) == 0:
             lines = lines[1:]
-        print(f"wrapped lines = {lines}")
+        # print(f"wrapped lines = {lines}")
         return '\n'.join(lines)
 
 def get_max_size(text: str, font_family: str, bbox: tuple, draw_ctx: ImageDraw.Draw, align: str):
@@ -50,7 +50,7 @@ def get_max_size(text: str, font_family: str, bbox: tuple, draw_ctx: ImageDraw.D
         fnt = ImageFont.truetype(font_family, sz)
         wrapped = get_wrapped_text(_txt, fnt, bbox[0], True)
         new_bbox = draw_ctx.textbbox((0,0), wrapped, font=fnt, align=align)
-        print(f"new bbox {sz} = {new_bbox}")
+        # print(f"new bbox {sz} = {new_bbox}")
         if (new_bbox[2] > bbox[0]) or (new_bbox[3] > bbox[1]):
             return sz - 2
         sz += 2
