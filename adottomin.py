@@ -664,6 +664,24 @@ async def _bingo(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
 
+opts = [discord_slash.manage_commands.create_option(name=f"element {i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
+@slash.slash(name="mybingo", description="Get a custom bingo sheet!", options=opts, guild_ids=guild_ids)
+async def _mybingo(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
+    items = [kwargs[f"element {i + 1}"] for i in range(24)]
+    log_info(ctx, f"{ctx.author} requested custom bingo")
+
+    meme_name = memes.generate_custom_bingo(ctx.author.display_name, items)
+    log_debug(ctx, f"meme_name={meme_name}")
+    meme_file = discord.File(meme_name, filename=f"{ctx.author.name}_bingo.png")
+    
+    msg = "Enjoy your custom bingo~"
+
+    await ctx.send(content=msg, file=meme_file)
+
+    os.remove(meme_name)
+
 opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
 opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
 @slash.slash(name="rawsql", description="Perform a SQL query", options=opts, guild_ids=guild_ids)

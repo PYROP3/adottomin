@@ -13,6 +13,7 @@ sup_template = f"{memes_folder}/supremacy_template.png"
 nuts_template = f"{memes_folder}/nuts_template.png"
 pills_template = f"{memes_folder}/pills_template.png"
 needs_template = f"{memes_folder}/needs_template.png"
+bingo_template = f"{memes_folder}/bingo_template.png"
 no_horny = f"{memes_folder}/no_horny.png"
 
 use_pilmoji = False
@@ -123,6 +124,51 @@ def generate_needs(text):
         draw = ImageDraw.Draw(im)
 
         draw_text_with_bbox(text, "arial.ttf", (377, 402), (210, 280), draw, im)
+
+        # write to stdout
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        im.save(name, "PNG")
+
+    return name
+
+def generate_custom_bingo(name, items):
+    bingo_cell = (200, 200)
+    bingo_spacing = 227
+    bingo_start = (145, 446)
+    name_y = 105
+    name_bbox = (1136, 155)
+    font = "arial.ttf"
+    with Image.open(bingo_template) as im:
+
+        draw = ImageDraw.Draw(im)
+
+        draw_text_with_bbox(f"{name}'s bingo~", font, (im.shape[0]//2, name_y), name_bbox, draw, im)
+
+        _lin = 0
+        _col = 0
+        coords = bingo_start
+        for i in range(12):
+            draw_text_with_bbox(items[i], font, coords, bingo_cell, draw, im)
+            _col += 1
+            if _col == 5:
+                _col = 0
+                _lin += 1
+                coords = (bingo_start[0], coords[1] + bingo_spacing)
+            else:
+                coords = (coords[0] + bingo_spacing, coords[1])
+                
+        draw_text_with_bbox("Free space~", font, coords, bingo_cell, draw, im)
+        coords = (coords[0] + bingo_spacing, coords[1])
+
+        for i in range(12):
+            draw_text_with_bbox(items[i + 12], font, coords, bingo_cell, draw, im)
+            _col += 1
+            if _col == 5:
+                _col = 0
+                _lin += 1
+                coords = (bingo_start[0], coords[1] + bingo_spacing)
+            else:
+                coords = (coords[0] + bingo_spacing, coords[1])
 
         # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
