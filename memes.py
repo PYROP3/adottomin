@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 import re
 import requests
@@ -6,17 +7,26 @@ import string
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
 
-sup_template = "meme_stuff/supremacy_template.png"
-nuts_template = "meme_stuff/nuts_template.png"
-pills_template = "meme_stuff/pills_template.png"
-needs_template = "meme_stuff/needs_template.png"
-no_horny = "meme_stuff/no_horny.png"
+memes_folder = "meme_stuff"
+
+sup_template = f"{memes_folder}/supremacy_template.png"
+nuts_template = f"{memes_folder}/nuts_template.png"
+pills_template = f"{memes_folder}/pills_template.png"
+needs_template = f"{memes_folder}/needs_template.png"
+no_horny = f"{memes_folder}/no_horny.png"
 
 use_pilmoji = False
 if use_pilmoji:
     from pilmoji import Pilmoji
 
 string_len = 20
+
+def get_bingos():
+    return [file[:-4] for file in os.listdir(f"{memes_folder}/bingos")]
+
+def bingo_filepath(name):
+    if name[-4:] != ".png": name += ".png"
+    return f"{memes_folder}/bingos/{name}"
 
 def get_wrapped_text(text: str, font: ImageFont.ImageFont,
                      line_length: int, do_strip: bool):

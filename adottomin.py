@@ -648,6 +648,22 @@ async def _activity(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"This functionality is not available yet, try again later~")
 
+opts = [discord_slash.manage_commands.create_option(name="which", description="Bingo sheet to retrieve (will get a random one by default)", option_type=3, required=False, options=memes.get_bingos())]
+@slash.slash(name="bingo", description="Get analytics data for useractivity", options=opts, guild_ids=guild_ids)
+async def _bingo(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
+    if "bingo" in kwargs:
+        bingo_name = memes.bingo_filepath(kwargs["bingo"])
+        log_info(ctx, f"{ctx.author} requested bingo: {bingo_name}")
+    else:
+        bingo_name = memes.bingo_filepath(random.choice(memes.get_bingos()))
+        log_info(ctx, f"{ctx.author} requested random bingo: {bingo_name}")
+
+    bingo_file = discord.File(bingo_name, filename=f"bingo.png")
+
+    await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
+
 opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
 opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
 @slash.slash(name="rawsql", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
