@@ -168,7 +168,7 @@ async def on_message(msg: discord.Message):
         await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
         
     try:
-        sql.register_message(msg.author.id, msg.content)
+        sql.register_message(msg.author.id, msg.content, msg.channel.id)
     except Exception as e:
         app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")

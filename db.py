@@ -9,7 +9,7 @@ warnings_version = 2
 warnings_db_file = bot_home + f'/warnings_v{warnings_version}.db'
 offline_ping_blocklist_version = 1
 offline_ping_blocklist_db_file = bot_home + f'/offline_ping_blocklist_v{offline_ping_blocklist_version}.db'
-activity_version = 1
+activity_version = 2
 activity_db_file = bot_home + f'/activity_v{activity_version}.db'
 
 class database:
@@ -76,6 +76,7 @@ class database:
             CREATE TABLE messages (
                 user int NOT NULL,
                 message_id int NOT NULL,
+                channel it NOT NULL,
                 date TIMESTAMP
             );''')
             con.commit()
@@ -227,10 +228,10 @@ class database:
         except:
             return False
 
-    def register_message(self, user, message_id):
+    def register_message(self, user, message_id, channel_id):
         con = sqlite3.connect(activity_db_file)
         cur = con.cursor()
-        cur.execute("INSERT INTO messages VALUES (?, ?, ?)", [user, message_id, datetime.datetime.now()])
+        cur.execute("INSERT INTO messages VALUES (?, ?, ?, ?)", [user, message_id, channel_id, datetime.datetime.now()])
         con.commit()
         con.close()
 
