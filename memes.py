@@ -4,7 +4,6 @@ import re
 import requests
 import string
 from bs4 import BeautifulSoup
-from pilmoji import Pilmoji
 from PIL import Image, ImageDraw, ImageFont
 
 sup_template = "meme_stuff/supremacy_template.png"
@@ -12,6 +11,10 @@ nuts_template = "meme_stuff/nuts_template.png"
 pills_template = "meme_stuff/pills_template.png"
 needs_template = "meme_stuff/needs_template.png"
 no_horny = "meme_stuff/no_horny.png"
+
+use_pilmoji = False
+if use_pilmoji:
+    from pilmoji import Pilmoji
 
 string_len = 20
 
@@ -46,7 +49,7 @@ def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox:
     _align = 'left' if use_emoji else 'center'
     sz = get_max_size(text, font_family, bbox, draw_ctx, _align)
     fnt = ImageFont.truetype(font_family, sz)
-    if use_emoji:
+    if use_pilmoji and use_emoji:
         _bbox = draw_ctx.textbbox((0,0), get_wrapped_text(text, fnt, bbox[0], False), font=fnt, align=_align)
         _anchor = (center_anchor[0], int(center_anchor[1] - _bbox[3]/2))
         # _txt = re.sub(r'[^\x00-\x7F]',' ', text)
