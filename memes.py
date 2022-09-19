@@ -159,6 +159,7 @@ def generate_custom_bingo(name, items):
                 
         draw_text_with_bbox("Free space~", font, coords, bingo_cell, draw, im)
         coords = (coords[0] + bingo_spacing, coords[1])
+        _col += 1
 
         for i in range(12):
             draw_text_with_bbox(items[i + 12], font, coords, bingo_cell, draw, im)
