@@ -664,12 +664,12 @@ async def _bingo(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
 
-opts = [discord_slash.manage_commands.create_option(name=f"element {i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
+opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
 @slash.slash(name="mybingo", description="Get a custom bingo sheet!", options=opts, guild_ids=guild_ids)
 async def _mybingo(ctx: SlashContext, **kwargs):
     await ctx.defer()
 
-    items = [kwargs[f"element {i + 1}"] for i in range(24)]
+    items = [kwargs[f"element_{i + 1}"] for i in range(24)]
     log_info(ctx, f"{ctx.author} requested custom bingo")
 
     meme_name = memes.generate_custom_bingo(ctx.author.display_name, items)
