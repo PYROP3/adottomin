@@ -27,7 +27,7 @@ class utils:
                     msg += f"As a reply to a message\n"
                 else:
                     try:
-                        _sender = "you" if (user_id == ref_msg.author_id) else "someone else"
+                        _sender = "you" if (user_id == ref_msg.author.id) else "someone else"
                         msg += f"As a reply to a message {_sender} sent:\n{quote_each_line(ref_msg.content)}\n"
                     except Exception as e:
                         msg += f"As a reply to a deleted message\n"
