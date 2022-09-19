@@ -22,7 +22,7 @@ if use_pilmoji:
 string_len = 20
 
 def get_bingos():
-    return [file[:-4] for file in os.listdir(f"{memes_folder}/bingos")]
+    return [file[:-4] for file in os.listdir(f"{memes_folder}/bingos") if file[-4:] == ".png"]
 
 def bingo_filepath(name):
     if name[-4:] != ".png": name += ".png"
