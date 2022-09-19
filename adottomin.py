@@ -648,7 +648,7 @@ async def _activity(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"This functionality is not available yet, try again later~")
 
-opts = [discord_slash.manage_commands.create_option(name="which", description="Bingo sheet to retrieve (will get a random one by default)", option_type=3, required=False, options=memes.get_bingos())]
+opts = [discord_slash.manage_commands.create_option(name="which", description="Bingo sheet to retrieve (will get a random one by default)", option_type=3, required=False, choices=memes.get_bingos())]
 @slash.slash(name="bingo", description="Get analytics data for useractivity", options=opts, guild_ids=guild_ids)
 async def _bingo(ctx: SlashContext, **kwargs):
     await ctx.defer()
