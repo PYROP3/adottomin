@@ -43,6 +43,7 @@ class utils:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
     async def handle_offline_mentions(self, msg: discord.Message):
+        if msg.author.bot: return
         for member in msg.mentions:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
