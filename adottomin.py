@@ -670,9 +670,12 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         await ctx.send(content="Failed to execute query", hidden=True)
         return
         
-    msg = "Here are the results:\n```\n"
-    msg += "\n".join(" | ".join(line) for line in data)
-    msg += "\n```"
+    if data is None:
+        msg = "Your query returned None"
+    else:
+        msg = "Here are the results:\n```\n"
+        msg += "\n".join(" | ".join([str(item) for item in line]) for line in data)
+        msg += "\n```"
     await ctx.send(content=msg, hidden=True)
 
 bot.run(TOKEN)
