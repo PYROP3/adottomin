@@ -319,6 +319,24 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 async def _pills(ctx: SlashContext, **kwargs):
     await _meme(ctx, memes.generate_pills, "pills", **kwargs)
 
+opts = [discord_slash.manage_commands.create_option(name="contents", description="What to say in the meme", option_type=3, required=True)]
+@slash.slash(name="needs", description="Traditional Maslow's hierarchy", options=opts, guild_ids=guild_ids)
+async def _pills(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
+    text = kwargs["contents"]
+    log_info(ctx, f"{ctx.author} requested needs => {text}")
+
+    meme_name = memes.generate_needs(text)
+    log_debug(ctx, f"meme_name={meme_name}")
+    meme_file = discord.File(meme_name, filename=f"{ctx.author.name}_needs.png")
+    
+    msg = "Enjoy your fresh meme~"
+
+    await ctx.send(content=msg, file=meme_file)
+
+    os.remove(meme_name)
+
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
 @slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
 async def _shipme(ctx: SlashContext, **kwargs):

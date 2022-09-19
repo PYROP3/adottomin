@@ -4,16 +4,58 @@ import re
 import requests
 import string
 from bs4 import BeautifulSoup
+from pilmoji import Pilmoji
 from PIL import Image, ImageDraw, ImageFont
 
 sup_template = "meme_stuff/supremacy_template.png"
 nuts_template = "meme_stuff/nuts_template.png"
 pills_template = "meme_stuff/pills_template.png"
+needs_template = "meme_stuff/needs_template.png"
 no_horny = "meme_stuff/no_horny.png"
 
 string_len = 20
 
-def _paste_centered(icon, ic_size, base, pos):
+def get_wrapped_text(text: str, font: ImageFont.ImageFont,
+                     line_length: int, do_strip: bool):
+        lines = ['']
+        for word in text.split():
+            line = f'{lines[-1]} {word}'.strip() if do_strip else f'{lines[-1]} {word}'
+            if font.getlength(line) <= line_length:
+                lines[-1] = line
+            else:
+                lines.append(word)
+        while len(lines[0]) == 0:
+            lines = lines[1:]
+        print(f"wrapped lines = {lines}")
+        return '\n'.join(lines)
+
+def get_max_size(text: str, font_family: str, bbox: tuple, draw_ctx: ImageDraw.Draw, align: str):
+    sz = 2
+    _txt = re.sub(r'[^\x00-\x7F]','m', text)
+    while True:
+        fnt = ImageFont.truetype(font_family, sz)
+        wrapped = get_wrapped_text(_txt, fnt, bbox[0], True)
+        new_bbox = draw_ctx.textbbox((0,0), wrapped, font=fnt, align=align)
+        print(f"new bbox {sz} = {new_bbox}")
+        if (new_bbox[2] > bbox[0]) or (new_bbox[3] > bbox[1]):
+            return sz - 2
+        sz += 2
+
+def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox: tuple, draw_ctx: ImageDraw.Draw, img):
+    use_emoji = re.search(r"[^\x00-\x7f]", text) is not None
+    _align = 'left' if use_emoji else 'center'
+    sz = get_max_size(text, font_family, bbox, draw_ctx, _align)
+    fnt = ImageFont.truetype(font_family, sz)
+    if use_emoji:
+        _bbox = draw_ctx.textbbox((0,0), get_wrapped_text(text, fnt, bbox[0], False), font=fnt, align=_align)
+        _anchor = (center_anchor[0], int(center_anchor[1] - _bbox[3]/2))
+        # _txt = re.sub(r'[^\x00-\x7F]',' ', text)
+        with Pilmoji(img) as pilmoji:
+            pilmoji.text(_anchor, get_wrapped_text(text, fnt, bbox[0], False), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align, emoji_position_offset=(int(-_bbox[2]/4), int(-_bbox[3]/4)))
+    else:
+        draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align)
+
+def paste_centered(icon, ic_size, base, pos):
     with Image.open(icon) as ic:
         base.paste(ic.resize(ic_size), (pos[0] - ic_size[0]//2, pos[1] - ic_size[1]//2))
 
@@ -25,13 +67,9 @@ def generate_sup(text, icon):
 
         draw = ImageDraw.Draw(im)
 
-        # get a font
-        fnt = ImageFont.truetype("arial.ttf", 75)
-        # get a drawing context
-        draw.text((im.size[0]//2, 310), text, font=fnt, anchor="ms", fill=(0, 0, 0, 255))
+        draw_text_with_bbox(text, "arial.ttf", (im.size[0]//2, 310), (2*im.size[0]//3, 150), draw, im)
         
-        with Image.open(icon) as ic:
-            im.paste(ic.resize(ic_size), (70, im.size[1]//2 - ic_size[1]//2))
+        paste_centered(icon, ic_size, im, (70, im.size[1]//2 - ic_size[1]//2))
 
         # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
@@ -58,7 +96,20 @@ def generate_pills(icon):
 
     with Image.open(pills_template) as im:
         
-        _paste_centered(icon, (150, 150), im, (250, 220))
+        paste_centered(icon, (150, 150), im, (250, 220))
+
+        # write to stdout
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        im.save(name, "PNG")
+
+    return name
+
+def generate_needs(text):
+    with Image.open(needs_template) as im:
+
+        draw = ImageDraw.Draw(im)
+
+        draw_text_with_bbox(text, "arial.ttf", (377, 402), (210, 280), draw, im)
 
         # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
