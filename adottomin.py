@@ -166,6 +166,12 @@ async def on_message(msg: discord.Message):
     except Exception as e:
         app.logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
+        
+    try:
+        sql.register_message(msg.author.id, msg.content)
+    except Exception as e:
+        app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
 
 @bot.event
 async def on_member_join(member: discord.Member):
@@ -609,5 +615,19 @@ async def _offlinepings(ctx: SlashContext, **kwargs):
     else:
         sql.add_to_offline_ping_blocklist(ctx.author_id)
         await ctx.send(content="Okay, I won't send you notifications if you're pinged~", hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
+opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
+@slash.slash(name="activity", description="Get analytics data for useractivity", options=opts, guild_ids=guild_ids)
+async def _activity(ctx: SlashContext, **kwargs):
+    await ctx.defer()
+
+    log_info(ctx, f"{ctx.author} requested activity")
+    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+        log_debug(ctx, f"{ctx.author} cannot get activity")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    await ctx.send(content=f"This functionality is not available yet, try again later~")
 
 bot.run(TOKEN)

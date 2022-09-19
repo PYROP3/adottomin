@@ -9,6 +9,8 @@ warnings_version = 2
 warnings_db_file = bot_home + f'/warnings_v{warnings_version}.db'
 offline_ping_blocklist_version = 1
 offline_ping_blocklist_db_file = bot_home + f'/offline_ping_blocklist_v{offline_ping_blocklist_version}.db'
+activity_version = 1
+activity_db_file = bot_home + f'/activity_v{activity_version}.db'
 
 class database:
     def __init__(self, max_leniency, logger):
@@ -62,6 +64,19 @@ class database:
             CREATE TABLE blocklist (
                 user int NOT NULL,
                 PRIMARY KEY (user)
+            );''')
+            con.commit()
+            con.close()
+
+        if not os.path.exists(activity_db_file):
+            logger.info(f"CREATING db file '{activity_db_file}'")
+            con = sqlite3.connect(activity_db_file)
+            cur = con.cursor()
+            cur.execute('''
+            CREATE TABLE messages (
+                user int NOT NULL,
+                message_id int NOT NULL,
+                date TIMESTAMP
             );''')
             con.commit()
             con.close()
@@ -211,3 +226,21 @@ class database:
             return res is not None
         except:
             return False
+
+    def register_message(self, user, message_id):
+        con = sqlite3.connect(activity_db_file)
+        cur = con.cursor()
+        cur.execute("INSERT INTO messages VALUES (?, ?, ?)", [user, message_id, datetime.datetime.now()])
+        con.commit()
+        con.close()
+
+    def get_messages(self, user=None, time_range=None):
+        con = sqlite3.connect(activity_db_file)
+        cur = con.cursor()
+        min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
+        if user is not None:
+            data = cur.execute("SELECT * FROM messages WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
+        else:
+            data = cur.execute("SELECT * FROM messages WHERE date > :date", {"date": min_date}).fetchall()
+        con.close()
+        return data
