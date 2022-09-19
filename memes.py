@@ -4,7 +4,7 @@ import re
 import requests
 import string
 from bs4 import BeautifulSoup
-from pilmoji import Pilmoji
+# from pilmoji import Pilmoji
 from PIL import Image, ImageDraw, ImageFont
 
 sup_template = "meme_stuff/supremacy_template.png"
@@ -46,14 +46,14 @@ def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox:
     _align = 'left' if use_emoji else 'center'
     sz = get_max_size(text, font_family, bbox, draw_ctx, _align)
     fnt = ImageFont.truetype(font_family, sz)
-    if use_emoji:
-        _bbox = draw_ctx.textbbox((0,0), get_wrapped_text(text, fnt, bbox[0], False), font=fnt, align=_align)
-        _anchor = (center_anchor[0], int(center_anchor[1] - _bbox[3]/2))
-        # _txt = re.sub(r'[^\x00-\x7F]',' ', text)
-        with Pilmoji(img) as pilmoji:
-            pilmoji.text(_anchor, get_wrapped_text(text, fnt, bbox[0], False), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align, emoji_position_offset=(int(-_bbox[2]/4), int(-_bbox[3]/4)))
-    else:
-        draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align)
+    # if use_emoji:
+    #     _bbox = draw_ctx.textbbox((0,0), get_wrapped_text(text, fnt, bbox[0], False), font=fnt, align=_align)
+    #     _anchor = (center_anchor[0], int(center_anchor[1] - _bbox[3]/2))
+    #     # _txt = re.sub(r'[^\x00-\x7F]',' ', text)
+    #     with Pilmoji(img) as pilmoji:
+    #         pilmoji.text(_anchor, get_wrapped_text(text, fnt, bbox[0], False), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align, emoji_position_offset=(int(-_bbox[2]/4), int(-_bbox[3]/4)))
+    # else:
+    draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align)
 
 def paste_centered(icon, ic_size, base, pos):
     with Image.open(icon) as ic:
