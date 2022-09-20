@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 import discord
 import discord_slash
 import logging
@@ -175,10 +176,14 @@ async def on_message(msg: discord.Message):
 
 @bot.event
 async def on_member_join(member: discord.Member):
+    app.logger.info(f"[{channel}] {member} just joined")
     try:
+        if member.bot:
+            app.logger.info(f"[{channel}] {member} is a bot, ignoring")
+            return
+
         if member.id == bot.user.id: return
         channel = bot.get_channel(channel_ids[0])
-        app.logger.info(f"[{channel}] {member} just joined")
         
         if RAID_MODE or is_raid_mode():
             app.logger.info(f"[{channel}] Raid mode ON: {member}")
@@ -188,7 +193,7 @@ async def on_member_join(member: discord.Member):
         autoblock = sql.is_autoblocked(member.id)
         if autoblock is not None:
             mod, reason, date = autoblock
-            app.logger.info(f"[{channel}] {member} is blocked: {date}/{mod}: {reason}")
+            app.logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
             await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
             return
 
@@ -705,6 +710,10 @@ async def _rawsql(ctx: SlashContext, **kwargs):
 
     try:
         data = sql.raw_sql(_file, _query)
+    except sqlite3.DatabaseError as e:
+        log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
+        await ctx.send(content=f"Failed to execute query [{_query}]:\n```\n{traceback.format_exc()}\n```", hidden=True)
+        return
     except Exception as e:
         log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
         await _dm_log_error(f"[{ctx.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
