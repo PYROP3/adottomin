@@ -185,6 +185,13 @@ async def on_member_join(member: discord.Member):
             await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
             return
 
+        autoblock = sql.is_autoblocked(member.id)
+        if autoblock is not None:
+            mod, reason, date = autoblock
+            app.logger.info(f"[{channel}] {member} is blocked: {date}/{mod}: {reason}")
+            await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
+            return
+
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
         sql.create_entry(member.id, greeting.id)
 
@@ -713,6 +720,31 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         if len(msg) > 2000:
             aux = "```\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
+    await ctx.send(content=msg, hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
+opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
+@slash.slash(name="autoblock", description="Pre-block a user before they've even joined", options=opts, guild_ids=guild_ids)
+async def _autoblock(ctx: SlashContext, **kwargs):
+    await ctx.defer(hidden=True)
+
+    user = kwargs["user"]
+    reason = kwargs["reason"]
+    mod = ctx.author
+    _author_roles = [role.id for role in ctx.author.roles]
+    log_info(ctx, f"{ctx.author} requested age for {user}")
+    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+        log_debug(ctx, f"{ctx.author} cannot autoblock")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+        
+    data = sql.try_autoblock(user, mod.id, reason)
+    if data is None:
+        msg = f"I'll ban them if they ever set foot here, {ctx.author.mention}~"
+    else:
+        prev_mod_id, prev_reason, date = data
+        prev_mod = bot.get_user(prev_mod_id)
+        msg = f"That user has already been pre-blocked by {prev_mod.mention} on {date}: {prev_reason}"
     await ctx.send(content=msg, hidden=True)
 
 bot.run(TOKEN)

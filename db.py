@@ -11,12 +11,15 @@ offline_ping_blocklist_version = 1
 offline_ping_blocklist_db_file = bot_home + f'/offline_ping_blocklist_v{offline_ping_blocklist_version}.db'
 activity_version = 2
 activity_db_file = bot_home + f'/activity_v{activity_version}.db'
+autoblocklist_version = 1
+autoblocklist_db_file = bot_home + f'/autoblocklist_v{autoblocklist_version}.db'
 
 sql_files = [
     validations_db_file,
     warnings_db_file,
     offline_ping_blocklist_db_file,
-    activity_db_file
+    activity_db_file,
+    autoblocklist_db_file
 ]
 
 class database:
@@ -85,6 +88,21 @@ class database:
                 message_id int NOT NULL,
                 channel it NOT NULL,
                 date TIMESTAMP
+            );''')
+            con.commit()
+            con.close()
+
+        if not os.path.exists(autoblocklist_db_file):
+            logger.info(f"CREATING db file '{autoblocklist_db_file}'")
+            con = sqlite3.connect(autoblocklist_db_file)
+            cur = con.cursor()
+            cur.execute('''
+            CREATE TABLE blocks (
+                user int NOT NULL,
+                mod int NOT NULL,
+                reason TEXT,
+                date TIMESTAMP,
+                PRIMARY KEY (user)
             );''')
             con.commit()
             con.close()
@@ -259,3 +277,26 @@ class database:
             data = cur.execute("SELECT * FROM messages WHERE date > :date", {"date": min_date}).fetchall()
         con.close()
         return data
+
+    def try_autoblock(self, user, mod, reason):
+        con = sqlite3.connect(autoblocklist_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO blocks VALUES (?, ?, ?, ?)", [user, mod, reason, datetime.datetime.now()])
+            con.commit()
+            res = None
+        except sqlite3.IntegrityError:
+            res = cur.execute("SELECT mod, reason, date FROM blocks WHERE user = :id", {"id": user}).fetchone()
+        con.close()
+        return res
+
+    def is_autoblocked(self, user):
+        try:
+            con = sqlite3.connect(offline_ping_blocklist_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT mod, reason, date FROM blocks WHERE user = :id", {"id": user}).fetchone()
+            con.commit()
+            con.close()
+            return res 
+        except:
+            return None
