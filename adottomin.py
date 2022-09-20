@@ -708,7 +708,7 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         msg = "Your query returned None"
     else:
         msg = f"Here are the results for your query:\n```\n{_query}\n\n"
-        msg += "\n".join(" | ".join([str(item) for item in line]) for line in data)
+        msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data))
         msg += "\n```"
     await ctx.send(content=msg, hidden=True)
 
