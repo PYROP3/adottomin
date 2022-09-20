@@ -292,7 +292,7 @@ class database:
 
     def is_autoblocked(self, user):
         try:
-            con = sqlite3.connect(offline_ping_blocklist_db_file)
+            con = sqlite3.connect(autoblocklist_db_file)
             cur = con.cursor()
             res = cur.execute("SELECT mod, reason, date FROM blocks WHERE user = :id", {"id": user}).fetchone()
             con.commit()
