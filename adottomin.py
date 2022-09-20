@@ -737,8 +737,15 @@ async def _autoblock(ctx: SlashContext, **kwargs):
         log_debug(ctx, f"{ctx.author} cannot autoblock")
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
+
+    try:
+        user_id = int(user)
+    except:
+        log_debug(ctx, f"{user} is not a valid ID")
+        await ctx.send(content=f"{user} is not a valid ID", hidden=True)
+        return
         
-    data = sql.try_autoblock(user, mod.id, reason)
+    data = sql.try_autoblock(user_id, mod.id, reason)
     if data is None:
         msg = f"I'll ban them if they ever set foot here, {ctx.author.mention}~"
     else:
