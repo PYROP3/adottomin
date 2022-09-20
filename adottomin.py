@@ -710,6 +710,9 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         msg = f"Here are the results for your query:\n```\n{_query}\n\n"
         msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data))
         msg += "\n```"
+        if len(msg) > 2000:
+            aux = "```\nTRUNC"
+            msg = msg[:2000-len(aux)-1] + aux
     await ctx.send(content=msg, hidden=True)
 
 bot.run(TOKEN)
