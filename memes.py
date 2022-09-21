@@ -83,7 +83,7 @@ def generate_sup(text, icon):
 
         draw_text_with_bbox(text, "arial.ttf", (im.size[0]//2, 310), (2*im.size[0]//3, 150), draw, im)
         
-        paste_centered(icon, ic_size, im, (150, im.size[1]//2))
+        paste_centered(icon, ic_size, im, (ic_size[0] + 50, im.size[1]//2))
 
         # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
