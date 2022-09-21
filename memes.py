@@ -12,6 +12,7 @@ memes_folder = "meme_stuff"
 sup_template = f"{memes_folder}/supremacy_template.png"
 nuts_template = f"{memes_folder}/nuts_template.png"
 pills_template = f"{memes_folder}/pills_template.png"
+bromeme_template = f"{memes_folder}/bromeme_template.png"
 needs_template = f"{memes_folder}/needs_template.png"
 bingo_template = f"{memes_folder}/bingo_template.png"
 no_horny = f"{memes_folder}/no_horny.png"
@@ -111,6 +112,18 @@ def generate_pills(icon):
     with Image.open(pills_template) as im:
         
         paste_centered(icon, (150, 150), im, (250, 220))
+
+        # write to stdout
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        im.save(name, "PNG")
+
+    return name
+
+def generate_bromeme(icon):
+
+    with Image.open(bromeme_template) as im:
+        
+        paste_centered(icon, (300, 300), im, (im.size[0] - 250, 205))
 
         # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
