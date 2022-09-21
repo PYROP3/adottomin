@@ -168,11 +168,16 @@ async def on_message(msg: discord.Message):
         app.logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
         
-    try:
-        sql.register_message(msg.author.id, msg.id, msg.channel.id)
-    except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
+    if not msg.author.bot:
+        try:
+            sql.register_message(msg.author.id, msg.id, msg.channel.id)
+        except Exception as e:
+            app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
+    else:
+        app.logger.info(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
+        await _dm_log_error(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
+
 
 @bot.event
 async def on_member_join(member: discord.Member):
