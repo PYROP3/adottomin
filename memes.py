@@ -123,7 +123,9 @@ def generate_bromeme(icon):
 
     with Image.open(bromeme_template) as im:
         
-        paste_centered(icon, (300, 300), im, (im.size[0] - 250, 205))
+        ic_size = 270
+
+        paste_centered(icon, (ic_size, ic_size), im, (im.size[0] - 250, 205))
 
         # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
