@@ -5,8 +5,6 @@ import discord_slash
 import logging
 import os
 import random
-import requests
-import string
 import traceback
 
 import age_handling
@@ -50,8 +48,6 @@ MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
 MSG_CANT_DO_IT = "I can't do that to that user~ :3"
 MSG_USER_ALREADY_MAXED = "That user is already at max tier!"
 MSG_CONGRATULATIONS_PROMOTION = "Congratulations on your promotion to tier {}, {}!"
-
-AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
@@ -260,33 +256,35 @@ async def _raidmode(ctx: SlashContext, **kwargs):
             log_debug(ctx, f"{ctx.author} disabled raidmode (already disabled)")
             await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
-async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
+async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy your fresh meme~", **kwargs):
     await ctx.defer()
 
-    user = kwargs["user"]
-    log_info(ctx, f"{ctx.author} requested {user} {meme_code}")
-    log_debug(ctx, f"avatar={user.avatar}")
+    log_info(ctx, f"{ctx.author} requested {meme_code}")
 
-    av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
+    _icon = await utils.get_icon(**kwargs)
+    _text = text or utils.get_text(**kwargs)
+    log_debug(ctx, f"icon={_icon}, text={_text}")
 
-    icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
-    log_debug(ctx, f"icon_name={icon_name}")
-
-    file = open(icon_name, "wb")
-    file.write(requests.get(av_url).content)
-    file.close()
-
-    meme_name = meme_function(icon_name)
+    meme_name = memes.create_meme(meme_code, icon=_icon, text=_text)
     log_debug(ctx, f"meme_name={meme_name}")
-    meme_file = discord.File(meme_name, filename=f"{user.name}_{meme_code}.png")
-    
-    os.remove(icon_name)
 
-    msg = "Enjoy your fresh meme~"
-    if (user.id == ctx.author_id):
-        msg = "Lmao did you really make it for yourself??"
-    if (user.id == bot.user.id):
-        msg = f"Awww thank you, {ctx.author.mention}~"
+    if meme_name is None:
+        await ctx.send(content="Oops, there was an error~")
+        return 
+
+    meme_file = discord.File(meme_name, filename=f"{ctx.author.name}_{meme_code}.png")
+    
+    if _icon is not None:
+        os.remove(_icon)
+
+    try:
+        user = kwargs["user"]
+        if (user.id == ctx.author_id):
+            msg = "Lmao did you really make it for yourself??"
+        if (user.id == bot.user.id):
+            msg = f"Awww thank you, {ctx.author.mention}~"
+    except:
+        pass
 
     await ctx.send(content=msg, file=meme_file)
 
@@ -295,69 +293,32 @@ async def _meme(ctx: SlashContext, meme_function, meme_code, **kwargs):
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="supremacy", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _supremacy(ctx: SlashContext, **kwargs):
-    await ctx.defer()
-
-    user = kwargs["user"]
-    log_info(ctx, f"{ctx.author} requested {user} supremacy")
-    log_debug(ctx, f"avatar={user.avatar}")
-
-    av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
-
-    icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
-    log_debug(ctx, f"icon_name={icon_name}")
-
-    file = open(icon_name, "wb")
-    file.write(requests.get(av_url).content)
-    file.close()
-
-    meme_name = memes.generate_sup(user.display_name, icon_name)
-    log_debug(ctx, f"meme_name={meme_name}")
-    meme_file = discord.File(meme_name, filename=f"{user.name}_supremacy.png")
-    
-    os.remove(icon_name)
-
-    msg = "Enjoy your fresh meme~"
-    if (user.id == ctx.author_id):
-        msg = "Lmao did you really make it for yourself??"
-    if (user.id == bot.user.id):
-        msg = f"Awww thank you, {ctx.author.mention}~"
-
-    await ctx.send(content=msg, file=meme_file)
-
-    os.remove(meme_name)
+    await _meme(ctx, "supremacy", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="deeznuts", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _deeznuts(ctx: SlashContext, **kwargs):
-    await _meme(ctx, memes.generate_nuts, "deeznuts", **kwargs)
+    await _meme(ctx, "deeznuts", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="pills", description="Ask miguel", options=opts, guild_ids=guild_ids)
 async def _pills(ctx: SlashContext, **kwargs):
-    await _meme(ctx, memes.generate_pills, "pills", **kwargs)
+    await _meme(ctx, "pills", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @slash.slash(name="bromeme", description="Bro", options=opts, guild_ids=guild_ids)
 async def _bromeme(ctx: SlashContext, **kwargs):
-    await _meme(ctx, memes.generate_bromeme, "bromeme", **kwargs)
+    await _meme(ctx, "bromeme", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="contents", description="What to say in the meme", option_type=3, required=True)]
 @slash.slash(name="needs", description="Traditional Maslow's hierarchy", options=opts, guild_ids=guild_ids)
 async def _needs(ctx: SlashContext, **kwargs):
-    await ctx.defer()
+    await _meme(ctx, "needs", text=kwargs["contents"], **kwargs)
 
-    text = kwargs["contents"]
-    log_info(ctx, f"{ctx.author} requested needs => {text}")
-
-    meme_name = memes.generate_needs(text)
-    log_debug(ctx, f"meme_name={meme_name}")
-    meme_file = discord.File(meme_name, filename=f"{ctx.author.name}_needs.png")
-    
-    msg = "Enjoy your fresh meme~"
-
-    await ctx.send(content=msg, file=meme_file)
-
-    os.remove(meme_name)
+opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
+@slash.slash(name="mybingo", description="Get a custom bingo sheet!", options=opts, guild_ids=guild_ids)
+async def _mybingo(ctx: SlashContext, **kwargs):
+    await _meme(ctx, "custom_bingo", text=[ctx.author.display_name] + [kwargs[f"element_{i + 1}"] for i in range(24)], msg="Enjoy your custom bingo~", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
 @slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
@@ -685,24 +646,6 @@ async def _bingo(ctx: SlashContext, **kwargs):
     bingo_file = discord.File(bingo_name, filename=f"bingo.png")
 
     await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
-
-opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
-@slash.slash(name="mybingo", description="Get a custom bingo sheet!", options=opts, guild_ids=guild_ids)
-async def _mybingo(ctx: SlashContext, **kwargs):
-    await ctx.defer()
-
-    items = [kwargs[f"element_{i + 1}"] for i in range(24)]
-    log_info(ctx, f"{ctx.author} requested custom bingo")
-
-    meme_name = memes.generate_custom_bingo(ctx.author.display_name, items)
-    log_debug(ctx, f"meme_name={meme_name}")
-    meme_file = discord.File(meme_name, filename=f"{ctx.author.name}_bingo.png")
-    
-    msg = "Enjoy your custom bingo~"
-
-    await ctx.send(content=msg, file=meme_file)
-
-    os.remove(meme_name)
 
 opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
 opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]

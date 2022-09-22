@@ -3,6 +3,7 @@ import os
 import random
 import re
 import requests
+import traceback
 import string
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
@@ -71,126 +72,51 @@ def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox:
         draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor="mm", fill=(0, 0, 0, 255), align=_align)
 
 def paste_centered(icon, ic_size, base, pos):
+    if icon is None: return
     with Image.open(icon) as ic:
         base.paste(ic.resize(ic_size), (pos[0] - ic_size[0]//2, pos[1] - ic_size[1]//2))
 
-def generate_sup(text, icon):
+# icon: icon, size, position
+# text: text, bbox, position
+_baserules = {
+    "icon": lambda image, draw, args: paste_centered(args["icon"], args["size"], image, args["position"]),
+    "text": lambda image, draw, args: draw_text_with_bbox(args["text"], "arial.ttf", args["position"], args["bbox"], draw, image)
+}
 
-    ic_size = (300, 300)
+def _args_icon(icon: str, size: tuple[int, int], position: tuple[int, int]):
+    return ("icon", {"icon": icon, "size": size, "position": position})
     
-    with Image.open(sup_template) as im:
+def _args_text(text: str, bbox: tuple[int, int], position: tuple[int, int]):
+    return ("text", {"text": text, "bbox": bbox, "position": position})
 
+def automeme(template, rules):
+    with Image.open(template) as im:
         draw = ImageDraw.Draw(im)
+        # print(f"got rules={rules} for {template}")
+        for (rule, args) in rules:
+            # print(f"rule=[{rule}], args=[{args}]")
+            try:
+                _baserules[rule](im, draw, args)
+            except Exception as e:
+                # print(f"Error while trying to execute rule: {e}\n{traceback.format_exc()}")
+                pass
 
-        draw_text_with_bbox(text, "arial.ttf", (im.size[0]//2, 310), (2*im.size[0]//3, 150), draw, im)
-        
-        paste_centered(icon, ic_size, im, (ic_size[0]//2 + 70, im.size[1]//2))
-
-        # write to stdout
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
         im.save(name, "PNG")
-
     return name
 
-def generate_nuts(icon):
+def _args_for(id: str, icon: str=None, text=None):
+    match id:
+        case "supremacy": return [_args_text(text, (800, 150), (600, 310)), _args_icon(icon, (300,300), (220, 563))], # (1200, 1127)
+        case "deeznuts": return [_args_icon(icon, (598, 582), (0, 582))], # (1196, 1165)
+        case "pills": return [_args_icon(icon, (150, 150), (250, 220))],
+        case "bromeme": return [_args_icon(icon, (270, 270), (575, 205))], # (828, 807)
+        case "needs": return [_args_text(text, (210, 280), (377, 402))],
+        case "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
+                for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
 
-    with Image.open(nuts_template) as im:
-        
-        with Image.open(icon) as ic:
-            im.paste(ic.resize((im.size[0]//2, im.size[1]//2)), (0, im.size[1]//2))
-
-        # write to stdout
-        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
-        im.save(name, "PNG")
-
-    return name
-
-def generate_pills(icon):
-
-    pos = (250, 220)
-
-    with Image.open(pills_template) as im:
-        
-        paste_centered(icon, (150, 150), im, (250, 220))
-
-        # write to stdout
-        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
-        im.save(name, "PNG")
-
-    return name
-
-def generate_bromeme(icon):
-
-    with Image.open(bromeme_template) as im:
-        
-        ic_size = 270
-
-        paste_centered(icon, (ic_size, ic_size), im, (im.size[0] - 250, 205))
-
-        # write to stdout
-        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
-        im.save(name, "PNG")
-
-    return name
-
-def generate_needs(text):
-    with Image.open(needs_template) as im:
-
-        draw = ImageDraw.Draw(im)
-
-        draw_text_with_bbox(text, "arial.ttf", (377, 402), (210, 280), draw, im)
-
-        # write to stdout
-        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
-        im.save(name, "PNG")
-
-    return name
-
-def generate_custom_bingo(name, items):
-    bingo_cell = (200, 200)
-    bingo_spacing = 227
-    bingo_start = (145, 446)
-    name_y = 105
-    name_bbox = (1136, 155)
-    font = "arial.ttf"
-    with Image.open(bingo_template) as im:
-
-        draw = ImageDraw.Draw(im)
-
-        draw_text_with_bbox(f"{name}'s bingo~", font, (im.size[0]//2, name_y), name_bbox, draw, im)
-
-        _lin = 0
-        _col = 0
-        coords = bingo_start
-        for i in range(12):
-            draw_text_with_bbox(items[i], font, coords, bingo_cell, draw, im)
-            _col += 1
-            if _col == 5:
-                _col = 0
-                _lin += 1
-                coords = (bingo_start[0], coords[1] + bingo_spacing)
-            else:
-                coords = (coords[0] + bingo_spacing, coords[1])
-                
-        draw_text_with_bbox("Free space~", font, coords, bingo_cell, draw, im)
-        coords = (coords[0] + bingo_spacing, coords[1])
-        _col += 1
-
-        for i in range(12):
-            draw_text_with_bbox(items[i + 12], font, coords, bingo_cell, draw, im)
-            _col += 1
-            if _col == 5:
-                _col = 0
-                _lin += 1
-                coords = (bingo_start[0], coords[1] + bingo_spacing)
-            else:
-                coords = (coords[0] + bingo_spacing, coords[1])
-
-        # write to stdout
-        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
-        im.save(name, "PNG")
-
-    return name
+def create_meme(id: str, icon: str=None, text=None):
+    return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, icon=icon, text=text)[0])
 
 def percent_from(content, daily=True):
     if daily:

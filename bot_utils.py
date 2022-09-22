@@ -1,11 +1,17 @@
 import discord
 import traceback
+import random
+import requests
+import string
 
 import db
 
 from discord.ext import commands
+from discord_slash import SlashContext
 
 VALID_NOTIFY_STATUS = [discord.Status.offline]
+
+AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
 def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
@@ -49,3 +55,39 @@ class utils:
             self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if will_send:
                 await self._dm_user(msg, msg.author, member.id)
+
+    async def get_icon(self, **kwargs):
+        if "user" not in kwargs: return None
+        user = kwargs["user"]
+        # self.logger.debug(f"user={user} / {type(user)}")
+
+        try:
+            self.logger.debug(f"avatar={user.avatar}")
+            av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
+            icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
+            self.logger.debug(f"icon_name={icon_name}")
+
+            file = open(icon_name, "wb")
+            file.write(requests.get(av_url).content)
+            file.close()
+
+            return icon_name
+        except Exception as e:
+            self.logger.error(f"Error while trying to get avatar: {e}\n{traceback.format_exc()}")
+            return None
+
+    def _get_display_name(self, **kwargs):
+        if "user" not in kwargs: return None
+        try:
+            return kwargs["user"].display_name
+        except:
+            return None
+
+    def _fallback_get_text(self, **kwargs):
+        try:
+            return kwargs["user"]
+        except:
+            return None
+
+    def get_text(self, **kwargs):
+        return self._get_display_name(**kwargs) or self._fallback_get_text(**kwargs)
