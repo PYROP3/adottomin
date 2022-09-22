@@ -112,14 +112,6 @@ def unset_raid_mode():
     os.remove(RAID_MODE_CTRL)
     return True
 
-async def _hi_dad(msg):
-    try:
-        hi_dad = memes.hi_dad(msg.content)
-        if hi_dad is None: return
-        await msg.reply(content=hi_dad)
-    except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error in hi_dad: {e}\n{traceback.format_exc()}")
-
 async def _dm_log_error(msg):
     if admin_id is None: return
     try:
@@ -171,9 +163,7 @@ async def on_message(msg: discord.Message):
             app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
     else:
-        app.logger.info(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
-        await _dm_log_error(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
-
+        app.logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
 
 @bot.event
 async def on_member_join(member: discord.Member):
