@@ -3,16 +3,20 @@ import os
 import sqlite3
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
+
+def _dbfile(id: str, version: int):
+    return bot_home + f'/data/{id}_v{version}.db'
+
 validations_version = 1
-validations_db_file = bot_home + f'/validations_v{validations_version}.db'
+validations_db_file = _dbfile('validations', validations_version)
 warnings_version = 2
-warnings_db_file = bot_home + f'/warnings_v{warnings_version}.db'
+warnings_db_file = _dbfile('warnings', warnings_version)
 offline_ping_blocklist_version = 1
-offline_ping_blocklist_db_file = bot_home + f'/offline_ping_blocklist_v{offline_ping_blocklist_version}.db'
+offline_ping_blocklist_db_file = _dbfile('offline_ping_blocklist', offline_ping_blocklist_version)
 activity_version = 2
-activity_db_file = bot_home + f'/activity_v{activity_version}.db'
+activity_db_file = _dbfile('activity', activity_version)
 autoblocklist_version = 1
-autoblocklist_db_file = bot_home + f'/autoblocklist_v{autoblocklist_version}.db'
+autoblocklist_db_file = _dbfile('autoblocklist', autoblocklist_version)
 
 sql_files = [
     validations_db_file,
@@ -22,90 +26,71 @@ sql_files = [
     autoblocklist_db_file
 ]
 
-class database:
-    def __init__(self, max_leniency, logger):
-        # Initialize db
-        logger.debug(f"Checking db file '{validations_db_file}'")
-        if not os.path.exists(validations_db_file):
-            logger.info(f"CREATING db file '{validations_db_file}'")
-            con = sqlite3.connect(validations_db_file)
-            cur = con.cursor()
-            cur.execute('''
+schemas = {
+    validations_db_file: ['''
             CREATE TABLE validations (
                 user int NOT NULL,
                 leniency int NOT NULL,
                 greeting int NOT NULL,
                 PRIMARY KEY (user)
-            );''')
-            cur.execute('''
+            );''',
+            '''
             CREATE TABLE kicks (
                 user int NOT NULL,
                 PRIMARY KEY (user)
-            );''')
-            cur.execute('''
+            );''',
+            '''
             CREATE TABLE age_data (
                 user int NOT NULL,
                 age int NOT NULL,
                 date TIMESTAMP,
                 PRIMARY KEY (user)
-            );''')
-            con.commit()
-            con.close()
-
-        if not os.path.exists(warnings_db_file):
-            logger.info(f"CREATING db file '{warnings_db_file}'")
-            con = sqlite3.connect(warnings_db_file)
-            cur = con.cursor()
-            cur.execute('''
+            );'''],
+    warnings_db_file: ['''
             CREATE TABLE warnings (
                 user int NOT NULL,
                 moderator int NOT NULL,
                 reason TEXT,
                 date TIMESTAMP
-            );''')
-            con.commit()
-            con.close()
-
-        if not os.path.exists(offline_ping_blocklist_db_file):
-            logger.info(f"CREATING db file '{offline_ping_blocklist_db_file}'")
-            con = sqlite3.connect(offline_ping_blocklist_db_file)
-            cur = con.cursor()
-            cur.execute('''
+            );'''],
+    offline_ping_blocklist_db_file: ['''
             CREATE TABLE blocklist (
                 user int NOT NULL,
                 PRIMARY KEY (user)
-            );''')
-            con.commit()
-            con.close()
-
-        if not os.path.exists(activity_db_file):
-            logger.info(f"CREATING db file '{activity_db_file}'")
-            con = sqlite3.connect(activity_db_file)
-            cur = con.cursor()
-            cur.execute('''
+            );'''],
+    activity_db_file: ['''
             CREATE TABLE messages (
                 user int NOT NULL,
                 message_id int NOT NULL,
                 channel it NOT NULL,
                 date TIMESTAMP
-            );''')
-            con.commit()
-            con.close()
-
-        if not os.path.exists(autoblocklist_db_file):
-            logger.info(f"CREATING db file '{autoblocklist_db_file}'")
-            con = sqlite3.connect(autoblocklist_db_file)
-            cur = con.cursor()
-            cur.execute('''
+            );'''],
+    autoblocklist_db_file: ['''
             CREATE TABLE blocks (
                 user int NOT NULL,
                 mod int NOT NULL,
                 reason TEXT,
                 date TIMESTAMP,
                 PRIMARY KEY (user)
-            );''')
-            con.commit()
-            con.close()
+            );''']
+}
+
+class database:
+    def __init__(self, max_leniency, logger):
+        # Initialize db
+        for db_file in schemas:
+            logger.debug(f"Checking db file '{db_file}'")
+            if not os.path.exists(db_file):
+                logger.info(f"CREATING db file '{db_file}'")
+                try:
+                    con = sqlite3.connect(db_file)
+                    cur = con.cursor()
+                    for table_schema in schemas[db_file]:
+                        cur.execute(table_schema)
+                    con.commit()
+                    con.close()
+                except:
+                    logger.error(f"[__init__] Error creating {db_file}")
         
         self.logger = logger
         self.max_leniency = max_leniency
