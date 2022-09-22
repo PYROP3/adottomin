@@ -22,29 +22,52 @@ class utils:
         self.bot = bot
         self.logger = logger
 
+    def _get_msg_chain(self, original_msg: discord.Message):
+        current = original_msg
+        chain = [current]
+        while current.reference is not None:
+            ref = current.reference.resolved
+            if ref is None:
+                chain += [None]
+                break
+            current = ref
+            chain += [current]
+        return chain
+
+    def _format_msg_chain(self, user: discord.User, original_msg: discord.Message, max_size: int = 1500):
+        msg_chain = self._get_msg_chain(original_msg)
+        msg_fmt = quote_each_line(msg_chain[0]) + "\n"
+        for message in msg_chain[1:]:
+            if message is None:
+                new_line = "As a reply to an unknown message\n"
+            else:
+                try:
+                    _sender = "you" if (user.id == message.author.id) else f"{message.author.mention}"
+                    new_line = f"As a reply to a message {_sender} sent:\n{quote_each_line(message.content)}\n"
+                except Exception as e:
+                    new_line = f"As a reply to a deleted message\n"
+                    self.logger.warning(f"Error while trying to get message contents: {e}\n{traceback.format_exc()}")
+            if len(msg_fmt + new_line) > max_size:
+                self.logger.debug(f"Trimming message size ({len(msg_fmt + new_line)})")
+                msg_fmt += "[...]"
+                break
+            msg_fmt += new_line
+        return msg_fmt.replace(user.mention, user.display_name)
+
     async def _dm_user(self, original_msg: discord.Message, pinger: discord.Member, user_id):
         try:
             user = self.bot.get_user(user_id)
             dm_chan = user.dm_channel or await user.create_dm()
-            msg = f"Hi {user.name}! {pinger.mention} pinged you in {original_msg.channel.name} while you were offline:\n{quote_each_line(original_msg.content)}\n"
-            if original_msg.reference is not None:
-                ref_msg = original_msg.reference.resolved
-                if ref_msg is None:
-                    msg += f"As a reply to a message\n"
-                else:
-                    try:
-                        _sender = "you" if (user_id == ref_msg.author.id) else "someone else"
-                        msg += f"As a reply to a message {_sender} sent:\n{quote_each_line(ref_msg.content)}\n"
-                    except Exception as e:
-                        msg += f"As a reply to a deleted message\n"
-                        self.logger.warning(f"Error while trying to get message contents: {e}\n{traceback.format_exc()}")
-                    
+            fmt_msg_chain = self._format_msg_chain(user, original_msg)
+
+            msg = f"Hi {user.name}! {pinger.mention} pinged you in {original_msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
+            
             self.logger.info(f"[_dm_user] Trying to send notification to {user_id}")
             self.logger.debug(f"[_dm_user] [{msg}]")
             await dm_chan.send(content=msg)
         except discord.Forbidden as e:
-            self.logger.warn(f"Forbidden from sending message to user {user_id}")
+            self.logger.info(f"Forbidden from sending message to user {user_id}")
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 

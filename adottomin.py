@@ -167,6 +167,7 @@ async def on_message(msg: discord.Message):
 
 @bot.event
 async def on_member_join(member: discord.Member):
+    channel = bot.get_channel(channel_ids[0])
     app.logger.info(f"[{channel}] {member} just joined")
     try:
         if member.bot:
@@ -174,7 +175,6 @@ async def on_member_join(member: discord.Member):
             return
 
         if member.id == bot.user.id: return
-        channel = bot.get_channel(channel_ids[0])
         
         if RAID_MODE or is_raid_mode():
             app.logger.info(f"[{channel}] Raid mode ON: {member}")
@@ -281,17 +281,17 @@ async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy yo
     os.remove(meme_name)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="supremacy", description="Ask miguel", options=opts, guild_ids=guild_ids)
+@slash.slash(name="supremacy", description="Do you believe?", options=opts, guild_ids=guild_ids)
 async def _supremacy(ctx: SlashContext, **kwargs):
     await _meme(ctx, "supremacy", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="deeznuts", description="Ask miguel", options=opts, guild_ids=guild_ids)
+@slash.slash(name="deeznuts", description="Awww", options=opts, guild_ids=guild_ids)
 async def _deeznuts(ctx: SlashContext, **kwargs):
     await _meme(ctx, "deeznuts", **kwargs)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="pills", description="Ask miguel", options=opts, guild_ids=guild_ids)
+@slash.slash(name="pills", description="You need those pills", options=opts, guild_ids=guild_ids)
 async def _pills(ctx: SlashContext, **kwargs):
     await _meme(ctx, "pills", **kwargs)
 
