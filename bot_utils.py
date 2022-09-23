@@ -22,21 +22,28 @@ class utils:
         self.bot = bot
         self.logger = logger
 
-    def _get_msg_chain(self, original_msg: discord.Message):
+    async def _get_msg_chain(self, original_msg: discord.Message, max_depth = None):
         current = original_msg
         chain = [current]
         while current.reference is not None:
             ref = current.reference.resolved
             if ref is None:
-                chain += [None]
-                break
+                fetched = await original_msg.channel.fetch_message(current.reference.message_id)
+                if fetched is None:
+                    chain += [None]
+                    break
+                ref = fetched
             current = ref
             chain += [current]
+            if max_depth is not None:
+                max_depth -= 1
+                if max_depth <= 0:
+                    break
         return chain
 
-    def _format_msg_chain(self, user: discord.User, original_msg: discord.Message, max_size: int = 1500):
-        msg_chain = self._get_msg_chain(original_msg)
-        msg_fmt = quote_each_line(msg_chain[0]) + "\n"
+    async def _format_msg_chain(self, user: discord.User, original_msg: discord.Message, max_size: int = 1500):
+        msg_chain = await self._get_msg_chain(original_msg)
+        msg_fmt = quote_each_line(msg_chain[0].content) + "\n"
         for message in msg_chain[1:]:
             if message is None:
                 new_line = "As a reply to an unknown message\n"
@@ -58,7 +65,7 @@ class utils:
         try:
             user = self.bot.get_user(user_id)
             dm_chan = user.dm_channel or await user.create_dm()
-            fmt_msg_chain = self._format_msg_chain(user, original_msg)
+            fmt_msg_chain = await self._format_msg_chain(user, original_msg)
 
             msg = f"Hi {user.name}! {pinger.mention} pinged you in {original_msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
