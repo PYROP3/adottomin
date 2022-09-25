@@ -637,7 +637,7 @@ async def _bingo(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
 
-@slash.slash(name="suicide", description="...", options=opts, guild_ids=guild_ids)
+@slash.slash(name="suicide", description="...", guild_ids=guild_ids)
 async def _prevent(ctx: SlashContext, **kwargs):
     admin_user = bot.get_user(admin_id)
     dm_chan = admin_user.dm_channel or await admin_user.create_dm()
