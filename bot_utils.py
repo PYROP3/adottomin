@@ -71,7 +71,7 @@ class utils:
             msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
             
             self.logger.info(f"[_dm_user] Trying to send notification to {user_id}")
-            self.logger.debug(f"[_dm_user] [{msg}]")
+            # self.logger.debug(f"[_dm_user] [{msg}]")
             await dm_chan.send(content=msg)
         except discord.Forbidden as e:
             self.logger.info(f"Forbidden from sending message to user {user_id}")
@@ -82,7 +82,7 @@ class utils:
         if msg.author.bot: return
         for member in msg.mentions:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
-            self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
+            # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if will_send:
                 await self._dm_user(msg, msg.author, member.id)
 
