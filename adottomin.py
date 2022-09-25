@@ -637,6 +637,19 @@ async def _bingo(ctx: SlashContext, **kwargs):
 
     await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
 
+@slash.slash(name="suicide", description="...", options=opts, guild_ids=guild_ids)
+async def _prevent(ctx: SlashContext, **kwargs):
+    admin_user = bot.get_user(admin_id)
+    dm_chan = admin_user.dm_channel or await admin_user.create_dm()
+    await dm_chan.send(content=f"Please check on {ctx.author.mention} if possible")
+
+    msg = f"Hey {ctx.author.display_name}! I hope you're doing okay, and you just tested this command for the memes!\n"
+    msg += f"In any case, please remember you're never alone, alright? You've got lots of people both online and IRL who care about you and maybe you don't even realize it.\n"
+    msg += f"Please please please reach out to someone you trust if you're feeling down. If you need, you can also google \"suicide prevention\" to get the hotline number for your country: https://www.google.com/search?q=suicide+prevention\n"
+    msg += f"Suicide is never the answer, okay? It may seem like they way out in a place of desperation, but you will get through this rough patch... {admin_user.mention} & I believe in you, friend!"
+
+    await ctx.send(content=msg, hidden=True)
+
 opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
 opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
 @slash.slash(name="rawsql", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
