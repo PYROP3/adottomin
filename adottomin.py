@@ -8,6 +8,7 @@ import random
 import traceback
 
 import age_handling
+import bot_logger
 import bot_utils
 import copypasta_utils
 import db
@@ -78,26 +79,10 @@ app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
 # app.logger.addHandler(logging.StreamHandler(sys.stdout))
 
-def log_debug(ctx, msg):
-    app.logger.debug(f"[{ctx.channel}] {msg}")
-
-def log_info(ctx, msg):
-    app.logger.info(f"[{ctx.channel}] {msg}")
-
-def log_warn(ctx, msg):
-    app.logger.warning(f"[{ctx.channel}] {msg}")
-
-def log_error(ctx, msg):
-    app.logger.error(f"[{ctx.channel}] {msg}")
-
-app.logger.info(f"Channel ID = {channel_ids[0]}")
-app.logger.info(f"Guild ID = {guild_ids[0]}")
-app.logger.info(f"Role IDs = {role_ids}")
-app.logger.info(f"Tallly channel IDs = {tally_channel}")
-
-sql = db.database(LENIENCY_COUNT, app.logger)
-age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, sql, app.logger)
+botto_logger = bot_logger.logger(app.logger)
+sql = db.database(LENIENCY_COUNT, botto_logger)
+age_handler = age_handling.age_handler(bot, sql, botto_logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+utils = bot_utils.utils(bot, sql, botto_logger)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -111,15 +96,6 @@ def unset_raid_mode():
     if not is_raid_mode(): return False
     os.remove(RAID_MODE_CTRL)
     return True
-
-async def _dm_log_error(msg):
-    if admin_id is None: return
-    try:
-        admin_user = bot.get_user(admin_id)
-        dm_chan = admin_user.dm_channel or await admin_user.create_dm()
-        await dm_chan.send(content=f"Error thrown during operation:\n```\n{msg}\n```")
-    except Exception as e:
-        app.logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
 
 def _get_message_for_age(ctx: SlashContext, age_data, mention):
     if age_data is None:
@@ -137,54 +113,54 @@ def _get_message_for_age(ctx: SlashContext, age_data, mention):
 
 @bot.event
 async def on_ready():
-    app.logger.info(f"{bot.user} has connected to Discord")
+    admin_user = bot.get_user(admin_id)
+    botto_logger.inject_dm(admin_user.dm_channel or await admin_user.create_dm())
+    await botto_logger.info(f"{bot.user} has connected to Discord")
+    
 
 @bot.event
 async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
-    # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
+    # await botto_logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
     try:
         await age_handler.handle_age(msg)
     except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during handle_age: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message::handle_age\n{e}\n{traceback.format_exc()}")
+        await botto_logger.error(f"[{msg.channel}] Error during handle_age: {e}\n{traceback.format_exc()}")
 
     try:
         await utils.handle_offline_mentions(msg)
     except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
+        await botto_logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
         
     if not msg.author.bot:
         try:
             sql.register_message(msg.author.id, msg.id, msg.channel.id)
         except Exception as e:
-            app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
-            await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
+            await botto_logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
     else:
-        app.logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
+        await botto_logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
 
 @bot.event
 async def on_member_join(member: discord.Member):
     channel = bot.get_channel(channel_ids[0])
-    app.logger.info(f"[{channel}] {member} just joined")
+    await botto_logger.info(f"[{channel}] {member} just joined")
     try:
         if member.bot:
-            app.logger.info(f"[{channel}] {member} is a bot, ignoring")
+            await botto_logger.info(f"[{channel}] {member} is a bot, ignoring")
             return
 
         if member.id == bot.user.id: return
         
         if RAID_MODE or is_raid_mode():
-            app.logger.info(f"[{channel}] Raid mode ON: {member}")
+            await botto_logger.info(f"[{channel}] Raid mode ON: {member}")
             await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
             return
 
         autoblock = sql.is_autoblocked(member.id)
         if autoblock is not None:
             mod, reason, date = autoblock
-            app.logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
+            await botto_logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
             await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
             return
 
@@ -193,39 +169,36 @@ async def on_member_join(member: discord.Member):
 
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
-            app.logger.debug(f"[{channel}] {member} Waiting to send reminder")
+            await botto_logger.debug(f"[{channel}] {member} Waiting to send reminder")
             await asyncio.sleep(LENIENCY_REMINDER_TIME_S)
             try:
                 must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
                 if not must_continue:
-                    app.logger.debug(f"[{channel}] Early exit on_member_join")
+                    await botto_logger.debug(f"[{channel}] Early exit on_member_join")
                     return
                 else:
-                    app.logger.debug(f"[{channel}] {member} Sending reminder message")
+                    await botto_logger.debug(f"[{channel}] {member} Sending reminder message")
                     await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
             except Exception as e:
-                app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
-                await _dm_log_error(f"[{channel}] [reminder] do_age_check\n{e}\n{traceback.format_exc()}")
+                await botto_logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
 
         await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
         try:
             await age_handler.do_age_check(channel, member)
         except Exception as e:
-            app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
-            await _dm_log_error(f"[{channel}] [final] do_age_check\n{e}\n{traceback.format_exc()}")
+            await botto_logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
         
-        app.logger.debug(f"[{channel}] Exit on_member_join")
+        await botto_logger.debug(f"[{channel}] Exit on_member_join")
 
     except Exception as e:
-        app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
-        app.logger.debug(f"[{channel}] Error exit on_member_join")
+        await botto_logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+        await botto_logger.debug(f"[{channel}] Error exit on_member_join")
 
 opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
 @slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)
 async def _raidmode(ctx: SlashContext, **kwargs):
     if not (divine_role_id in [role.id for role in ctx.author.roles]):
-        log_debug(ctx, f"{ctx.author} cannot use raidmode")
+        await botto_logger.debug(f"{ctx.author} cannot use raidmode", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
@@ -233,30 +206,30 @@ async def _raidmode(ctx: SlashContext, **kwargs):
     turn_on = args[0]
     if turn_on:
         if set_raid_mode():
-            log_info(ctx, f"{ctx.author} enabled raidmode")
+            await botto_logger.info(f"{ctx.author} enabled raidmode", ctx=ctx)
             await ctx.send(content=MSG_RAID_MODE_ON.format(ctx.author.mention), hidden=False)
         else:
-            log_debug(ctx, f"{ctx.author} enabled raidmode (already enabled)")
+            await botto_logger.debug(f"{ctx.author} enabled raidmode (already enabled)", ctx=ctx)
             await ctx.send(content=MSG_RAID_MODE_ON_ALREADY, hidden=True)
     else:
         if unset_raid_mode():
-            log_info(ctx, f"{ctx.author} disabled raidmode")
+            await botto_logger.info(f"{ctx.author} disabled raidmode", ctx=ctx)
             await ctx.send(content=MSG_RAID_MODE_OFF.format(ctx.author.mention), hidden=False)
         else:
-            log_debug(ctx, f"{ctx.author} disabled raidmode (already disabled)")
+            await botto_logger.debug(f"{ctx.author} disabled raidmode (already disabled)", ctx=ctx)
             await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
 async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy your fresh meme~", **kwargs):
     await ctx.defer()
 
-    log_info(ctx, f"{ctx.author} requested {meme_code}")
+    await botto_logger.info(f"{ctx.author} requested {meme_code}", ctx=ctx)
 
     _icon = await utils.get_icon(**kwargs)
     _text = text or utils.get_text(**kwargs)
-    log_debug(ctx, f"icon={_icon}, text={_text}")
+    await botto_logger.debug(f"icon={_icon}, text={_text}", ctx=ctx)
 
     meme_name = memes.create_meme(meme_code, icon=_icon, text=_text)
-    log_debug(ctx, f"meme_name={meme_name}")
+    await botto_logger.debug(f"meme_name={meme_name}", ctx=ctx)
 
     if meme_name is None:
         await ctx.send(content="Oops, there was an error~")
@@ -314,7 +287,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
 async def _shipme(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
-    log_info(ctx, f"{ctx.author} requested ship with {user}")
+    await botto_logger.info(f"{ctx.author} requested ship with {user}", ctx=ctx)
     if (user.id == ctx.author_id):
         await ctx.send(content=f"No selfcest, {ctx.author.mention}!", hidden=False)
         return
@@ -344,7 +317,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="gayrate", description="Rate your gae!", options=opts, guild_ids=guild_ids)
 async def _gayrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
-    log_info(ctx, f"{ctx.author} requested gayrate for {user}")
+    await botto_logger.info(f"{ctx.author} requested gayrate for {user}", ctx=ctx)
     if (user.id == bot.user.id):
         await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
         return
@@ -357,7 +330,7 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 @slash.slash(name="hornyrate", description="Rate your horny!", options=opts, guild_ids=guild_ids)
 async def _hornyrate(ctx: SlashContext, **kwargs):
     user = kwargs["user"] if "user" in kwargs else ctx.author
-    log_info(ctx, f"{ctx.author} requested hornyrate for {user}")
+    await botto_logger.info(f"{ctx.author} requested hornyrate for {user}", ctx=ctx)
     if (user.id == bot.user.id):
         await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
         return
@@ -378,7 +351,7 @@ opts = [discord_slash.manage_commands.create_option(name="expression", descripti
 @slash.slash(name="boomersplain", description="Explain it like you're a boomer", options=opts, guild_ids=guild_ids)
 async def _boomersplain(ctx: SlashContext, **kwargs):
     term = kwargs["expression"]
-    log_info(ctx, f"{ctx.author} requested definition for {term}")
+    await botto_logger.info(f"{ctx.author} requested definition for {term}", ctx=ctx)
 
     formatted_definition = memes.get_formatted_definition(term)
 
@@ -390,7 +363,7 @@ async def _horny(ctx: SlashContext, **kwargs):
     await ctx.defer()
 
     user = kwargs["user"] if "user" in kwargs else None
-    log_info(ctx, f"{ctx.author} requested No Horny for {user}")
+    await botto_logger.info(f"{ctx.author} requested No Horny for {user}", ctx=ctx)
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
 
@@ -406,14 +379,14 @@ opts = [discord_slash.manage_commands.create_option(name="range", description="M
 async def _report(ctx: SlashContext, **kwargs):
     await ctx.defer()
 
-    log_info(ctx, f"{ctx.author} requested report")
+    await botto_logger.info(f"{ctx.author} requested report", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
-        log_debug(ctx, f"{ctx.author} cannot get report")
+        await botto_logger.debug(f"{ctx.author} cannot get report", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
-    report_name = graphlytics.generate_new_user_graph(app.logger, kwargs["range"] if "range" in kwargs else None)
-    log_debug(ctx, f"report_name={report_name}")
+    report_name = graphlytics.generate_new_user_graph(botto_logger, kwargs["range"] if "range" in kwargs else None)
+    await botto_logger.debug(f"report_name={report_name}", ctx=ctx)
     report_file = discord.File(report_name, filename=f"user_report.png")
 
     await ctx.send(content=f"Here you go~", file=report_file)
@@ -427,28 +400,28 @@ async def _strike(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
     reason = kwargs["reason"] if "reason" in kwargs else ""
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested strike for {user}: '{reason}'")
+    await botto_logger.info(f"{ctx.author} requested strike for {user}: '{reason}'", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(ctx, f"{ctx.author} cannot warn people")
+        await botto_logger.debug(f"{ctx.author} cannot warn people", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
     _user_roles = [role.id for role in user.roles]
     if (divine_role_id in _user_roles or secretary_role_id in _user_roles):
-        log_debug(ctx, f"{user} cannot be warned")
+        await botto_logger.debug(f"{user} cannot be warned", ctx=ctx)
         await ctx.send(content=MSG_CANT_DO_IT, hidden=True)
         return
 
     active_strikes = sql.create_warning(user.id, ctx.author_id, reason, WARNING_VALIDITY_DAYS)
 
     if active_strikes < WARNINGS_BEFORE_BAN:
-        log_info(ctx, f"{user} now has {active_strikes} active strikes")
+        await botto_logger.info(f"{user} now has {active_strikes} active strikes", ctx=ctx)
         msg = f"{user.mention} is being warned by {ctx.author.mention}! That's {active_strikes} strikes so far~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
         await ctx.send(content=msg, hidden=False)
     else:
-        log_info(ctx, f"{user} now has {active_strikes} active strikes, and will be banned")
+        await botto_logger.info(f"{user} now has {active_strikes} active strikes, and will be banned", ctx=ctx)
         msg = f"{user.mention} is being warned by {ctx.author.mention}! That's {active_strikes} strikes, and so you must go~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
@@ -461,9 +434,9 @@ opts += [discord_slash.manage_commands.create_option(name="all", description="Ge
 async def _get_strikes(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
     get_all = "all" in kwargs and kwargs["all"]
-    log_info(ctx, f"{ctx.author} requested strikes for {user}")
+    await botto_logger.info(f"{ctx.author} requested strikes for {user}", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
-        log_debug(ctx, f"{ctx.author} cannot get strikes")
+        await botto_logger.debug(f"{ctx.author} cannot get strikes", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
@@ -489,27 +462,27 @@ async def _promote(ctx: SlashContext, **kwargs):
     user = kwargs["user"]
     reason = kwargs["reason"] if "reason" in kwargs else ""
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested promotion for {user}")
+    await botto_logger.info(f"{ctx.author} requested promotion for {user}", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(ctx, f"{ctx.author} cannot promote people")
+        await botto_logger.debug(f"{ctx.author} cannot promote people", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
     _user_roles = [role.id for role in user.roles]
     if friends_role_ids[2] in _user_roles:
-        log_debug(ctx, f"{user} already at max tier")
+        await botto_logger.debug(f"{user} already at max tier", ctx=ctx)
         await ctx.send(content=MSG_USER_ALREADY_MAXED, hidden=True)
         return
 
     if friends_role_ids[1] in _user_roles:
-        log_debug(ctx, f"{user} will NOT be promoted to tier 3")
+        await botto_logger.debug(f"{user} will NOT be promoted to tier 3", ctx=ctx)
         await ctx.send(content="Khris said no promotions to t3~", hidden=True)
         return
         # msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
         # new_role_id = friends_role_ids[2]
         
     else:
-        log_debug(ctx, f"{user} will be promoted to tier 2")
+        await botto_logger.debug(f"{user} will be promoted to tier 2", ctx=ctx)
         msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
         new_role_id = friends_role_ids[1]
         
@@ -519,8 +492,8 @@ async def _promote(ctx: SlashContext, **kwargs):
         await member.add_roles(new_role, reason=f"{ctx.author} said so")
         await ctx.send(content=msg, hidden=False)
     except discord.HTTPException as e:
-        log_error(ctx, f"Failed to give role {new_role} to {user}")
-        log_debug(ctx, e)
+        await botto_logger.error(f"Failed to give role {new_role} to {user}", ctx=ctx)
+        await botto_logger.debug(e, ctx=ctx)
         await ctx.send(content="I still can't give promotions and it's probably Khris' fault~", hidden=True)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
@@ -530,9 +503,9 @@ async def _age(ctx: SlashContext, **kwargs):
 
     user = kwargs["user"]
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested age for {user}")
+    await botto_logger.info(f"{ctx.author} requested age for {user}", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(ctx, f"{ctx.author} cannot check ages")
+        await botto_logger.debug(f"{ctx.author} cannot check ages", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
         
@@ -541,7 +514,7 @@ async def _age(ctx: SlashContext, **kwargs):
 
     msg = _get_message_for_age(ctx, age_data, mention)
 
-    log_debug(ctx, f"{msg}")
+    await botto_logger.debug(f"{msg}", ctx=ctx)
     await ctx.send(content=msg, hidden=True)
 
 opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
@@ -551,16 +524,16 @@ async def _idage(ctx: SlashContext, **kwargs):
     
     _user_id = kwargs["user_id"]
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested age for ID {_user_id}")
+    await botto_logger.info(f"{ctx.author} requested age for ID {_user_id}", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(ctx, f"{ctx.author} cannot check ages")
+        await botto_logger.debug(f"{ctx.author} cannot check ages", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
     try:
         user_id = int(_user_id)
     except ValueError:
-        log_debug(ctx, f"{ctx.author} {_user_id} casting failed")
+        await botto_logger.debug(f"{ctx.author} {_user_id} casting failed", ctx=ctx)
         await ctx.send(content="That is not a valid ID", hidden=True)
         return
         
@@ -570,7 +543,7 @@ async def _idage(ctx: SlashContext, **kwargs):
 
     msg = _get_message_for_age(ctx, age_data, mention)
 
-    log_debug(ctx, f"{msg}")
+    await botto_logger.debug(f"{msg}", ctx=ctx)
     await ctx.send(content=msg, hidden=True)
 
 opts = [discord_slash.manage_commands.create_option(name="pasta", description="Copy pasta", option_type=3, required=True, choices=copypasta_utils.AVAILABLE_PASTAS)]
@@ -581,7 +554,7 @@ async def _pasta(ctx: SlashContext, **kwargs):
     _pasta = kwargs["pasta"]
     _name = kwargs["name"]
     _pronouns = kwargs["pronouns"]
-    log_info(ctx, f"{ctx.author} requested copypasta: {_pasta} for {_name} ({_pronouns})")
+    await botto_logger.info(f"{ctx.author} requested copypasta: {_pasta} for {_name} ({_pronouns})", ctx=ctx)
 
     if "botto" in _name.lower():
         await ctx.send(content=f"I'm not gonna write myself into your copypasta, {ctx.author.mention}~", hidden=False)
@@ -598,7 +571,7 @@ opts = [discord_slash.manage_commands.create_option(name="enable", description="
 @slash.slash(name="offlinepings", description="Update settings on whether to notify you about pings while you're offline", options=opts, guild_ids=guild_ids)
 async def _offlinepings(ctx: SlashContext, **kwargs):
     _state = kwargs["enable"]
-    log_info(ctx, f"{ctx.author} requested offlinepings: {_state}")
+    await botto_logger.info(f"{ctx.author} requested offlinepings: {_state}", ctx=ctx)
 
     if _state == "on":
         sql.remove_from_offline_ping_blocklist(ctx.author_id)
@@ -613,9 +586,9 @@ opts += [discord_slash.manage_commands.create_option(name="user", description="U
 async def _activity(ctx: SlashContext, **kwargs):
     await ctx.defer()
 
-    log_info(ctx, f"{ctx.author} requested activity")
+    await botto_logger.info(f"{ctx.author} requested activity", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
-        log_debug(ctx, f"{ctx.author} cannot get activity")
+        await botto_logger.debug(f"{ctx.author} cannot get activity", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
@@ -628,10 +601,10 @@ async def _bingo(ctx: SlashContext, **kwargs):
 
     if "bingo" in kwargs:
         bingo_name = memes.bingo_filepath(kwargs["bingo"])
-        log_info(ctx, f"{ctx.author} requested bingo: {bingo_name}")
+        await botto_logger.info(f"{ctx.author} requested bingo: {bingo_name}", ctx=ctx)
     else:
         bingo_name = memes.bingo_filepath(random.choice(memes.get_bingos()))
-        log_info(ctx, f"{ctx.author} requested random bingo: {bingo_name}")
+        await botto_logger.info(f"{ctx.author} requested random bingo: {bingo_name}", ctx=ctx)
 
     bingo_file = discord.File(bingo_name, filename=f"bingo.png")
 
@@ -658,21 +631,20 @@ async def _rawsql(ctx: SlashContext, **kwargs):
     
     _file = kwargs["file"]
     _query = kwargs["query"]
-    log_info(ctx, f"{ctx.author} requested sql query for {_file}")
+    await botto_logger.info(f"{ctx.author} requested sql query for {_file}", ctx=ctx)
     if (ctx.author_id != admin_id):
-        log_debug(ctx, f"{ctx.author} cannot query db")
+        await botto_logger.debug(f"{ctx.author} cannot query db", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
     try:
         data = sql.raw_sql(_file, _query)
     except sqlite3.DatabaseError as e:
-        log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
+        await botto_logger.debug(f"{ctx.author} query [{_query}] failed : {e}", ctx=ctx)
         await ctx.send(content=f"Failed to execute query [{_query}]:\n```\n{traceback.format_exc()}\n```", hidden=True)
         return
     except Exception as e:
-        log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
-        await _dm_log_error(f"[{ctx.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
+        await botto_logger.error(f"{ctx.author} query [{_query}] failed : {e}", ctx=ctx)
         await ctx.send(content="Failed to execute query", hidden=True)
         return
         
@@ -697,16 +669,16 @@ async def _autoblock(ctx: SlashContext, **kwargs):
     reason = kwargs["reason"]
     mod = ctx.author
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested age for {user}")
+    await botto_logger.info(f"{ctx.author} requested age for {user}", ctx=ctx)
     if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(ctx, f"{ctx.author} cannot autoblock")
+        await botto_logger.debug(f"{ctx.author} cannot autoblock", ctx=ctx)
         await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
     try:
         user_id = int(user)
     except:
-        log_debug(ctx, f"{user} is not a valid ID")
+        await botto_logger.error(f"{user} is not a valid ID", ctx=ctx)
         await ctx.send(content=f"{user} is not a valid ID", hidden=True)
         return
         
