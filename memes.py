@@ -99,18 +99,19 @@ def automeme(template, rules):
         im.save(name, "PNG")
     return name
 
-def _args_for(id: str, icon: str=None, text=None):
+def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
     if id == "supremacy": return [_args_text(text, (800, 150), (600, 310)), _args_icon(icon, (300,300), (220, 563))], # (1200, 1127)
     if id == "deeznuts": return [_args_icon(icon, (598, 582), (0, 582))], # (1196, 1165)
     if id == "pills": return [_args_icon(icon, (150, 150), (250, 220))],
     if id == "bromeme": return [_args_icon(icon, (270, 270), (575, 205))], # (828, 807)
     if id == "needs": return [_args_text(text, (210, 280), (377, 402))],
     if id == "fivemins": return [_args_icon(icon, (150, 150), (244, 735))],
+    if id == "sally": return [_args_icon(icon, (150, 150), (300, 362)), _args_icon(author_icon, (150, 150), (463, 371))]
     if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
                 for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
 
-def create_meme(id: str, icon: str=None, text=None):
-    return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, icon=icon, text=text)[0])
+def create_meme(id: str, author_icon: str=None, icon: str=None, text: str=None):
+    return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, author_icon=author_icon, icon=icon, text=text)[0])
 
 def percent_from(content, daily=True):
     if daily:

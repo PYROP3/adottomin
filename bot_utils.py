@@ -86,11 +86,11 @@ class utils:
             if will_send:
                 await self._dm_user(msg, msg.author, member.id)
 
-    async def get_icon(self, **kwargs):
+    async def get_icon_default(self, **kwargs):
         if "user" not in kwargs: return None
-        user = kwargs["user"]
-        # self.logger.debug(f"user={user} / {type(user)}")
+        return self.get_user_icon(kwargs["user"])
 
+    async def get_user_icon(self, user):
         try:
             self.logger.debug(f"avatar={user.avatar}")
             av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
@@ -105,6 +105,7 @@ class utils:
         except Exception as e:
             self.logger.error(f"Error while trying to get avatar: {e}\n{traceback.format_exc()}")
             return None
+
 
     def _get_display_name(self, **kwargs):
         if "user" not in kwargs: return None

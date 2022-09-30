@@ -251,11 +251,12 @@ async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy yo
 
     log_info(ctx, f"{ctx.author} requested {meme_code}")
 
-    _icon = await utils.get_icon(**kwargs)
+    _icon = await utils.get_icon_default(**kwargs)
+    _author_icon = await utils.get_user_icon(ctx.author)
     _text = text or utils.get_text(**kwargs)
     log_debug(ctx, f"icon={_icon}, text={_text}")
 
-    meme_name = memes.create_meme(meme_code, icon=_icon, text=_text)
+    meme_name = memes.create_meme(meme_code, author_icon=_author_icon, icon=_icon, text=_text)
     log_debug(ctx, f"meme_name={meme_name}")
 
     if meme_name is None:
