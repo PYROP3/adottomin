@@ -88,7 +88,7 @@ class utils:
 
     async def get_icon_default(self, **kwargs):
         if "user" not in kwargs: return None
-        return self.get_user_icon(kwargs["user"])
+        return await self.get_user_icon(kwargs["user"])
 
     async def get_user_icon(self, user):
         try:
