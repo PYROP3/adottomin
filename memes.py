@@ -111,6 +111,7 @@ def _args_for(id: str, icon: str=None, text=None):
     if id == "pills": return [_args_icon(icon, (150, 150), (250, 220))],
     if id == "bromeme": return [_args_icon(icon, (270, 270), (575, 205))], # (828, 807)
     if id == "needs": return [_args_text(text, (210, 280), (377, 402))],
+    if id == "fivemins": return [_args_icon(icon, (150, 150), (244, 735))],
     if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
                 for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
 
