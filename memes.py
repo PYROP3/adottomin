@@ -88,9 +88,9 @@ def automeme(template, rules):
         draw = ImageDraw.Draw(im)
         # print(f"got rules={rules} for {template}")
         for thing in rules:
-            print(f"thing=[{thing}]")
+            # print(f"thing=[{thing}]")
             (rule, args) = thing
-            print(f"thing=[{thing}], rule=[{rule}], args=[{args}]")
+            # print(f"thing=[{thing}], rule=[{rule}], args=[{args}]")
             try:
                 _baserules[rule](im, draw, args)
             except Exception as e:
