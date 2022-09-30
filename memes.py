@@ -10,12 +10,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 memes_folder = "meme_stuff"
 
-sup_template = f"{memes_folder}/supremacy_template.png"
-nuts_template = f"{memes_folder}/nuts_template.png"
-pills_template = f"{memes_folder}/pills_template.png"
-bromeme_template = f"{memes_folder}/bromeme_template.png"
-needs_template = f"{memes_folder}/needs_template.png"
-bingo_template = f"{memes_folder}/bingo_template.png"
 no_horny = f"{memes_folder}/no_horny.png"
 
 use_pilmoji = False
