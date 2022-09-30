@@ -102,7 +102,7 @@ def automeme(template, rules):
     return name
 
 def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
-    if id == "supremacy": return [_args_text(text, (800, 150), (600, 310)), _args_icon(icon, (300,300), (220, 563))], # (1200, 1127)
+    if id == "supremacy": return [_args_text(text, (800, 150), (600, 310)), _args_icon(icon, (300,300), (220, 563))] # (1200, 1127)
     if id == "deeznuts": return [_args_icon(icon, (598, 582), (0, 582))] # (1196, 1165)
     if id == "pills": return [_args_icon(icon, (150, 150), (250, 220))]
     if id == "bromeme": return [_args_icon(icon, (270, 270), (575, 205))] # (828, 807)
