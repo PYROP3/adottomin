@@ -306,6 +306,11 @@ opts = [discord_slash.manage_commands.create_option(name="user", description="Wh
 async def _mig(ctx: SlashContext, **kwargs):
     await _meme(ctx, "fivemins", **kwargs)
 
+opts = [discord_slash.manage_commands.create_option(name="user", description="Who else to use in the meme", option_type=6, required=True)]
+@slash.slash(name="sally", description="Your loss", options=opts, guild_ids=guild_ids)
+async def _mig(ctx: SlashContext, **kwargs):
+    await _meme(ctx, "sally", **kwargs)
+
 opts = [discord_slash.manage_commands.create_option(name="contents", description="What to say in the meme", option_type=3, required=True)]
 @slash.slash(name="needs", description="Traditional Maslow's hierarchy", options=opts, guild_ids=guild_ids)
 async def _needs(ctx: SlashContext, **kwargs):
