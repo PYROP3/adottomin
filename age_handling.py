@@ -77,7 +77,7 @@ class age_handler:
             await self.kick_or_ban(msg.author, reason=REASON_TIMEOUT)
 
     async def kick_or_ban(self, member, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
-        channel = self.greeting_channel
+        channel = self.bot.get_channel(self.greeting_channel)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{channel}] {member} Will ban user (force={force_ban})")
             await self.do_ban(channel, member, reason=reason)
