@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import sqlite3
 import discord
 import discord_slash
@@ -68,6 +69,20 @@ friends_role_ids = [
     1002382914526400703, # Tier 1
     1002676012573794394, # Tier 2
     1002676963485417592 # Tier 3
+]
+
+game_channel_ids = [
+    1006949968826863636,
+    1006947536671617094,
+    1006947561401241609,
+    1006947572646162452,
+    1006955372621336636,
+    1006955386332532827,
+    1012234333207146496,
+    1012236248703836281,
+    1006961455297470535,
+    1006961469214163056,
+    1006961483869077664
 ]
 
 admin_id = int(os.getenv('ADMIN_ID'))
@@ -697,6 +712,46 @@ async def _rawsql(ctx: SlashContext, **kwargs):
             aux = "```\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
     await ctx.send(content=msg, hidden=True)
+
+opts = [discord_slash.manage_commands.create_option(name="date", description="When to fetch data", option_type=3, required=False)]
+@slash.slash(name="dailytopten", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
+async def _rawsql(ctx: SlashContext, **kwargs):
+    await ctx.defer(hidden=True)
+    
+    _date = kwargs["date"] if "date" in kwargs else (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    log_info(ctx, f"{ctx.author} requested daily top 10 for {_date}")
+    if (ctx.author_id != admin_id):
+        log_debug(ctx, f"{ctx.author} cannot query db")
+        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        return
+
+    try:
+        data = sql.get_dailytopten(_date, game_channel_ids)
+    except sqlite3.DatabaseError as e:
+        log_debug(ctx, f"{ctx.author} query daily top ten failed : {e}")
+        await ctx.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", hidden=True)
+        return
+    except Exception as e:
+        log_debug(ctx, f"{ctx.author} query for daily top ten failed : {e}")
+        await _dm_log_error(f"[{ctx.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
+        await ctx.send(content="Failed to execute query", hidden=True)
+        return
+        
+    if data is None:
+        msg = "Your query returned None"
+        _hidden = True
+    else:
+        msg = f"Top 10 users for {_date}!\n"
+        msg += f":first_place: | {data[0][0]} | {data[0][1]}\n"
+        msg += f":second_place: | {data[1][0]} | {data[1][1]}\n"
+        msg += f":third_place: | {data[2][0]} | {data[2][1]}\n"
+        msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data, start=3))
+        msg += "\n"
+        if len(msg) > 2000:
+            aux = "\nTRUNC"
+            msg = msg[:2000-len(aux)-1] + aux
+        _hidden = True
+    await ctx.send(content=msg, hidden=_hidden)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
 opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
