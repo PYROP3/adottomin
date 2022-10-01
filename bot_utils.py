@@ -70,7 +70,7 @@ class utils:
             msg = f"Hi {user.name}! {pinger.mention} pinged you in {original_msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
             
-            self.logger.info(f"[_dm_user] Trying to send notification to {user_id}")
+            # self.logger.debug(f"[_dm_user] Trying to send notification to {user_id}")
             # self.logger.debug(f"[_dm_user] [{msg}]")
             await dm_chan.send(content=msg)
         except discord.Forbidden as e:
