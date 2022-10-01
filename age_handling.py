@@ -28,6 +28,8 @@ class age_handler:
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
         
         # Age regex
+        self.mention_prog = re.compile(r"<@[0-9]+>")
+        self.url_prog = re.compile(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)")
         self.age_prog = re.compile(r"(18|19|[2-9][0-9]+)") # 18, 19 or 20+
         self.minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
@@ -38,13 +40,15 @@ class age_handler:
         
         self.logger.debug(f"[{msg.channel}] {msg.author} is still on watchlist, parsing message")
 
-        if self.is_insta_ban(msg.content):
-            age = self.get_ban_age(msg.content)
+        data = self.mention_prog.sub("", msg.content)
+        data = self.url_prog.sub("", data)
+        if self.is_insta_ban(data):
+            age = self.get_ban_age(data)
             self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid age ({age})")
             await self.kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
-        elif self.is_valid_age(msg.content):
-            age = self.get_age(msg.content)
+        elif self.is_valid_age(data):
+            age = self.get_age(data)
             if age > AGE_MAX:
                 self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
                 self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
