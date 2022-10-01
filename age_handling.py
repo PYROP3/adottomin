@@ -45,7 +45,7 @@ class age_handler:
         if self.is_insta_ban(data):
             age = self.get_ban_age(data)
             self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid age ({age})")
-            await self.kick_or_ban(msg.author, msg.channel, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
+            await self.kick_or_ban(msg.author, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
         elif self.is_valid_age(data):
             age = self.get_age(data)
@@ -74,9 +74,10 @@ class age_handler:
 
         else:
             self.logger.debug(f"[{msg.channel}] {msg.author} is out of messages")
-            await self.kick_or_ban(msg.author, msg.channel, reason=REASON_TIMEOUT)
+            await self.kick_or_ban(msg.author, reason=REASON_TIMEOUT)
 
-    async def kick_or_ban(self, member, channel, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
+    async def kick_or_ban(self, member, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
+        channel = self.greeting_channel
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{channel}] {member} Will ban user (force={force_ban})")
             await self.do_ban(channel, member, reason=reason)
@@ -170,11 +171,11 @@ class age_handler:
                 if age_role is None:
                     self.logger.debug(f"[{channel}] {member} No age role")
                     if not is_reminder:
-                        await self.kick_or_ban(member, channel, reason=REASON_TIMEOUT)
+                        await self.kick_or_ban(member, reason=REASON_TIMEOUT)
 
                 elif role_count > 2:
                     self.logger.debug(f"[{channel}] {member} Too many roles")
-                    await self.kick_or_ban(member, channel, reason=REASON_SPAM)
+                    await self.kick_or_ban(member, reason=REASON_SPAM)
                     must_continue = False
 
                 else:
