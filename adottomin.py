@@ -153,6 +153,7 @@ def _get_message_for_age(ctx: SlashContext, age_data, mention):
 @bot.event
 async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
+    utils.inject_admin(bot.get_user(admin_id))
 
 @bot.event
 async def on_message(msg: discord.Message):
@@ -170,6 +171,12 @@ async def on_message(msg: discord.Message):
     except Exception as e:
         app.logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
+
+    try:
+        await utils.handle_dm(msg)
+    except Exception as e:
+        app.logger.error(f"[{msg.channel}] Error during handle_dm: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"[{msg.channel}] on_message::handle_dm\n{e}\n{traceback.format_exc()}")
         
     if not msg.author.bot:
         try:
@@ -714,6 +721,7 @@ async def _rawsql(ctx: SlashContext, **kwargs):
     await ctx.send(content=msg, hidden=True)
 
 opts = [discord_slash.manage_commands.create_option(name="date", description="When to fetch data", option_type=3, required=False)]
+opts += [discord_slash.manage_commands.create_option(name="hidden", description="Hide or show response", option_type=5, required=False)]
 @slash.slash(name="dailytopten", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
 async def _rawsql(ctx: SlashContext, **kwargs):
     await ctx.defer(hidden=True)
@@ -738,6 +746,7 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         await ctx.send(content="Failed to execute query", hidden=True)
         return
         
+    _hidden = kwargs["hidden"] if "hidden" in kwargs else True
     if data is None:
         msg = "Your query returned None"
         _hidden = True
@@ -748,7 +757,6 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-        _hidden = True
     await ctx.send(content=msg, hidden=_hidden)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]

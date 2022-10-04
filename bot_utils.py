@@ -22,6 +22,10 @@ class utils:
         self.database = database
         self.bot = bot
         self.logger = logger
+        self.admin = None
+
+    def inject_admin(self, admin):
+        self.admin = admin
 
     async def _get_msg_chain(self, original_msg: discord.Message, max_depth = None):
         current = original_msg
@@ -62,20 +66,16 @@ class utils:
             msg_fmt += new_line
         return msg_fmt.replace(user.mention, user.display_name)
 
-    async def _dm_user(self, original_msg: discord.Message, pinger: discord.Member, user_id):
+    async def _dm_user(self, msg: str, user):
         try:
-            user = self.bot.get_user(user_id)
+            # user = self.bot.get_user(user_id)
             dm_chan = user.dm_channel or await user.create_dm()
-            fmt_msg_chain = await self._format_msg_chain(user, original_msg)
-
-            msg = f"Hi {user.name}! {pinger.mention} pinged you in {original_msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
-            msg += "You can disable these notifications with `/offlinepings off` in the server if you want!"
             
             # self.logger.debug(f"[_dm_user] Trying to send notification to {user_id}")
             # self.logger.debug(f"[_dm_user] [{msg}]")
-            await dm_chan.send(content=msg)
+            return await dm_chan.send(content=msg)
         except discord.Forbidden as e:
-            self.logger.info(f"Forbidden from sending message to user {user_id}")
+            self.logger.info(f"Forbidden from sending message to user {user.id}")
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
@@ -85,7 +85,11 @@ class utils:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if will_send:
-                await self._dm_user(msg, msg.author, member.id)
+                fmt_msg_chain = await self._format_msg_chain(member, msg)
+
+                content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
+                content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
+                await self._split_dm(content, member)
 
     async def get_icon_default(self, **kwargs):
         if "user" not in kwargs: return None
@@ -142,3 +146,15 @@ class utils:
         if pos == 2: return ":second_place:"
         if pos == 3: return ":third_place:"
         return str(pos)
+
+    async def handle_dm(self, msg: discord.Message):
+        if msg.channel.type != discord.ChannelType.private: return
+        content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
+        await self._split_dm(content, self.admin)
+
+    async def _split_dm(self, content, user):
+        msg = await self._dm_user(content[:2000], user)
+        content = content[2000:]
+        while len(content) > 0:
+            msg = await msg.reply(content=content[:2000])
+            content = content[2000:]
