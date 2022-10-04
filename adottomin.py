@@ -155,28 +155,23 @@ async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
 
+message_handlers = [
+    age_handler.handle_age,
+    utils.handle_offline_mentions,
+    utils.handle_dm
+]
+
 @bot.event
 async def on_message(msg: discord.Message):
     if msg.author.id == bot.user.id or len(msg.content) == 0: return
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    try:
-        await age_handler.handle_age(msg)
-    except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during handle_age: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message::handle_age\n{e}\n{traceback.format_exc()}")
-
-    try:
-        await utils.handle_offline_mentions(msg)
-    except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during handle_offline_mentions: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message::handle_offline_mentions\n{e}\n{traceback.format_exc()}")
-
-    try:
-        await utils.handle_dm(msg)
-    except Exception as e:
-        app.logger.error(f"[{msg.channel}] Error during handle_dm: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"[{msg.channel}] on_message::handle_dm\n{e}\n{traceback.format_exc()}")
+    for handle in message_handlers:
+        try:
+            handle(msg)
+        except Exception as e:
+            app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
         
     if not msg.author.bot:
         try:
