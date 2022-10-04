@@ -136,3 +136,9 @@ class utils:
 
     def to_mention(self, user: str):
         return f"<@{user}>"
+
+    def to_podium(self, pos: int):
+        if pos == 1: return ":first_place:"
+        if pos == 2: return ":second_place:"
+        if pos == 3: return ":third_place:"
+        return str(pos)
