@@ -6,6 +6,7 @@ import string
 
 import db
 
+from datetime import datetime
 from discord.ext import commands
 from discord_slash import SlashContext
 
@@ -122,3 +123,16 @@ class utils:
 
     def get_text(self, **kwargs):
         return self._get_display_name(**kwargs) or self._fallback_get_text(**kwargs)
+
+    def to_ord(self, num):
+        _num = int(num) % 10
+        if _num == 1: return "st"
+        if _num == 2: return "nd"
+        if _num == 3: return "rd"
+        return "th"
+
+    def to_date(self, date: datetime):
+        return datetime.strftime("%B %-d") + self.to_ord(date.day)
+
+    def to_mention(self, user: str):
+        return f"<@{user}>"

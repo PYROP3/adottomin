@@ -719,6 +719,7 @@ async def _rawsql(ctx: SlashContext, **kwargs):
     await ctx.defer(hidden=True)
     
     _date = kwargs["date"] if "date" in kwargs else (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
     log_info(ctx, f"{ctx.author} requested daily top 10 for {_date}")
     if (ctx.author_id != admin_id):
         log_debug(ctx, f"{ctx.author} cannot query db")
@@ -741,11 +742,11 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         msg = "Your query returned None"
         _hidden = True
     else:
-        msg = f"Top 10 users for {_date}!\n"
-        msg += f":first_place: | {data[0][0]} | {data[0][1]}\n"
-        msg += f":second_place: | {data[1][0]} | {data[1][1]}\n"
-        msg += f":third_place: | {data[2][0]} | {data[2][1]}\n"
-        msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data, start=3))
+        msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
+        msg += f":first_place: | {utils.to_mention(data[0][0])} | {data[0][1]}\n"
+        msg += f":second_place: | {utils.to_mention(data[1][0])} | {data[1][1]}\n"
+        msg += f":third_place: | {utils.to_mention(data[2][0])} | {data[2][1]}\n"
+        msg += "\n".join(" | ".join([str(idx + 1), utils.to_mention(line[0]), line[1]]) for idx, line in enumerate(data[3:]))
         msg += "\n"
         if len(msg) > 2000:
             aux = "\nTRUNC"

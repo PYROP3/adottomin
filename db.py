@@ -287,9 +287,9 @@ class database:
             return None
 
     def _schema_dailytopten(self, date, ignorelist):
-        schema = f'SELECT "<@" || user || ">", count(*) as "messages" FROM messages WHERE date(substr(date, 1, 10)) = "{date}" AND '
+        schema = f'SELECT user, count(*) as "messages" FROM messages WHERE date(substr(date, 1, 10)) = "{date}" AND '
         schema += " AND ".join([f"channel != {channel}" for channel in ignorelist])
-        schema += ' GROUP BY date(substr(date, 1, 10)), user ORDER BY	date(substr(date, 1, 10)) DESC,	messages DESC LIMIT 10'
+        schema += ' GROUP BY date(substr(date, 1, 10)), user ORDER BY date(substr(date, 1, 10)) DESC, messages DESC LIMIT 10'
         return schema
 
     def get_dailytopten(self, date, ignorelist):
