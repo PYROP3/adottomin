@@ -287,28 +287,20 @@ class database:
             return None
 
     def _schema_dailytopten(self, date, ignorelist):
-        schema = f"""SELECT 
-    "<@" || user || ">",
-    count(*) as "messages" 
-FROM messages 
-WHERE
-    date(substr(date, 1, 10)) = "{date}" AND\n"""
-        schema += " AND\n".join([f"channel != {channel}" for channel in ignorelist])
-        schema += """GROUP BY 
-	date(substr(date, 1, 10)),
-    user
-ORDER BY
-	date(substr(date, 1, 10)) DESC,
-	messages DESC
-LIMIT 10"""
+        schema = f'SELECT "<@" || user || ">", count(*) as "messages" FROM messages WHERE date(substr(date, 1, 10)) = "{date}" AND '
+        schema += " AND ".join([f"channel != {channel}" for channel in ignorelist])
+        schema += ' GROUP BY date(substr(date, 1, 10)), user ORDER BY	date(substr(date, 1, 10)) DESC,	messages DESC LIMIT 10'
 
     def get_dailytopten(self, date, ignorelist):
         try:
             con = sqlite3.connect(activity_db_file)
             cur = con.cursor()
-            res = cur.execute(self._schema_dailytopten(date, ignorelist)).fetchall()
+            _q = self._schema_dailytopten(date, ignorelist)
+            self.logger.debug(f"get_dailytopten query: {_q}")
+            res = cur.execute(_q).fetchall()
             con.commit()
             con.close()
             return res 
-        except:
+        except Exception as e:
+            self.logger.error(f"get_dailytopten error: {e}")
             return None
