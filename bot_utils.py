@@ -132,7 +132,7 @@ class utils:
         return "th"
 
     def to_date(self, date: datetime):
-        return datetime.strftime("%B %-d") + self.to_ord(date.day)
+        return date.strftime("%B %-d") + self.to_ord(date.day)
 
     def to_mention(self, user: str):
         return f"<@{user}>"
