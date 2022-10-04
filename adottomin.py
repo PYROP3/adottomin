@@ -168,7 +168,7 @@ async def on_message(msg: discord.Message):
 
     for handle in message_handlers:
         try:
-            handle(msg)
+            await handle(msg)
         except Exception as e:
             app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
