@@ -33,6 +33,7 @@ class age_handler:
         self.age_prog = re.compile(r"(18|19|[2-9][0-9]+)") # 18, 19 or 20+
         self.minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
+        self.ignore_prog = re.compile(r"over 18")
 
     async def handle_age(self, msg: discord.Message):
         leniency = self.sql.get_leniency(msg.author.id)
@@ -42,28 +43,30 @@ class age_handler:
 
         data = self.mention_prog.sub("", msg.content)
         data = self.url_prog.sub("", data)
-        if self.is_insta_ban(data):
-            age = self.get_ban_age(data)
-            self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid age ({age})")
-            await self.kick_or_ban(msg.author, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
-        elif self.is_valid_age(data):
-            age = self.get_age(data)
-            if age > AGE_MAX:
-                self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
-                self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
-                self.sql.decr_leniency(msg.author.id)
+        if not self.is_ignore(data): 
+            if self.is_insta_ban(data):
+                age = self.get_ban_age(data)
+                self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid age ({age})")
+                await self.kick_or_ban(msg.author, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
 
-                await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
-            else:
-                self.logger.debug(f"[{msg.channel}] {msg.author} said a valid age ({age})")
-            
-                self.sql.delete_entry(msg.author.id)
-                self.sql.set_age(msg.author.id, age, force=True)
+            elif self.is_valid_age(data):
+                age = self.get_age(data)
+                if age > AGE_MAX:
+                    self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
+                    self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
+                    self.sql.decr_leniency(msg.author.id)
 
-                # embed = discord.Embed()
-                # embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
-                await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
+                    await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
+                else:
+                    self.logger.debug(f"[{msg.channel}] {msg.author} said a valid age ({age})")
+                
+                    self.sql.delete_entry(msg.author.id)
+                    self.sql.set_age(msg.author.id, age, force=True)
+
+                    # embed = discord.Embed()
+                    # embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
+                    await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
 
         elif leniency > 0:
             self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
@@ -119,6 +122,9 @@ class age_handler:
 
     def is_insta_ban(self, msg: str): # TODO add filters? racism, etc.
         return self.minor_prog.search(msg) is not None or self.minor_prog_2.search(msg) is not None
+
+    def is_ignore(self, msg: str):
+        return self.ignore_prog.search(msg) is not None
 
     def get_ban_age(self, msg: str):
         return int(self.minor_prog.search(msg).group())
