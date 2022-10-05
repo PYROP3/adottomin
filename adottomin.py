@@ -155,18 +155,29 @@ async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
 
-message_handlers = [
+bot_message_handlers = [
+    utils.handle_offline_mentions
+]
+user_message_handlers = [
     age_handler.handle_age,
-    utils.handle_offline_mentions,
     utils.handle_dm
 ]
 
 @bot.event
 async def on_message(msg: discord.Message):
-    if msg.author.id == bot.user.id or len(msg.content) == 0: return
+    if len(msg.content) == 0: return
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    for handle in message_handlers:
+    for handle in bot_message_handlers:
+        try:
+            await handle(msg)
+        except Exception as e:
+            app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
+
+    if msg.author.id == bot.user.id: return
+
+    for handle in user_message_handlers:
         try:
             await handle(msg)
         except Exception as e:

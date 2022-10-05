@@ -80,15 +80,18 @@ class utils:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
     async def handle_offline_mentions(self, msg: discord.Message):
-        if msg.author.bot: return
+        # if msg.author.bot: return
+        if msg.channel.type == discord.ChannelType.private: return
         for member in msg.mentions:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if not will_send: continue
-            
             fmt_msg_chain = await self._format_msg_chain(member, msg)
 
-            content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
+            if msg.author.bot:
+                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
+            else:
+                content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
             await self._split_dm(content, member)
 
@@ -159,3 +162,7 @@ class utils:
         while len(content) > 0:
             msg = await msg.reply(content=content[:2000])
             content = content[2000:]
+
+    def _bot_name(self, bot):
+        return "I" if bot.id == self.bot.user.id else bot.mention
+        
