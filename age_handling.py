@@ -13,7 +13,7 @@ MSG_GREETING_REMINDER = "Hey {}! Could you tell me your age? Or I'll have to do 
 MSG_WELCOME = "Thank you {}! :space_invader: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
 MSG_WELCOME_NO_TAGS = "Thank you {}! :space_invader: Welcome to the server!"
 
-AGE_MAX = 50
+AGE_MAX = 60
 
 DELETE_GREETINGS = False
 
@@ -49,13 +49,12 @@ class age_handler:
                 age = self.get_ban_age(data)
                 self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid age ({age})")
                 await self.kick_or_ban(msg.author, age=age, force_ban=True, force_update_age=True, reason=REASON_MINOR)
+                return
 
             elif self.is_valid_age(data):
                 age = self.get_age(data)
                 if age > AGE_MAX:
                     self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
-                    self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
-                    self.sql.decr_leniency(msg.author.id)
 
                     await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
                 else:
@@ -67,8 +66,9 @@ class age_handler:
                     # embed = discord.Embed()
                     # embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
                     await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
+                    return
 
-        elif leniency > 0:
+        if leniency > 0:
             self.logger.debug(f"[{msg.channel}] {msg.author} said a non-valid message ({leniency} left)")
             self.sql.decr_leniency(msg.author.id)
 
