@@ -48,14 +48,14 @@ class utils:
 
     async def _format_msg_chain(self, user: discord.User, original_msg: discord.Message, max_size: int = 1500):
         msg_chain = await self._get_msg_chain(original_msg)
-        msg_fmt = quote_each_line(msg_chain[0].content) + "\n"
+        msg_fmt = quote_each_line(msg_chain[0].content).replace(user.mention, user.display_name) + "\n"
         for message in msg_chain[1:]:
             if message is None:
                 new_line = "As a reply to an unknown message\n"
             else:
                 try:
                     _sender = "you" if (user.id == message.author.id) else f"{message.author.mention}"
-                    new_line = f"As a reply to a message {_sender} sent:\n{quote_each_line(message.content)}\n"
+                    new_line = f"As a reply to a message {_sender} sent:\n{quote_each_line(message.content).replace(user.mention, user.display_name)}\n"
                 except Exception as e:
                     new_line = f"As a reply to a deleted message\n"
                     self.logger.warning(f"Error while trying to get message contents: {e}\n{traceback.format_exc()}")
@@ -84,12 +84,13 @@ class utils:
         for member in msg.mentions:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
-            if will_send:
-                fmt_msg_chain = await self._format_msg_chain(member, msg)
+            if not will_send: continue
+            
+            fmt_msg_chain = await self._format_msg_chain(member, msg)
 
-                content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
-                content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
-                await self._split_dm(content, member)
+            content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
+            content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
+            await self._split_dm(content, member)
 
     async def get_icon_default(self, **kwargs):
         if "user" not in kwargs: return None

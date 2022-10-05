@@ -338,6 +338,15 @@ opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", des
 async def _mybingo(ctx: SlashContext, **kwargs):
     await _meme(ctx, "custom_bingo", text=[ctx.author.display_name] + [kwargs[f"element_{i + 1}"] for i in range(24)], msg="Enjoy your custom bingo~", **kwargs)
 
+@slash.slash(name="randomcitizen", description="Get pinged!", guild_ids=guild_ids)
+async def _randomcitizen(ctx: SlashContext, **kwargs):
+    guild = ctx.guild
+    if guild is None: 
+        await ctx.send(content=f"That command only works in a server!", hidden=True)
+        return
+    member = random.choice(guild.members)
+    await _meme(ctx, "random_citizen", msg=f"Get pinged, {member.mention}~", **kwargs)
+
 opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
 @slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
 async def _shipme(ctx: SlashContext, **kwargs):
@@ -719,7 +728,8 @@ opts = [discord_slash.manage_commands.create_option(name="date", description="Wh
 opts += [discord_slash.manage_commands.create_option(name="hidden", description="Hide or show response", option_type=5, required=False)]
 @slash.slash(name="dailytopten", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
 async def _rawsql(ctx: SlashContext, **kwargs):
-    await ctx.defer(hidden=True)
+    _hidden = kwargs["hidden"] if "hidden" in kwargs else True
+    await ctx.defer(hidden=_hidden)
     
     _date = kwargs["date"] if "date" in kwargs else (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
@@ -741,7 +751,6 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         await ctx.send(content="Failed to execute query", hidden=True)
         return
         
-    _hidden = kwargs["hidden"] if "hidden" in kwargs else True
     if data is None:
         msg = "Your query returned None"
         _hidden = True
