@@ -338,7 +338,7 @@ opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", des
 async def _mybingo(ctx: SlashContext, **kwargs):
     await _meme(ctx, "custom_bingo", text=[ctx.author.display_name] + [kwargs[f"element_{i + 1}"] for i in range(24)], msg="Enjoy your custom bingo~", **kwargs)
 
-@slash.slash(name="randomcitizen", description="Get pinged!", opts=[], guild_ids=guild_ids)
+@slash.slash(name="randomcitizen", description="Get pinged!", options=[], guild_ids=guild_ids)
 async def _randomcitizen(ctx: SlashContext, **kwargs):
     guild = ctx.guild
     if guild is None: 
