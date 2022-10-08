@@ -29,10 +29,9 @@ class HandlerIgnoreException(HandlerException):
     pass
 
 class utils:
-    def __init__(self, bot: commands.Bot, guild: discord.Guild, database: db.database, logger, chatting_roles_allowlist=[]):
+    def __init__(self, bot: commands.Bot, database: db.database, logger, chatting_roles_allowlist=[]):
         self.database = database
         self.bot = bot
-        self.guild = guild
         self.logger = logger
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.admin = None
@@ -56,6 +55,9 @@ class utils:
 
     def inject_admin(self, admin):
         self.admin = admin
+
+    def inject_guild(self, guild: discord.Guild):
+        self.guild = guild
 
     def _recreate_queues(self):
         if sysvmq is not None:

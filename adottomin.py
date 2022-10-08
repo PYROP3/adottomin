@@ -113,7 +113,7 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
 age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, bot.get_guild(guild_ids[0]), sql, app.logger, [divine_role_id])
+utils = bot_utils.utils(bot, sql, app.logger, [divine_role_id])
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -155,6 +155,7 @@ def _get_message_for_age(ctx: SlashContext, age_data, mention):
 async def on_ready():
     app.logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
+    utils.inject_guild(bot.get_guild(guild_ids[0]))
 
 bot_message_handlers = [
     utils.handle_offline_mentions
