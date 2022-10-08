@@ -176,7 +176,7 @@ class utils:
         # reply = self.chatbot.reply(msg.author.id, msg.content)
         self.chatbot_queue_req.put([msg.author.id, msg.content])
         try:
-            reply = self.chatbot_queue_rep.get(msg_type=msg.author.id, timeout=10)
+            reply = self.chatbot_queue_rep.get(msg_type=msg.author.id)
             await self._split_dm(reply, msg.author)
         except queue.Empty:
             self.logger.error(f"Timeout waiting for chatbot response")

@@ -49,7 +49,9 @@ if __name__ == "__main__":
         try:
             queue_msg = chatbot_queue_req.get()
             msg_author = queue_msg[0]
+            print(f"Received msg from {msg_author}")
             response = chatbot.reply(msg_author, queue_msg[1])
+            print(f"Responding {msg_author} with '{response}'")
             chatbot_queue_rep.put([msg_author, response])
         except KeyboardInterrupt:
             print("Clean exit\n")
