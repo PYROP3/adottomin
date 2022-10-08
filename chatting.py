@@ -47,21 +47,25 @@ class chatting:
 if __name__ == "__main__":
     print("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
-    chatbot_queue_req = sysvmq.Queue(1022)
-    chatbot_queue_rep = sysvmq.Queue(1023)
-    print("Waiting for messages")
     while True:
         try:
-            queue_msg = chatbot_queue_req.get()
-            msg_author = queue_msg[0]
-            print(f"Received msg from {msg_author}")
-            response = chatbot.reply(msg_author, queue_msg[1])
-            print(f"Responding {msg_author} with '{response}'")
-            chatbot_queue_rep.put([msg_author, response])
-        except KeyboardInterrupt:
-            print("Clean exit\n")
-            exit(0)
-        except Exception as e:
-            print(f"Exception! {e}")
-            print(traceback.format_exc())
-            pass
+            chatbot_queue_req = sysvmq.Queue(1022)
+            chatbot_queue_rep = sysvmq.Queue(1023)
+            print("Waiting for messages")
+            while True:
+                try:
+                    queue_msg = chatbot_queue_req.get()
+                    msg_author = queue_msg[0]
+                    print(f"Received msg from {msg_author}")
+                    response = chatbot.reply(msg_author, queue_msg[1])
+                    print(f"Responding {msg_author} with '{response}'")
+                    chatbot_queue_rep.put([msg_author, response])
+                except KeyboardInterrupt:
+                    print("Clean exit\n")
+                    exit(0)
+                except Exception as e:
+                    print(f"Exception! {e}")
+                    print(traceback.format_exc())
+                    pass
+        except ipcqueue.sysvmq.QueueError:
+            print("Recreating queues!")

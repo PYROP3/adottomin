@@ -28,14 +28,17 @@ class utils:
         self.bot = bot
         self.logger = logger
         self.admin = None
+        self._recreate_queues()
+
+    def inject_admin(self, admin):
+        self.admin = admin
+
+    def _recreate_queues(self):
         if sysvmq is not None:
             self.chatbot_queue_req = sysvmq.Queue(1022)
             self.chatbot_queue_rep = sysvmq.Queue(1023)
         else:
             self.chatbot_queue = None
-
-    def inject_admin(self, admin):
-        self.admin = admin
 
     async def _get_msg_chain(self, original_msg: discord.Message, max_depth = None):
         current = original_msg
@@ -182,6 +185,9 @@ class utils:
             await self._split_dm(reply, msg.author)
         except queue.Empty:
             self.logger.error(f"Timeout waiting for chatbot response")
+        except ipcqueue.sysvmq.QueueError:
+            self.logger.warning(f"Queue error, recreating...")
+            self._recreate_queues()
 
     async def _split_dm(self, content, user):
         msg = await self._dm_user(content[:2000], user)
