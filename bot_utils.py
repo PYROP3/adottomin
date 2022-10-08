@@ -50,7 +50,11 @@ class utils:
         if msg.channel.type == discord.ChannelType.private: raise e()
 
     def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
-        author_roles = self.guild.get_member(msg.author.id).roles
+        member = self.guild.get_member(msg.author.id)
+        if member is None: 
+            self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
+            raise e()
+        author_roles = member.roles
         # self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
