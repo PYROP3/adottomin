@@ -3,7 +3,13 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import os
 import traceback
+import logging
 from ipcqueue import sysvmq
+from flask import Flask
+
+app = Flask(__name__)
+app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
+app.logger.info("Logger started")
 
 class chatting:
     def __init__(self, chats_home):
@@ -45,32 +51,32 @@ class chatting:
         return self.tokenizer.decode(chat_history[:, chatbot_input.shape[-1]:][0], skip_special_tokens=True)
 
 def run():
-    print("Starting chatbot...")
+    app.logger.info("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
     while True:
         try:
             chatbot_queue_req = sysvmq.Queue(1022)
             chatbot_queue_rep = sysvmq.Queue(1023)
-            print("Waiting for messages")
+            app.logger.info("Waiting for messages")
             while True:
                 try:
                     queue_msg = chatbot_queue_req.get()
                     msg_author = queue_msg[0]
-                    print(f"Received msg from {msg_author}")
+                    app.logger.debug(f"Received msg from {msg_author}")
                     response = chatbot.reply(msg_author, queue_msg[1])
-                    print(f"Responding {msg_author} with '{response}'")
+                    app.logger.debug(f"Responding {msg_author} with '{response}'")
                     chatbot_queue_rep.put(response, msg_type=msg_author)
                 except KeyboardInterrupt:
-                    print("\nClean exit")
+                    app.logger.info("\nClean exit")
                     exit(0)
                 except sysvmq.QueueError:
-                    print("Recreating queues!")
+                    app.logger.debug("Recreating queues!")
                     break
                 except Exception as e:
-                    print(f"Exception! {e}")
-                    print(traceback.format_exc())
+                    app.logger.error(f"Exception! {e}")
+                    app.logger.debug(traceback.format_exc())
                     pass
         except sysvmq.QueueError:
-            print("Recreating queues!")
+            app.logger.debug("Recreating queues!")
 
 run()
