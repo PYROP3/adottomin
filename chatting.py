@@ -42,8 +42,8 @@ class chatting:
 if __name__ == "__main__":
     print("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
-    chatbot_queue_req = sysvmq.Queue(abs(hash('/bottochats_req') % 1024))
-    chatbot_queue_rep = sysvmq.Queue(abs(hash('/bottochats_rep') % 1024))
+    chatbot_queue_req = sysvmq.Queue(1022)
+    chatbot_queue_rep = sysvmq.Queue(1023)
     print("Waiting for messages")
     while True:
         try:
