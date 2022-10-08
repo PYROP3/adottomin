@@ -10,7 +10,6 @@ import traceback
 
 import age_handling
 import bot_utils
-import chatting
 import copypasta_utils
 import db
 import graphlytics
