@@ -64,7 +64,7 @@ role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
 
-divine_role_id = 1008695237281058898
+divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 friends_role_ids = [
     1002382914526400703, # Tier 1

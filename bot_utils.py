@@ -51,7 +51,7 @@ class utils:
 
     def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
         author_roles = self.guild.get_member(msg.author.id).roles
-        self.logger.debug(f"Comparing user {author_roles} to {roles}")
+        # self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
     def inject_admin(self, admin):
