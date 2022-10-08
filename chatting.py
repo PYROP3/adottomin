@@ -12,7 +12,7 @@ class chatting:
         self.chats_home = chats_home
 
     def _chatfile(self, id: int):
-        return os.join(self.chats_home, f"chat_{id}.pt")
+        return os.path.join(self.chats_home, f"chat_{id}.pt")
 
     def _history(self, id: int, contents: str):
         chatfile = self._chatfile(id)
