@@ -10,6 +10,7 @@ import traceback
 
 import age_handling
 import bot_utils
+import chatting
 import copypasta_utils
 import db
 import graphlytics
@@ -62,6 +63,7 @@ _ids = os.getenv('AGE_ROLE_IDS') or ""
 _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
+chats_home = os.getenv('CHATS_HOME')
 
 divine_role_id = 1008695237281058898
 secretary_role_id = 1002385294152179743
@@ -112,7 +114,8 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
 age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, sql, app.logger)
+chatbot = chatting.chatting(chats_home)
+utils = bot_utils.utils(bot, sql, app.logger, chatbot)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -160,7 +163,8 @@ bot_message_handlers = [
 ]
 user_message_handlers = [
     age_handler.handle_age,
-    utils.handle_dm
+    utils.handle_dm,
+    utils.handle_chat_dm
 ]
 
 @bot.event

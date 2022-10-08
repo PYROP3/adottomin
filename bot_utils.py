@@ -18,10 +18,11 @@ def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, logger):
+    def __init__(self, bot: commands.Bot, database: db.database, logger, chatbot):
         self.database = database
         self.bot = bot
         self.logger = logger
+        self.chatbot = chatbot
         self.admin = None
 
     def inject_admin(self, admin):
@@ -154,6 +155,12 @@ class utils:
         if msg.channel.type != discord.ChannelType.private: return
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
+
+    async def handle_chat_dm(self, msg: discord.Message):
+        if msg.author.id != self.admin.id: return
+        if msg.channel.type != discord.ChannelType.private: return
+        reply = self.chatbot.reply(msg.author.id, msg.content)
+        await self._split_dm(reply, msg.author)
 
     async def _split_dm(self, content, user):
         msg = await self._dm_user(content[:2000], user)
