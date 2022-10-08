@@ -16,10 +16,11 @@ class chatting:
 
     def _history(self, id: int, contents: str):
         chatfile = self._chatfile(id)
+        user_input = self.tokenizer.encode(contents + self.tokenizer.eos_token, return_tensors="pt")
         if os.path.exists(chatfile):
-            return torch.cat([torch.load(chatfile), contents], dim=-1)
+            return torch.cat([torch.load(chatfile), user_input], dim=-1)
         else:
-            return contents
+            return user_input
 
     def reply(self, id: int, contents: str):
         chatbot_input = self._history(id, contents)
