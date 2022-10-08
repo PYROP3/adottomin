@@ -43,11 +43,15 @@ class utils:
         while current.reference is not None:
             ref = current.reference.resolved
             if ref is None:
-                fetched = await original_msg.channel.fetch_message(current.reference.message_id)
-                if fetched is None:
+                try:
+                    fetched = await original_msg.channel.fetch_message(current.reference.message_id)
+                    if fetched is None:
+                        chain += [None]
+                        break
+                    ref = fetched
+                except AttributeError:
                     chain += [None]
                     break
-                ref = fetched
             current = ref
             chain += [current]
             if max_depth is not None:
