@@ -2,6 +2,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import os
 
+from ipcqueue import posixmq
+
 class chatting:
     def __init__(self, chats_home):
         self.tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-large")
@@ -35,3 +37,18 @@ class chatting:
         torch.save(chat_history, self._chatfile(id))
 
         return self.tokenizer.decode(chat_history[:, chatbot_input.shape[-1]:][0], skip_special_tokens=True)
+
+if __name__ == "__main__":
+    chatbot = chatting(os.getenv('CHATS_HOME'))
+    chatbot_queue_req = posixmq.Queue('/bottochats_req')
+    chatbot_queue_rep = posixmq.Queue('/bottochats_rep')
+    while True:
+        try:
+            queue_msg = chatbot_queue_req.get()
+            msg_author = queue_msg[0]
+            response = chatbot.reply(msg_author, queue_msg[1])
+            chatbot_queue_rep.put([msg_author, response])
+        except KeyboardInterrupt:
+            exit(0)
+        except:
+            pass

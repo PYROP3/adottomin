@@ -1,4 +1,5 @@
 import discord
+import queue
 import traceback
 import random
 import requests
@@ -9,6 +10,10 @@ import db
 from datetime import datetime
 from discord.ext import commands
 from discord_slash import SlashContext
+try:
+    from ipcqueue import posixmq
+except ImportError:
+    posixmq = None
 
 VALID_NOTIFY_STATUS = [discord.Status.offline]
 
@@ -18,12 +23,16 @@ def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, logger, chatbot):
+    def __init__(self, bot: commands.Bot, database: db.database, logger):
         self.database = database
         self.bot = bot
         self.logger = logger
-        self.chatbot = chatbot
         self.admin = None
+        if posixmq is not None:
+            self.chatbot_queue_req = posixmq.Queue('/bottochats_req')
+            self.chatbot_queue_rep = posixmq.Queue('/bottochats_rep')
+        else:
+            self.chatbot_queue = None
 
     def inject_admin(self, admin):
         self.admin = admin
@@ -157,10 +166,16 @@ class utils:
         await self._split_dm(content, self.admin)
 
     async def handle_chat_dm(self, msg: discord.Message):
+        if self.chatbot_queue is None: return
         if msg.author.id != self.admin.id: return
         if msg.channel.type != discord.ChannelType.private: return
-        reply = self.chatbot.reply(msg.author.id, msg.content)
-        await self._split_dm(reply, msg.author)
+        # reply = self.chatbot.reply(msg.author.id, msg.content)
+        self.chatbot_queue_req.put([msg.author.id, msg.content])
+        try:
+            reply = self.chatbot_queue_rep.get(msg_type=msg.author.id, timeout=10)
+            await self._split_dm(reply, msg.author)
+        except queue.Empty:
+            self.logger.error(f"Timeout waiting for chatbot response")
 
     async def _split_dm(self, content, user):
         msg = await self._dm_user(content[:2000], user)
