@@ -22,13 +22,35 @@ AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
 
+class HandlerException(Exception):
+    pass
+
+class HandlerIgnoreException(HandlerException):
+    pass
+
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, logger):
+    def __init__(self, bot: commands.Bot, database: db.database, logger, chatting_roles_allowlist=[]):
         self.database = database
         self.bot = bot
         self.logger = logger
+        self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.admin = None
         self._recreate_queues()
+
+    def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
+        if msg.author.id != self.admin.id: raise e()
+
+    def _enforce_not_admin(self, msg, e: HandlerException=HandlerIgnoreException):
+        if msg.author.id == self.admin.id: raise e()
+
+    def _enforce_dms(self, msg, e: HandlerException=HandlerIgnoreException):
+        if msg.channel.type != discord.ChannelType.private: raise e()
+
+    def _enforce_not_dms(self, msg, e: HandlerException=HandlerIgnoreException):
+        if msg.channel.type == discord.ChannelType.private: raise e()
+
+    def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
+        if set([role.id for role in msg.author.roles]).intersection(roles) == set(): raise e()
 
     def inject_admin(self, admin):
         self.admin = admin
@@ -97,8 +119,7 @@ class utils:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
     async def handle_offline_mentions(self, msg: discord.Message):
-        # if msg.author.bot: return
-        if msg.channel.type == discord.ChannelType.private: return
+        self._enforce_not_dms(msg)
         for member in msg.mentions:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
@@ -168,16 +189,18 @@ class utils:
         return str(pos)
 
     async def handle_dm(self, msg: discord.Message):
-        if msg.channel.type != discord.ChannelType.private: return
-        if msg.author.id == self.admin.id: return
+        self._enforce_dms(msg)
+        self._enforce_not_admin(msg)
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
     async def handle_chat_dm(self, msg: discord.Message):
-        if msg.author.id != self.admin.id: return
+        # self._enforce_admin_only(msg)
+        self._enforce_has_role(msg, self.chatting_roles_allowlist)
+        self._enforce_not_dms(msg)
+        # TODO improve check whether the chatbot susbsystem is online
         if self.chatbot_queue_req is None: return
-        if msg.channel.type != discord.ChannelType.private: return
-        # reply = self.chatbot.reply(msg.author.id, msg.content)
+
         async with msg.channel.typing():
             self.logger.debug(f"Sending {msg.author.id} request for reply")
             self.chatbot_queue_req.put([msg.author.id, msg.content])
@@ -185,6 +208,7 @@ class utils:
                 try:
                     self.logger.debug(f"Waiting for {msg.author.id} reply")
                     reply = self.chatbot_queue_rep.get(msg_type=msg.author.id)
+                    self.logger.debug(f"Received {msg.author.id} reply: \"{reply}\"")
                     await self._split_dm(reply, msg.author)
                     if msg.author.id != self.admin.id:
                         content = f"{msg.author.mention} ({msg.author}) responding with \"{reply}\"\n"

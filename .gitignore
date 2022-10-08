@@ -1,7 +1,7 @@
 .env
 *.db
 __pycache__/
-
+.vscode
 copypasta_data.py
 meme_stuff/bingos/*.png
 sql_tests.txt

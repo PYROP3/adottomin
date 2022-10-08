@@ -113,7 +113,7 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
 age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, sql, app.logger)
+utils = bot_utils.utils(bot, sql, app.logger, [divine_role_id])
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -165,26 +165,26 @@ user_message_handlers = [
     utils.handle_chat_dm
 ]
 
+async def execute_handlers(msg, handlers):
+    for handle in handlers:
+        try:
+            await handle(msg)
+        except bot_utils.HandlerException:
+            pass
+        except Exception as e:
+            app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
+
 @bot.event
 async def on_message(msg: discord.Message):
     if len(msg.content) == 0: return
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    for handle in bot_message_handlers:
-        try:
-            await handle(msg)
-        except Exception as e:
-            app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
-            await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
+    await execute_handlers(msg, bot_message_handlers)
 
     if msg.author.id == bot.user.id: return
 
-    for handle in user_message_handlers:
-        try:
-            await handle(msg)
-        except Exception as e:
-            app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
-            await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
+    await execute_handlers(msg, user_message_handlers)
         
     if not msg.author.bot:
         try:
