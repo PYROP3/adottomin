@@ -169,6 +169,7 @@ class utils:
 
     async def handle_dm(self, msg: discord.Message):
         if msg.channel.type != discord.ChannelType.private: return
+        if msg.author.id == self.admin.id: return
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
