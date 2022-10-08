@@ -59,7 +59,7 @@ if __name__ == "__main__":
                     print(f"Received msg from {msg_author}")
                     response = chatbot.reply(msg_author, queue_msg[1])
                     print(f"Responding {msg_author} with '{response}'")
-                    chatbot_queue_rep.put([msg_author, response])
+                    chatbot_queue_rep.put(response, msg_type=msg_author)
                 except KeyboardInterrupt:
                     print("Clean exit\n")
                     exit(0)
