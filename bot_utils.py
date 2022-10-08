@@ -88,7 +88,7 @@ class utils:
             if not will_send: continue
             fmt_msg_chain = await self._format_msg_chain(member, msg)
 
-            if msg.author.bot:
+            if msg.author.bot: # TODO after update to discord.py 2.0, check if there is a msg.interaction to find out original user who used command
                 content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             else:
                 content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
@@ -114,7 +114,6 @@ class utils:
         except Exception as e:
             self.logger.error(f"Error while trying to get avatar: {e}\n{traceback.format_exc()}")
             return None
-
 
     def _get_display_name(self, **kwargs):
         if "user" not in kwargs: return None

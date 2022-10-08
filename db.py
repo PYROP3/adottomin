@@ -2,10 +2,10 @@ import datetime
 import os
 import sqlite3
 
-bot_home = os.getenv("BOT_HOME") or os.getcwd()
+db_home = os.getenv("DB_HOME") or os.getenv("BOT_HOME") or os.getcwd()
 
 def _dbfile(id: str, version: int):
-    return bot_home + f'/data/{id}_v{version}.db'
+    return db_home + f'/data/{id}_v{version}.db'
 
 validations_version = 1
 validations_db_file = _dbfile('validations', validations_version)
