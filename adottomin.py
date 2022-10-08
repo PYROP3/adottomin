@@ -63,6 +63,7 @@ _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
+chatbot_service = os.getenv('CHATBOT_SERVICE')
 
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
@@ -113,7 +114,7 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
 age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, sql, app.logger, [divine_role_id])
+utils = bot_utils.utils(bot, sql, app.logger, [divine_role_id], chatbot_service)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)

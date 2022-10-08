@@ -4,6 +4,7 @@ import traceback
 import random
 import requests
 import string
+import subprocess
 
 import db
 
@@ -29,11 +30,12 @@ class HandlerIgnoreException(HandlerException):
     pass
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, logger, chatting_roles_allowlist=[]):
+    def __init__(self, bot: commands.Bot, database: db.database, logger, chatting_roles_allowlist=[], chatting_servicename: str=None):
         self.database = database
         self.bot = bot
         self.logger = logger
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
+        self.chatting_servicename = chatting_servicename
         self.admin = None
         self.guild = None
         self._recreate_queues()
@@ -67,6 +69,10 @@ class utils:
 
     def inject_guild(self, guild: discord.Guild):
         self.guild = guild
+
+    def _is_chatbot_available(self):
+        if self.chatting_servicename is None: return False
+        return subprocess.run(["systemctl", "is-active", "--quiet", self.chatting_servicename]).returncode == 0
 
     def _recreate_queues(self):
         if sysvmq is not None:
@@ -211,8 +217,9 @@ class utils:
         # self._enforce_admin_only(msg)
         self._enforce_has_role(msg, self.chatting_roles_allowlist)
         self._enforce_dms(msg)
-        # TODO improve check whether the chatbot susbsystem is online
-        if self.chatbot_queue_req is None: return
+        if self.chatbot_queue_req is None or not self._is_chatbot_available(): 
+            await self._dm_user("Sorry, but the chatting submodule is currently turned off~", msg.author)
+            return
 
         async with msg.channel.typing():
             self.logger.debug(f"Sending {msg.author.id} request for reply")
