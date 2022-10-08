@@ -2,7 +2,7 @@ print("Starting chatting.py")
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import os
-
+import traceback
 from ipcqueue import sysvmq
 
 class chatting:
@@ -60,5 +60,7 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("Clean exit\n")
             exit(0)
-        except:
+        except Exception as e:
+            print(f"Exception! {e}")
+            print(traceback.format_exc())
             pass
