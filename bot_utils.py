@@ -29,8 +29,8 @@ class utils:
         self.logger = logger
         self.admin = None
         if sysvmq is not None:
-            self.chatbot_queue_req = sysvmq.Queue(hash('/bottochats_req'))
-            self.chatbot_queue_rep = sysvmq.Queue(hash('/bottochats_rep'))
+            self.chatbot_queue_req = sysvmq.Queue(abs(hash('/bottochats_req') % 1024))
+            self.chatbot_queue_rep = sysvmq.Queue(abs(hash('/bottochats_rep') % 1024))
         else:
             self.chatbot_queue = None
 

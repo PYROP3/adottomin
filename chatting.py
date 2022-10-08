@@ -42,8 +42,8 @@ class chatting:
 if __name__ == "__main__":
     print("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
-    chatbot_queue_req = sysvmq.Queue(hash('/bottochats_req'))
-    chatbot_queue_rep = sysvmq.Queue(hash('/bottochats_rep'))
+    chatbot_queue_req = sysvmq.Queue(abs(hash('/bottochats_req') % 1024))
+    chatbot_queue_rep = sysvmq.Queue(abs(hash('/bottochats_rep') % 1024))
     print("Waiting for messages")
     while True:
         try:
@@ -52,6 +52,7 @@ if __name__ == "__main__":
             response = chatbot.reply(msg_author, queue_msg[1])
             chatbot_queue_rep.put([msg_author, response])
         except KeyboardInterrupt:
+            print("Clean exit\n")
             exit(0)
         except:
             pass
