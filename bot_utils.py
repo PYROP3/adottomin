@@ -178,7 +178,7 @@ class utils:
         if self.chatbot_queue_req is None: return
         if msg.channel.type != discord.ChannelType.private: return
         # reply = self.chatbot.reply(msg.author.id, msg.content)
-        with msg.channel.typing():
+        async with msg.channel.typing():
             self.logger.debug(f"Sending {msg.author.id} request for reply")
             self.chatbot_queue_req.put([msg.author.id, msg.content])
             while True:
