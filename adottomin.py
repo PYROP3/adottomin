@@ -114,8 +114,7 @@ app.logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT, app.logger)
 age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-chatbot = chatting.chatting(chats_home)
-utils = bot_utils.utils(bot, sql, app.logger, chatbot)
+utils = bot_utils.utils(bot, sql, app.logger)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
