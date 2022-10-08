@@ -1,3 +1,4 @@
+print("Starting chatting.py")
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import os
@@ -39,9 +40,11 @@ class chatting:
         return self.tokenizer.decode(chat_history[:, chatbot_input.shape[-1]:][0], skip_special_tokens=True)
 
 if __name__ == "__main__":
+    print("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
     chatbot_queue_req = posixmq.Queue('/bottochats_req')
     chatbot_queue_rep = posixmq.Queue('/bottochats_rep')
+    print("Waiting for messages")
     while True:
         try:
             queue_msg = chatbot_queue_req.get()
