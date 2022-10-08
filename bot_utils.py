@@ -192,7 +192,7 @@ class utils:
                     break
                 except queue.Empty:
                     self.logger.error(f"Timeout waiting for chatbot response")
-                except ipcqueue.sysvmq.QueueError:
+                except sysvmq.QueueError:
                     self.logger.warning(f"Queue error, recreating...")
                     self._recreate_queues()
 

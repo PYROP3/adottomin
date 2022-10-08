@@ -63,12 +63,12 @@ if __name__ == "__main__":
                 except KeyboardInterrupt:
                     print("\nClean exit")
                     exit(0)
-                except ipcqueue.sysvmq.QueueError:
+                except sysvmq.QueueError:
                     print("Recreating queues!")
                     break
                 except Exception as e:
                     print(f"Exception! {e}")
                     print(traceback.format_exc())
                     pass
-        except ipcqueue.sysvmq.QueueError:
+        except sysvmq.QueueError:
             print("Recreating queues!")
