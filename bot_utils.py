@@ -51,6 +51,7 @@ class utils:
 
     def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
         author_roles = self.guild.get_member(msg.author.id).roles
+        self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
     def inject_admin(self, admin):
@@ -201,7 +202,7 @@ class utils:
     async def handle_chat_dm(self, msg: discord.Message):
         # self._enforce_admin_only(msg)
         self._enforce_has_role(msg, self.chatting_roles_allowlist)
-        self._enforce_not_dms(msg)
+        self._enforce_dms(msg)
         # TODO improve check whether the chatbot susbsystem is online
         if self.chatbot_queue_req is None: return
 
