@@ -29,9 +29,10 @@ class HandlerIgnoreException(HandlerException):
     pass
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, logger, chatting_roles_allowlist=[]):
+    def __init__(self, bot: commands.Bot, guild: discord.Guild, database: db.database, logger, chatting_roles_allowlist=[]):
         self.database = database
         self.bot = bot
+        self.guild = guild
         self.logger = logger
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.admin = None
@@ -50,7 +51,8 @@ class utils:
         if msg.channel.type == discord.ChannelType.private: raise e()
 
     def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
-        if set([role.id for role in msg.author.roles]).intersection(roles) == set(): raise e()
+        author_roles = self.guild.get_member(msg.author.id).roles
+        if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
     def inject_admin(self, admin):
         self.admin = admin
