@@ -174,8 +174,10 @@ class utils:
         if self.chatbot_queue_req is None: return
         if msg.channel.type != discord.ChannelType.private: return
         # reply = self.chatbot.reply(msg.author.id, msg.content)
+        self.logger.debug(f"Sending {msg.author.id} request for reply")
         self.chatbot_queue_req.put([msg.author.id, msg.content])
         try:
+            self.logger.debug(f"Waiting for {msg.author.id} reply")
             reply = self.chatbot_queue_rep.get(msg_type=msg.author.id)
             await self._split_dm(reply, msg.author)
         except queue.Empty:
