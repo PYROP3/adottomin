@@ -166,8 +166,8 @@ class utils:
         await self._split_dm(content, self.admin)
 
     async def handle_chat_dm(self, msg: discord.Message):
-        if self.chatbot_queue is None: return
         if msg.author.id != self.admin.id: return
+        if self.chatbot_queue_req is None: return
         if msg.channel.type != discord.ChannelType.private: return
         # reply = self.chatbot.reply(msg.author.id, msg.content)
         self.chatbot_queue_req.put([msg.author.id, msg.content])
