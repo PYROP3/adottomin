@@ -35,6 +35,7 @@ class utils:
         self.logger = logger
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.admin = None
+        self.guild = None
         self._recreate_queues()
 
     def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
@@ -50,6 +51,9 @@ class utils:
         if msg.channel.type == discord.ChannelType.private: raise e()
 
     def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
+        if self.guild is None:
+            self.logger.warning(f"Utils guild link is still not ready")
+            raise e()
         member = self.guild.get_member(msg.author.id)
         if member is None: 
             self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
