@@ -24,7 +24,7 @@ class chatting:
 
     def reply(self, id: int, contents: str):
         chatbot_input = self._history(id, contents)
-        print(f"Got history = {chatbot_input}")
+        # print(f"Got history = {chatbot_input}")
 
         # generate a response
         chat_history = self.model.generate(
@@ -36,11 +36,11 @@ class chatting:
             temperature=0.7,
             pad_token_id=self.tokenizer.eos_token_id,
         )
-        print(f"Got new history = {chat_history}, saving...")
+        # print(f"Got new history = {chat_history}, saving...")
 
         torch.save(chat_history, self._chatfile(id))
 
-        print(f"Responding")
+        # print(f"Responding")
 
         return self.tokenizer.decode(chat_history[:, chatbot_input.shape[-1]:][0], skip_special_tokens=True)
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
                     print(f"Responding {msg_author} with '{response}'")
                     chatbot_queue_rep.put(response, msg_type=msg_author)
                 except KeyboardInterrupt:
-                    print("Clean exit\n")
+                    print("\nClean exit")
                     exit(0)
                 except Exception as e:
                     print(f"Exception! {e}")

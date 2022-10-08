@@ -181,15 +181,19 @@ class utils:
         with msg.channel.typing():
             self.logger.debug(f"Sending {msg.author.id} request for reply")
             self.chatbot_queue_req.put([msg.author.id, msg.content])
-            try:
-                self.logger.debug(f"Waiting for {msg.author.id} reply")
-                reply = self.chatbot_queue_rep.get(msg_type=msg.author.id)
-                await self._split_dm(reply, msg.author)
-            except queue.Empty:
-                self.logger.error(f"Timeout waiting for chatbot response")
-            except ipcqueue.sysvmq.QueueError:
-                self.logger.warning(f"Queue error, recreating...")
-                self._recreate_queues()
+            while True:
+                try:
+                    self.logger.debug(f"Waiting for {msg.author.id} reply")
+                    reply = self.chatbot_queue_rep.get(msg_type=msg.author.id)
+                    await self._split_dm(reply, msg.author)
+                    content = f"{msg.author.mention} ({msg.author}) responding with {reply}\n"
+                    await self._split_dm(content, self.admin)
+                    break
+                except queue.Empty:
+                    self.logger.error(f"Timeout waiting for chatbot response")
+                except ipcqueue.sysvmq.QueueError:
+                    self.logger.warning(f"Queue error, recreating...")
+                    self._recreate_queues()
 
     async def _split_dm(self, content, user):
         msg = await self._dm_user(content[:2000], user)
