@@ -44,7 +44,7 @@ class chatting:
 
         return self.tokenizer.decode(chat_history[:, chatbot_input.shape[-1]:][0], skip_special_tokens=True)
 
-if __name__ == "__main__":
+def run():
     print("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
     while True:
@@ -72,3 +72,5 @@ if __name__ == "__main__":
                     pass
         except sysvmq.QueueError:
             print("Recreating queues!")
+
+run()
