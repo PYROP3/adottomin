@@ -3,7 +3,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import os
 
-from ipcqueue import posixmq
+from ipcqueue import sysvmq
 
 class chatting:
     def __init__(self, chats_home):
@@ -42,8 +42,8 @@ class chatting:
 if __name__ == "__main__":
     print("Starting chatbot...")
     chatbot = chatting(os.getenv('CHATS_HOME'))
-    chatbot_queue_req = posixmq.Queue('/bottochats_req')
-    chatbot_queue_rep = posixmq.Queue('/bottochats_rep')
+    chatbot_queue_req = sysvmq.Queue(hash('/bottochats_req'))
+    chatbot_queue_rep = sysvmq.Queue(hash('/bottochats_rep'))
     print("Waiting for messages")
     while True:
         try:

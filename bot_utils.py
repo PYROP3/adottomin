@@ -11,9 +11,9 @@ from datetime import datetime
 from discord.ext import commands
 from discord_slash import SlashContext
 try:
-    from ipcqueue import posixmq
+    from ipcqueue import sysvmq
 except ImportError:
-    posixmq = None
+    sysvmq = None
 
 VALID_NOTIFY_STATUS = [discord.Status.offline]
 
@@ -28,9 +28,9 @@ class utils:
         self.bot = bot
         self.logger = logger
         self.admin = None
-        if posixmq is not None:
-            self.chatbot_queue_req = posixmq.Queue('/bottochats_req')
-            self.chatbot_queue_rep = posixmq.Queue('/bottochats_rep')
+        if sysvmq is not None:
+            self.chatbot_queue_req = sysvmq.Queue(hash('/bottochats_req'))
+            self.chatbot_queue_rep = sysvmq.Queue(hash('/bottochats_rep'))
         else:
             self.chatbot_queue = None
 
