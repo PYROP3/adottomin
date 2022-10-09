@@ -766,17 +766,26 @@ async def _rawsql(ctx: SlashContext, **kwargs):
         await ctx.send(content="Failed to execute query", hidden=True)
         return
         
-    if data is None:
-        msg = "Your query returned None"
-        _hidden = True
+    if _hidden:
+        if data is None:
+            msg = "Your query returned None"
+            _hidden = True
+        else:
+            msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
+            msg += "\n".join(" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
+            msg += "\n"
+            if len(msg) > 2000:
+                aux = "\nTRUNC"
+                msg = msg[:2000-len(aux)-1] + aux
+        await ctx.send(content=msg, hidden=_hidden)
     else:
-        msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
-        msg += "\n".join(" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
-        msg += "\n"
-        if len(msg) > 2000:
-            aux = "\nTRUNC"
-            msg = msg[:2000-len(aux)-1] + aux
-    await ctx.send(content=msg, hidden=_hidden)
+        if data is None:
+            ctx.send(content="Your query returned None", hidden=True)
+            return
+        
+        await ctx.send(content=f"Top 10 users for {utils.to_date(_pdate)}!", hidden=_hidden)
+        for msg in [" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data)]:
+            await ctx.channel.send(content=msg, allowed_mentions=discord.AllowedMentions.users)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
 opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
