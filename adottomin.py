@@ -1,8 +1,7 @@
 import asyncio
 import datetime
 import sqlite3
-import discord
-import discord_slash
+import interactions
 import logging
 import os
 import random
@@ -18,8 +17,6 @@ import memes
 from os.path import exists
 from dotenv import load_dotenv
 from flask import Flask
-from discord.ext import commands
-from discord_slash import SlashCommand, SlashContext
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -55,6 +52,7 @@ bot_home = os.getenv("BOT_HOME") or os.getcwd()
 _ids = os.getenv('GUILD_IDS') or ""
 _guild_ids = [int(id) for id in _ids.split('.') if id != ""]
 guild_ids = _guild_ids if len(_guild_ids) else None
+guild_id = guild_ids[0]
 _ids = os.getenv('CHANNEL_IDS') or ""
 _channel_ids = [int(id) for id in _ids.split('.') if id != ""]
 channel_ids = _channel_ids if len(_channel_ids) else None
@@ -89,8 +87,7 @@ game_channel_ids = [
 
 admin_id = int(os.getenv('ADMIN_ID'))
 
-bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all(), allowed_mentions=discord.AllowedMentions.all())
-slash = SlashCommand(bot, sync_commands=True)
+bot = interactions.Client(token=TOKEN)
 app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
 # app.logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -138,7 +135,7 @@ async def _dm_log_error(msg):
     except Exception as e:
         app.logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
 
-def _get_message_for_age(ctx: SlashContext, age_data, mention):
+def _get_message_for_age(ctx: interactions.CommandContext, age_data, mention):
     if age_data is None:
         return f"{mention} joined before the glorious Botto revolution"
     elif age_data < 5:
@@ -178,7 +175,7 @@ async def execute_handlers(msg, handlers):
             await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
 
 @bot.event
-async def on_message(msg: discord.Message):
+async def on_message(msg: interactions.Message):
     if len(msg.content) == 0: return
     # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
@@ -198,7 +195,7 @@ async def on_message(msg: discord.Message):
         app.logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
 
 @bot.event
-async def on_member_join(member: discord.Member):
+async def on_member_join(member: interactions.Member):
     channel = bot.get_channel(channel_ids[0])
     app.logger.info(f"[{channel}] {member} just joined")
     try:
@@ -253,32 +250,40 @@ async def on_member_join(member: discord.Member):
         await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
         app.logger.debug(f"[{channel}] Error exit on_member_join")
 
-opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
-@slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)
-async def _raidmode(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
+# @slash.slash(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", options=opts, guild_ids=guild_ids)
+    # options = [
+    #     interactions.Option(
+    #         name="active",
+    #         description="Whether to turn raid mode on or off",
+    #         type=interactions.OptionType.BOOLEAN,
+    #         required=True
+    #     )
+    # ]
+@bot.command(name="raidmode", description="Turn raid mode on or off (auto kick or ban)", scope=guild_id)
+@interactions.option(description="Whether to turn raid mode on or off")
+async def _raidmode(ctx: interactions.CommandContext, active: bool):
     if not (divine_role_id in [role.id for role in ctx.author.roles]):
         log_debug(ctx, f"{ctx.author} cannot use raidmode")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
-    args = [kwargs[k] for k in kwargs if kwargs[k] is not None]
-    turn_on = args[0]
-    if turn_on:
+    if active:
         if set_raid_mode():
             log_info(ctx, f"{ctx.author} enabled raidmode")
-            await ctx.send(content=MSG_RAID_MODE_ON.format(ctx.author.mention), hidden=False)
+            await ctx.send(content=MSG_RAID_MODE_ON.format(ctx.author.mention), ephemeral=False)
         else:
             log_debug(ctx, f"{ctx.author} enabled raidmode (already enabled)")
-            await ctx.send(content=MSG_RAID_MODE_ON_ALREADY, hidden=True)
+            await ctx.send(content=MSG_RAID_MODE_ON_ALREADY, ephemeral=True)
     else:
         if unset_raid_mode():
             log_info(ctx, f"{ctx.author} disabled raidmode")
-            await ctx.send(content=MSG_RAID_MODE_OFF.format(ctx.author.mention), hidden=False)
+            await ctx.send(content=MSG_RAID_MODE_OFF.format(ctx.author.mention), ephemeral=False)
         else:
             log_debug(ctx, f"{ctx.author} disabled raidmode (already disabled)")
-            await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
+            await ctx.send(content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
 
-async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy your fresh meme~", **kwargs):
+async def _meme(ctx: interactions.CommandContext, meme_code: str, user: interactions.User, text: str=None, msg="Enjoy your fresh meme~", **kwargs):
     await ctx.defer()
 
     log_info(ctx, f"{ctx.author} requested {meme_code}")
@@ -295,14 +300,14 @@ async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy yo
         await ctx.send(content="Oops, there was an error~")
         return 
 
-    meme_file = discord.File(meme_name, filename=f"{ctx.author.name}_{meme_code}.png")
+    meme_file = interactions.File(meme_name, filename=f"{ctx.author.name}_{meme_code}.png")
     
     if _icon is not None:
         os.remove(_icon)
 
     try:
         user = kwargs["user"]
-        if (user.id == ctx.author_id):
+        if (user.id == ctx.author.id):
             msg = "Lmao did you really make it for yourself??"
         if (user.id == bot.user.id):
             msg = f"Awww thank you, {ctx.author.mention}~"
@@ -313,70 +318,86 @@ async def _meme(ctx: SlashContext, meme_code: str, text: str=None, msg="Enjoy yo
 
     os.remove(meme_name)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="supremacy", description="Do you believe?", options=opts, guild_ids=guild_ids)
-async def _supremacy(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "supremacy", **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
+# @slash.slash(name="supremacy", description="Do you believe?", options=opts, guild_ids=guild_ids)
+@bot.command(name="supremacy", description="Do you believe?", scope=guild_id)
+@interactions.option(description="Who to use in the meme", type=interactions.OptionType.USER)
+async def _supremacy(ctx: interactions.CommandContext, user):
+    await _meme(ctx, "supremacy", user)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="deeznuts", description="Awww", options=opts, guild_ids=guild_ids)
-async def _deeznuts(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "deeznuts", **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
+# @slash.slash(name="deeznuts", description="Awww", options=opts, guild_ids=guild_ids)
+@bot.command(name="deeznuts", description="Awww", scope=guild_id)
+@interactions.option(description="Who to use in the meme", type=interactions.OptionType.USER)
+async def _deeznuts(ctx: interactions.CommandContext, user):
+    await _meme(ctx, "deeznuts", user)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="pills", description="You need those pills", options=opts, guild_ids=guild_ids)
-async def _pills(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "pills", **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
+# @slash.slash(name="pills", description="You need those pills", options=opts, guild_ids=guild_ids)
+@bot.command(name="pills", description="You need those pills", scope=guild_id)
+@interactions.option(description="Who to use in the meme", type=interactions.OptionType.USER)
+async def _pills(ctx: interactions.CommandContext, user):
+    await _meme(ctx, "pills", user)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="bromeme", description="Bro", options=opts, guild_ids=guild_ids)
-async def _bromeme(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "bromeme", **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
+# @slash.slash(name="bromeme", description="Bro", options=opts, guild_ids=guild_ids)
+@bot.command(name="bromeme", description="Bro", scope=guild_id)
+@interactions.option(description="Who to use in the meme", type=interactions.OptionType.USER)
+async def _bromeme(ctx: interactions.CommandContext, user):
+    await _meme(ctx, "bromeme", user)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
-@slash.slash(name="mig", description="Please", options=opts, guild_ids=guild_ids)
-async def _mig(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "fivemins", **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
+# @slash.slash(name="mig", description="Please", options=opts, guild_ids=guild_ids)
+@bot.command(name="mig", description="Please", scope=guild_id)
+@interactions.option(description="Who to use in the meme", type=interactions.OptionType.USER)
+async def _mig(ctx: interactions.CommandContext, user):
+    await _meme(ctx, "fivemins", user)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who else to use in the meme", option_type=6, required=True)]
-@slash.slash(name="sally", description="Your loss", options=opts, guild_ids=guild_ids)
-async def _mig(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "sally", **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who else to use in the meme", option_type=6, required=True)]
+# @slash.slash(name="sally", description="Your loss", options=opts, guild_ids=guild_ids)
+@bot.command(name="sally", description="Your loss", scope=guild_id)
+@interactions.option(description="Who to use in the meme", type=interactions.OptionType.USER)
+async def _mig(ctx: interactions.CommandContext, user):
+    await _meme(ctx, "sally", user)
 
-opts = [discord_slash.manage_commands.create_option(name="contents", description="What to say in the meme", option_type=3, required=True)]
-@slash.slash(name="needs", description="Traditional Maslow's hierarchy", options=opts, guild_ids=guild_ids)
-async def _needs(ctx: SlashContext, **kwargs):
-    await _meme(ctx, "needs", text=kwargs["contents"], **kwargs)
+# opts = [discord_slash.manage_commands.create_option(name="contents", description="What to say in the meme", option_type=3, required=True)]
+# @slash.slash(name="needs", description="Traditional Maslow's hierarchy", options=opts, guild_ids=guild_ids)
+@bot.command(name="deeznuts", description="Awww", scope=guild_id)
+@interactions.option(description="What to say in the meme", type=interactions.OptionType.STRING)
+async def _needs(ctx: interactions.CommandContext, contents):
+    await _meme(ctx, "needs", None, text=contents)
 
 opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
 @slash.slash(name="mybingo", description="Get a custom bingo sheet!", options=opts, guild_ids=guild_ids)
-async def _mybingo(ctx: SlashContext, **kwargs):
+async def _mybingo(ctx: interactions.CommandContext, **kwargs):
     await _meme(ctx, "custom_bingo", text=[ctx.author.display_name] + [kwargs[f"element_{i + 1}"] for i in range(24)], msg="Enjoy your custom bingo~", **kwargs)
 
-@slash.slash(name="randomcitizen", description="Get pinged!", options=[], guild_ids=guild_ids)
-async def _randomcitizen(ctx: SlashContext, **kwargs):
+# @slash.slash(name="randomcitizen", description="Get pinged!", options=[], guild_ids=guild_ids)
+@bot.command(name="randomcitizen", description="Get pinged!", scope=guild_id)
+async def _randomcitizen(ctx: interactions.CommandContext):
     guild = ctx.guild
     if guild is None: 
-        await ctx.send(content=f"That command only works in a server!", hidden=True)
+        await ctx.send(content=f"That command only works in a server!", ephemeral=True)
         return
     member = random.choice(guild.members)
-    await _meme(ctx, "random_citizen", msg=f"Get pinged, {member.mention}~", **kwargs)
+    await _meme(ctx, "random_citizen", member, msg=f"Get pinged, {member.mention}~")
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
-@slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
-async def _shipme(ctx: SlashContext, **kwargs):
-    user = kwargs["user"]
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
+# @slash.slash(name="shipme", description="Ship yourself with someone!", options=opts, guild_ids=guild_ids)
+@bot.command(name="shipme", description="Ship yourself with someone!", scope=guild_id)
+@interactions.option(description="Who to ship you with", type=interactions.OptionType.USER)
+async def _shipme(ctx: interactions.CommandContext, user):
     log_info(ctx, f"{ctx.author} requested ship with {user}")
-    if (user.id == ctx.author_id):
-        await ctx.send(content=f"No selfcest, {ctx.author.mention}!", hidden=False)
+    if (user.id == ctx.author.id):
+        await ctx.send(content=f"No selfcest, {ctx.author.mention}!", ephemeral=False)
         return
 
     if (user.id == bot.user.id):
-        await ctx.send(content=f"I'm not shipping myself with you, {ctx.author.mention}~", hidden=False)
+        await ctx.send(content=f"I'm not shipping myself with you, {ctx.author.mention}~", ephemeral=False)
         return
 
-    smaller = min(int(user.id), int(ctx.author_id))
-    bigger = max(int(user.id), int(ctx.author_id))
+    smaller = min(int(user.id), int(ctx.author.id))
+    bigger = max(int(user.id), int(ctx.author.id))
     pct, nice = memes.percent_from(f"ship/{smaller}/{bigger}")
 
     if pct == 69:
@@ -390,28 +411,32 @@ async def _shipme(ctx: SlashContext, **kwargs):
     else:
         emote = ":revolving_hearts:"
 
-    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {emote} {pct}%{nice} :3", hidden=False)
+    await ctx.send(content=f"The ship compatibility between {ctx.author.mention} and {user.mention} today is {emote} {pct}%{nice} :3", ephemeral=False)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
-@slash.slash(name="gayrate", description="Rate your gae!", options=opts, guild_ids=guild_ids)
-async def _gayrate(ctx: SlashContext, **kwargs):
-    user = kwargs["user"] if "user" in kwargs else ctx.author
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
+# @slash.slash(name="gayrate", description="Rate your gae!", options=opts, guild_ids=guild_ids)
+@bot.command(name="gayrate", description="Rate your gae!", scope=guild_id)
+@interactions.option(description="Who to rate (if empty, rates you)", type=interactions.OptionType.USER, required=False)
+async def _gayrate(ctx: interactions.CommandContext, user):
+    user = user or ctx.author
     log_info(ctx, f"{ctx.author} requested gayrate for {user}")
     if (user.id == bot.user.id):
-        await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
+        await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", ephemeral=False)
         return
 
     pct, nice = memes.percent_from(f"gay/{int(user.id)}")
 
-    await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", hidden=False)
+    await ctx.send(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", ephemeral=False)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
-@slash.slash(name="hornyrate", description="Rate your horny!", options=opts, guild_ids=guild_ids)
-async def _hornyrate(ctx: SlashContext, **kwargs):
-    user = kwargs["user"] if "user" in kwargs else ctx.author
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
+# @slash.slash(name="hornyrate", description="Rate your horny!", options=opts, guild_ids=guild_ids)
+@bot.command(name="hornyrate", description="Rate your horny!", scope=guild_id)
+@interactions.option(description="Who to rate (if empty, rates you)", type=interactions.OptionType.USER, required=False)
+async def _hornyrate(ctx: interactions.CommandContext, user):
+    user = user or ctx.author
     log_info(ctx, f"{ctx.author} requested hornyrate for {user}")
     if (user.id == bot.user.id):
-        await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", hidden=False)
+        await ctx.send(content=f"Wouldn't you like to know, {ctx.author.mention}~?", ephemeral=False)
         return
 
     pct, nice = memes.percent_from(f"horny/{int(user.id)}")
@@ -424,102 +449,106 @@ async def _hornyrate(ctx: SlashContext, **kwargs):
     else:
         emote = ":smiling_imp:"
 
-    await ctx.send(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", hidden=False)
+    await ctx.send(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", ephemeral=False)
 
-opts = [discord_slash.manage_commands.create_option(name="expression", description="What to search", option_type=3, required=False)]
-@slash.slash(name="boomersplain", description="Explain it like you're a boomer", options=opts, guild_ids=guild_ids)
-async def _boomersplain(ctx: SlashContext, **kwargs):
-    term = kwargs["expression"]
-    log_info(ctx, f"{ctx.author} requested definition for {term}")
+# opts = [discord_slash.manage_commands.create_option(name="expression", description="What to search", option_type=3, required=False)]
+# @slash.slash(name="boomersplain", description="Explain it like you're a boomer", options=opts, guild_ids=guild_ids)
+@bot.command(name="boomersplain", description="Explain it like you're a boomer", scope=guild_id)
+@interactions.option(description="What to search", type=interactions.OptionType.STRING)
+async def _boomersplain(ctx: interactions.CommandContext, expression):
+    log_info(ctx, f"{ctx.author} requested definition for {expression}")
 
-    formatted_definition = memes.get_formatted_definition(term)
+    formatted_definition = memes.get_formatted_definition(expression)
 
-    await ctx.send(content=formatted_definition, hidden=False)
+    await ctx.send(content=formatted_definition, ephemeral=False)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
-@slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
-async def _horny(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
+# @slash.slash(name="horny", description="No horny in main!", options=opts, guild_ids=guild_ids)
+@bot.command(name="horny", description="No horny in main!", scope=guild_id)
+@interactions.option(description="Who to mention (optional)", type=interactions.OptionType.USER)
+async def _horny(ctx: interactions.CommandContext, user):
     await ctx.defer()
 
-    user = kwargs["user"] if "user" in kwargs else None
     log_info(ctx, f"{ctx.author} requested No Horny for {user}")
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
 
     meme_name = memes.no_horny
-    meme_file = discord.File(meme_name, filename=meme_name)
-    embed = discord.Embed()
-    embed.set_image(url=f"attachment://{meme_name}")
+    meme_file = interactions.File(meme_name, filename=meme_name)
 
     await ctx.send(content=content, file=meme_file)
 
-opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
-@slash.slash(name="report", description="Get analytics data for new users", options=opts, guild_ids=guild_ids)
-async def _report(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
+# @slash.slash(name="report", description="Get analytics data for new users", options=opts, guild_ids=guild_ids)
+@bot.command(name="report", description="Get analytics data for new users", scope=guild_id)
+@interactions.option(description="Max days to fetch (default 7)", type=interactions.OptionType.INTEGER)
+async def _report(ctx: interactions.CommandContext, range: int=7):
     await ctx.defer()
 
     log_info(ctx, f"{ctx.author} requested report")
-    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+    if (ctx.author.id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
         log_debug(ctx, f"{ctx.author} cannot get report")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
-    report_name = graphlytics.generate_new_user_graph(app.logger, kwargs["range"] if "range" in kwargs else None)
+    report_name = graphlytics.generate_new_user_graph(app.logger, range)
     log_debug(ctx, f"report_name={report_name}")
-    report_file = discord.File(report_name, filename=f"user_report.png")
+    report_file = interactions.File(report_name, filename=f"user_report.png")
 
     await ctx.send(content=f"Here you go~", file=report_file)
 
     os.remove(report_name)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="User to warn", option_type=6, required=True)]
-opts += [discord_slash.manage_commands.create_option(name="reason", description="Why are they being warned", option_type=3, required=False)]
-@slash.slash(name="strike", description="Warn a user for bad behavior, auto bans if there are too many strikes", options=opts, guild_ids=guild_ids)
-async def _strike(ctx: SlashContext, **kwargs):
-    user = kwargs["user"]
-    reason = kwargs["reason"] if "reason" in kwargs else ""
+# opts = [discord_slash.manage_commands.create_option(name="user", description="User to warn", option_type=6, required=True)]
+# opts += [discord_slash.manage_commands.create_option(name="reason", description="Why are they being warned", option_type=3, required=False)]
+# @slash.slash(name="strike", description="Warn a user for bad behavior, auto bans if there are too many strikes", options=opts, guild_ids=guild_ids)
+@bot.command(name="strike", description="Warn a user for bad behavior, auto bans if there are too many strikes", scope=guild_id)
+@interactions.option(description="User to warn", type=interactions.OptionType.USER)
+@interactions.option(description="Why are they being warned", type=interactions.OptionType.STRING, required=False)
+async def _strike(ctx: interactions.CommandContext, user, reason: str=None):
     _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested strike for {user}: '{reason}'")
-    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+    if (ctx.author.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot warn people")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     _user_roles = [role.id for role in user.roles]
     if (divine_role_id in _user_roles or secretary_role_id in _user_roles):
         log_debug(ctx, f"{user} cannot be warned")
-        await ctx.send(content=MSG_CANT_DO_IT, hidden=True)
+        await ctx.send(content=MSG_CANT_DO_IT, ephemeral=True)
         return
 
-    active_strikes = sql.create_warning(user.id, ctx.author_id, reason, WARNING_VALIDITY_DAYS)
+    active_strikes = sql.create_warning(user.id, ctx.author.id, reason, WARNING_VALIDITY_DAYS)
 
     if active_strikes < WARNINGS_BEFORE_BAN:
         log_info(ctx, f"{user} now has {active_strikes} active strikes")
         msg = f"{user.mention} is being warned by {ctx.author.mention}! That's {active_strikes} strikes so far~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
-        await ctx.send(content=msg, hidden=False)
+        await ctx.send(content=msg, ephemeral=False)
     else:
         log_info(ctx, f"{user} now has {active_strikes} active strikes, and will be banned")
         msg = f"{user.mention} is being warned by {ctx.author.mention}! That's {active_strikes} strikes, and so you must go~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
-        await ctx.send(content=msg, hidden=False)
+        await ctx.send(content=msg, ephemeral=False)
         await age_handler.do_ban(ctx.channel, user, reason=age_handling.REASON_WARNINGS, tally=False)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
-opts += [discord_slash.manage_commands.create_option(name="all", description="Get all strikes (only gets active strikes by default)", option_type=5, required=False)]
-@slash.slash(name="getStrikes", description="Check the user's previous strikes", options=opts, guild_ids=guild_ids)
-async def _get_strikes(ctx: SlashContext, **kwargs):
-    user = kwargs["user"]
-    get_all = "all" in kwargs and kwargs["all"]
+# opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
+# opts += [discord_slash.manage_commands.create_option(name="all", description="Get all strikes (only gets active strikes by default)", option_type=5, required=False)]
+# @slash.slash(name="getStrikes", description="Check the user's previous strikes", options=opts, guild_ids=guild_ids)
+@bot.command(name="getStrikes", description="Check the user's previous strikes", scope=guild_id)
+@interactions.option(description="User to check", type=interactions.OptionType.USER)
+@interactions.option(description="Get all strikes (only gets active strikes by default)", type=interactions.OptionType.BOOLEAN, required=False)
+async def _get_strikes(ctx: interactions.CommandContext, user, all=False):
     log_info(ctx, f"{ctx.author} requested strikes for {user}")
-    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+    if (ctx.author.id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
         log_debug(ctx, f"{ctx.author} cannot get strikes")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
-    strikes = sql.get_warnings(user.id, None if get_all else WARNING_VALIDITY_DAYS)
+    strikes = sql.get_warnings(user.id, None if all else WARNING_VALIDITY_DAYS)
 
     if (len(strikes) > 0):
         msg = f":warning: Here are {user.mention}'s strikes~\n```\n"
@@ -529,33 +558,33 @@ async def _get_strikes(ctx: SlashContext, **kwargs):
         msg += "```"
     else:
         msg = f":angel: {user.mention} doesn't have any"
-        if not get_all:
+        if not all:
             msg += " active"
         msg += f" strikes~"
 
-    await ctx.send(content=msg, hidden=False)
+    await ctx.send(content=msg, ephemeral=False)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="User to promote", option_type=6, required=True)]
-@slash.slash(name="promote", description="Promote a user to the next tier", options=opts, guild_ids=guild_ids)
-async def _promote(ctx: SlashContext, **kwargs):
-    user = kwargs["user"]
-    reason = kwargs["reason"] if "reason" in kwargs else ""
+# opts = [discord_slash.manage_commands.create_option(name="user", description="User to promote", option_type=6, required=True)]
+# @slash.slash(name="promote", description="Promote a user to the next tier", options=opts, guild_ids=guild_ids)
+@bot.command(name="promote", description="Promote a user to the next tier", scope=guild_id)
+@interactions.option(description="User to promote", type=interactions.OptionType.USER)
+async def _promote(ctx: interactions.CommandContext, user):
     _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested promotion for {user}")
-    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+    if (ctx.author.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot promote people")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     _user_roles = [role.id for role in user.roles]
     if friends_role_ids[2] in _user_roles:
         log_debug(ctx, f"{user} already at max tier")
-        await ctx.send(content=MSG_USER_ALREADY_MAXED, hidden=True)
+        await ctx.send(content=MSG_USER_ALREADY_MAXED, ephemeral=True)
         return
 
     if friends_role_ids[1] in _user_roles:
         log_debug(ctx, f"{user} will NOT be promoted to tier 3")
-        await ctx.send(content="Khris said no promotions to t3~", hidden=True)
+        await ctx.send(content="Khris said no promotions to t3~", ephemeral=True)
         return
         # msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
         # new_role_id = friends_role_ids[2]
@@ -569,23 +598,24 @@ async def _promote(ctx: SlashContext, **kwargs):
         member = ctx.guild.get_member(user.id)
         new_role = ctx.guild.get_role(new_role_id)
         await member.add_roles(new_role, reason=f"{ctx.author} said so")
-        await ctx.send(content=msg, hidden=False)
-    except discord.HTTPException as e:
+        await ctx.send(content=msg, ephemeral=False)
+    except Exception as e:
         log_error(ctx, f"Failed to give role {new_role} to {user}")
         log_debug(ctx, e)
-        await ctx.send(content="I still can't give promotions and it's probably Khris' fault~", hidden=True)
+        await ctx.send(content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
-@slash.slash(name="age", description="Check a user's reported age", options=opts, guild_ids=guild_ids)
-async def _age(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
+# @slash.slash(name="age", description="Check a user's reported age", options=opts, guild_ids=guild_ids)
+@bot.command(name="age", description="Check a user's reported age", scope=guild_id)
+@interactions.option(description="User to check", type=interactions.OptionType.USER)
+async def _age(ctx: interactions.CommandContext, user):
     await ctx.defer(hidden=True)
 
-    user = kwargs["user"]
     _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested age for {user}")
-    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+    if (ctx.author.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot check ages")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
         
     age_data = sql.get_age(user.id)
@@ -594,26 +624,27 @@ async def _age(ctx: SlashContext, **kwargs):
     msg = _get_message_for_age(ctx, age_data, mention)
 
     log_debug(ctx, f"{msg}")
-    await ctx.send(content=msg, hidden=True)
+    await ctx.send(content=msg, ephemeral=True)
 
-opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
-@slash.slash(name="agealt", description="Check a user's reported age (search by id)", options=opts, guild_ids=guild_ids)
-async def _idage(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
+# @slash.slash(name="agealt", description="Check a user's reported age (search by id)", options=opts, guild_ids=guild_ids)
+@bot.command(name="agealt", description="Check a user's reported age (search by id)", scope=guild_id)
+@interactions.option(description="User to check", type=interactions.OptionType.STRING)
+async def _idage(ctx: interactions.CommandContext, user_id):
     await ctx.defer(hidden=True)
     
-    _user_id = kwargs["user_id"]
     _author_roles = [role.id for role in ctx.author.roles]
-    log_info(ctx, f"{ctx.author} requested age for ID {_user_id}")
-    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+    log_info(ctx, f"{ctx.author} requested age for ID {user_id}")
+    if (ctx.author.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot check ages")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
-        user_id = int(_user_id)
+        user_id = int(user_id)
     except ValueError:
-        log_debug(ctx, f"{ctx.author} {_user_id} casting failed")
-        await ctx.send(content="That is not a valid ID", hidden=True)
+        log_debug(ctx, f"{ctx.author} {user_id} casting failed")
+        await ctx.send(content="That is not a valid ID", ephemeral=True)
         return
         
     user = bot.get_user(user_id)
@@ -623,74 +654,81 @@ async def _idage(ctx: SlashContext, **kwargs):
     msg = _get_message_for_age(ctx, age_data, mention)
 
     log_debug(ctx, f"{msg}")
-    await ctx.send(content=msg, hidden=True)
+    await ctx.send(content=msg, ephemeral=True)
 
-opts = [discord_slash.manage_commands.create_option(name="pasta", description="Copy pasta", option_type=3, required=True, choices=copypasta_utils.AVAILABLE_PASTAS)]
-opts += [discord_slash.manage_commands.create_option(name="name", description="Who your pasta is about", option_type=3, required=True)]
-opts += [discord_slash.manage_commands.create_option(name="pronouns", description="Which pronouns to use", option_type=3, required=True, choices=copypasta_utils.PRON_OPTS)]
-@slash.slash(name="pasta", description="Generate a copy pasta", options=opts, guild_ids=guild_ids)
-async def _pasta(ctx: SlashContext, **kwargs):
-    _pasta = kwargs["pasta"]
-    _name = kwargs["name"]
-    _pronouns = kwargs["pronouns"]
-    log_info(ctx, f"{ctx.author} requested copypasta: {_pasta} for {_name} ({_pronouns})")
+# opts = [discord_slash.manage_commands.create_option(name="pasta", description="Copy pasta", option_type=3, required=True, choices=copypasta_utils.AVAILABLE_PASTAS)]
+# opts += [discord_slash.manage_commands.create_option(name="name", description="Who your pasta is about", option_type=3, required=True)]
+# opts += [discord_slash.manage_commands.create_option(name="pronouns", description="Which pronouns to use", option_type=3, required=True, choices=copypasta_utils.PRON_OPTS)]
+# @slash.slash(name="pasta", description="Generate a copy pasta", options=opts, guild_ids=guild_ids)
+@bot.command(name="pasta", description="Generate a copy pasta", scope=guild_id)
+@interactions.option(description="Copy pasta", type=interactions.OptionType.STRING, choices=copypasta_utils.AVAILABLE_PASTAS)
+@interactions.option(description="Who your pasta is about", type=interactions.OptionType.STRING)
+@interactions.option(description="Which pronouns to use", type=interactions.OptionType.STRING, choices=copypasta_utils.PRON_OPTS)
+async def _pasta(ctx: interactions.CommandContext, pasta, name, pronouns):
+    log_info(ctx, f"{ctx.author} requested copypasta: {pasta} for {name} ({pronouns})")
 
-    if "botto" in _name.lower():
-        await ctx.send(content=f"I'm not gonna write myself into your copypasta, {ctx.author.mention}~", hidden=False)
+    if "botto" in name.lower():
+        await ctx.send(content=f"I'm not gonna write myself into your copypasta, {ctx.author.mention}~", ephemeral=False)
         return
 
     try:
-        msg = f"{ctx.author.mention} says: \"" + copypasta_utils.fill_copypasta(_pasta, _name, _pronouns) + "\""
+        msg = f"{ctx.author.mention} says: \"" + copypasta_utils.fill_copypasta(pasta, name, pronouns) + "\""
     except KeyError:
         msg = "Hmm I can't fill that pasta with the data you provided..."
 
-    await ctx.send(content=msg, hidden=False)
+    await ctx.send(content=msg, ephemeral=False)
 
-opts = [discord_slash.manage_commands.create_option(name="enable", description="Enable (on) or disable (off) notifications", option_type=3, required=True, choices=["on", "off"])]
-@slash.slash(name="offlinepings", description="Update settings on whether to notify you about pings while you're offline", options=opts, guild_ids=guild_ids)
-async def _offlinepings(ctx: SlashContext, **kwargs):
-    _state = kwargs["enable"]
-    log_info(ctx, f"{ctx.author} requested offlinepings: {_state}")
+# opts = [discord_slash.manage_commands.create_option(name="enable", description="Enable (on) or disable (off) notifications", option_type=3, required=True, choices=["on", "off"])]
+# @slash.slash(name="offlinepings", description="Update settings on whether to notify you about pings while you're offline", options=opts, guild_ids=guild_ids)
+@bot.command(name="offlinepings", description="Update settings on whether to notify you about pings while you're offline", scope=guild_id)
+@interactions.option(description="Enable (on) or disable (off) notifications", type=interactions.OptionType.STRING, choices=["on", "off"])
+async def _offlinepings(ctx: interactions.CommandContext, enable):
+    log_info(ctx, f"{ctx.author} requested offlinepings: {enable}")
 
-    if _state == "on":
-        sql.remove_from_offline_ping_blocklist(ctx.author_id)
-        await ctx.send(content="Okay, I'll let you know if you're pinged~", hidden=True)
+    if enable == "on":
+        sql.remove_from_offline_ping_blocklist(ctx.author.id)
+        await ctx.send(content="Okay, I'll let you know if you're pinged~", ephemeral=True)
     else:
-        sql.add_to_offline_ping_blocklist(ctx.author_id)
-        await ctx.send(content="Okay, I won't send you notifications if you're pinged~", hidden=True)
+        sql.add_to_offline_ping_blocklist(ctx.author.id)
+        await ctx.send(content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
 
-opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
-opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
-@slash.slash(name="activity", description="Get analytics data for useractivity", options=opts, guild_ids=guild_ids)
-async def _activity(ctx: SlashContext, **kwargs):
+# # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
+# # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
+# # @slash.slash(name="activity", description="Get analytics data for useractivity", options=opts, guild_ids=guild_ids)
+# @bot.command(name="activity", description="Get analytics data for user activity", scope=guild_id)
+# @interactions.option(description="Max days to fetch", type=interactions.OptionType.INTEGER)
+# async def _activity(ctx: interactions.CommandContext, range: int=7, user):
+#     await ctx.defer()
+
+#     log_info(ctx, f"{ctx.author} requested activity")
+#     if (ctx.author.id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
+#         log_debug(ctx, f"{ctx.author} cannot get activity")
+#         await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+#         return
+
+#     await ctx.send(content=f"This functionality is not available yet, try again later~")
+
+# opts = [discord_slash.manage_commands.create_option(name="which", description="Bingo sheet to retrieve (will get a random one by default)", option_type=3, required=False, choices=memes.get_bingos())]
+# @slash.slash(name="bingo", description="Get a clean bingo sheet!", options=opts, guild_ids=guild_ids)
+@bot.command(name="offlinepings", description="Get a clean bingo sheet!", scope=guild_id)
+@interactions.option(description="Bingo sheet to retrieve (will get a random one by default)", type=interactions.OptionType.STRING, required=False, choices=memes.get_bingos())
+async def _bingo(ctx: interactions.CommandContext, which: str=None):
     await ctx.defer()
 
-    log_info(ctx, f"{ctx.author} requested activity")
-    if (ctx.author_id != admin_id) and not (divine_role_id in [role.id for role in ctx.author.roles]):
-        log_debug(ctx, f"{ctx.author} cannot get activity")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
-        return
-
-    await ctx.send(content=f"This functionality is not available yet, try again later~")
-
-opts = [discord_slash.manage_commands.create_option(name="which", description="Bingo sheet to retrieve (will get a random one by default)", option_type=3, required=False, choices=memes.get_bingos())]
-@slash.slash(name="bingo", description="Get a clean bingo sheet!", options=opts, guild_ids=guild_ids)
-async def _bingo(ctx: SlashContext, **kwargs):
-    await ctx.defer()
-
-    if "bingo" in kwargs:
-        bingo_name = memes.bingo_filepath(kwargs["bingo"])
+    if which is not None:
+        bingo_name = memes.bingo_filepath(which)
         log_info(ctx, f"{ctx.author} requested bingo: {bingo_name}")
     else:
         bingo_name = memes.bingo_filepath(random.choice(memes.get_bingos()))
         log_info(ctx, f"{ctx.author} requested random bingo: {bingo_name}")
 
-    bingo_file = discord.File(bingo_name, filename=f"bingo.png")
+    bingo_file = interactions.File(bingo_name, filename=f"bingo.png")
 
     await ctx.send(content=f"Hope you get a bingo~", file=bingo_file)
 
-@slash.slash(name="suicide", description="...", guild_ids=guild_ids)
-async def _prevent(ctx: SlashContext, **kwargs):
+# @slash.slash(name="suicide", description="...", guild_ids=guild_ids)
+@bot.command(name="suicide", description="...", scope=guild_id)
+async def _prevent(ctx: interactions.CommandContext):
     admin_user = bot.get_user(admin_id)
     dm_chan = admin_user.dm_channel or await admin_user.create_dm()
     await dm_chan.send(content=f"Please check on {ctx.author.mention} if possible")
@@ -700,117 +738,120 @@ async def _prevent(ctx: SlashContext, **kwargs):
     msg += f"Please please please reach out to someone you trust if you're feeling down. If you need, you can also google \"suicide prevention\" to get the hotline number for your country: https://www.google.com/search?q=suicide+prevention\n"
     msg += f"Suicide is never the answer, okay? It may seem like they way out in a place of desperation, but you will get through this rough patch... {admin_user.mention} & I believe in you, friend!"
 
-    await ctx.send(content=msg, hidden=True)
+    await ctx.send(content=msg, ephemeral=True)
 
-opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
-opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
-@slash.slash(name="rawsql", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
-async def _rawsql(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
+# opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
+# @slash.slash(name="rawsql", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
+@bot.command(name="rawsql", description="Perform a SQL query", scope=guild_id)
+@interactions.option(description="File to connect", type=interactions.OptionType.STRING, choices=db.sql_files)
+@interactions.option(description="SQL query", type=interactions.OptionType.STRING)
+async def _rawsql(ctx: interactions.CommandContext, file, query):
     await ctx.defer(hidden=True)
     
-    _file = kwargs["file"]
-    _query = kwargs["query"]
-    log_info(ctx, f"{ctx.author} requested sql query for {_file}")
-    if (ctx.author_id != admin_id):
+    log_info(ctx, f"{ctx.author} requested sql query for {file}")
+    if (ctx.author.id != admin_id):
         log_debug(ctx, f"{ctx.author} cannot query db")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
-        data = sql.raw_sql(_file, _query)
+        data = sql.raw_sql(file, query)
     except sqlite3.DatabaseError as e:
-        log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
-        await ctx.send(content=f"Failed to execute query [{_query}]:\n```\n{traceback.format_exc()}\n```", hidden=True)
+        log_debug(ctx, f"{ctx.author} query [{query}] failed : {e}")
+        await ctx.send(content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
         return
     except Exception as e:
-        log_debug(ctx, f"{ctx.author} query [{_query}] failed : {e}")
+        log_debug(ctx, f"{ctx.author} query [{query}] failed : {e}")
         await _dm_log_error(f"[{ctx.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await ctx.send(content="Failed to execute query", hidden=True)
+        await ctx.send(content="Failed to execute query", ephemeral=True)
         return
         
     if data is None:
         msg = "Your query returned None"
     else:
-        msg = f"Here are the results for your query:\n```\n{_query}\n\n"
+        msg = f"Here are the results for your query:\n```\n{query}\n\n"
         msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data))
         msg += "\n```"
         if len(msg) > 2000:
             aux = "```\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await ctx.send(content=msg, hidden=True)
+    await ctx.send(content=msg, ephemeral=True)
 
-opts = [discord_slash.manage_commands.create_option(name="date", description="When to fetch data", option_type=3, required=False)]
-opts += [discord_slash.manage_commands.create_option(name="hidden", description="Hide or show response", option_type=5, required=False)]
-@slash.slash(name="dailytopten", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
-async def _rawsql(ctx: SlashContext, **kwargs):
-    _hidden = kwargs["hidden"] if "hidden" in kwargs else True
-    await ctx.defer(hidden=_hidden)
+# opts = [discord_slash.manage_commands.create_option(name="date", description="When to fetch data", option_type=3, required=False)]
+# opts += [discord_slash.manage_commands.create_option(name="hidden", description="Hide or show response", option_type=5, required=False)]
+# @slash.slash(name="dailytopten", description="Perform a SQL query", options=opts, guild_ids=guild_ids)
+@bot.command(name="dailytopten", description="Get the top 10 most active users for a day", scope=guild_id)
+@interactions.option(description="When to fetch data", type=interactions.OptionType.STRING)
+@interactions.option(description="Hide or show response", type=interactions.OptionType.BOOLEAN)
+async def _rawsql(ctx: interactions.CommandContext, date: str=None, hidden: bool=True):
+    await ctx.defer(hidden=hidden)
     
-    _date = kwargs["date"] if "date" in kwargs else (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    _date = date if "date" is not None else (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
     log_info(ctx, f"{ctx.author} requested daily top 10 for {_date}")
-    if (ctx.author_id != admin_id):
+    if (ctx.author.id != admin_id):
         log_debug(ctx, f"{ctx.author} cannot query db")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
         data = sql.get_dailytopten(_date, game_channel_ids)
     except sqlite3.DatabaseError as e:
         log_debug(ctx, f"{ctx.author} query daily top ten failed : {e}")
-        await ctx.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", hidden=True)
+        await ctx.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
         return
     except Exception as e:
         log_debug(ctx, f"{ctx.author} query for daily top ten failed : {e}")
         await _dm_log_error(f"[{ctx.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await ctx.send(content="Failed to execute query", hidden=True)
+        await ctx.send(content="Failed to execute query", ephemeral=True)
         return
         
-    if _hidden:
-        if data is None:
-            msg = "Your query returned None"
-            _hidden = True
-        else:
-            msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
-            msg += "\n".join(" | ".join([utils.to_podium(idx + 1), "\\" + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
-            msg += "\n"
-            if len(msg) > 2000:
-                aux = "\nTRUNC"
-                msg = msg[:2000-len(aux)-1] + aux
-        await ctx.send(content=msg, hidden=_hidden)
+    if data is None:
+        msg = "Your query returned None"
+        _hidden = True
     else:
-        if data is None:
-            ctx.send(content="Your query returned None", hidden=True)
-            return
+        msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
+        msg += "\n".join(" | ".join([utils.to_podium(idx + 1), "\\" + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
+        msg += "\n"
+        if len(msg) > 2000:
+            aux = "\nTRUNC"
+            msg = msg[:2000-len(aux)-1] + aux
+    await ctx.send(content=msg, ephemeral=_hidden)
+    # else:
+    #     if data is None:
+    #         ctx.send(content="Your query returned None", ephemeral=True)
+    #         return
         
-        await ctx.send(content=f"Top 10 users for {utils.to_date(_pdate)}!", hidden=_hidden)
-        app.logger.debug(f"Got daily top 10 in channel id {ctx.channel_id}")
-        channel = bot.get_channel(ctx.channel_id)
-        app.logger.debug(f"Got actual channel {channel}")
-        for msg in [" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data)]:
-            await channel.send(content=msg, allowed_mentions=discord.AllowedMentions.users)
+    #     await ctx.send(content=f"Top 10 users for {utils.to_date(_pdate)}!", ephemeral=_hidden)
+    #     app.logger.debug(f"Got daily top 10 in channel id {ctx.channel_id}")
+    #     channel = bot.get_channel(ctx.channel_id)
+    #     app.logger.debug(f"Got actual channel {channel}")
+    #     for msg in [" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data)]:
+    #         await channel.send(content=msg, allowed_mentions=discord.AllowedMentions.users)
 
-opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
-opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
-@slash.slash(name="autoblock", description="Pre-block a user before they've even joined", options=opts, guild_ids=guild_ids)
-async def _autoblock(ctx: SlashContext, **kwargs):
+# opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
+# opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
+# @slash.slash(name="autoblock", description="Pre-block a user before they've even joined", options=opts, guild_ids=guild_ids)
+@bot.command(name="autoblock", description="Pre-block a user before they've even joined", scope=guild_id)
+@interactions.option(description="User ID to block", type=interactions.OptionType.STRING)
+@interactions.option(description="Reason for block", type=interactions.OptionType.STRING)
+async def _autoblock(ctx: interactions.CommandContext, user: str, reason: str):
     await ctx.defer(hidden=True)
 
-    user = kwargs["user"]
-    reason = kwargs["reason"]
     mod = ctx.author
     _author_roles = [role.id for role in ctx.author.roles]
     log_info(ctx, f"{ctx.author} requested age for {user}")
-    if (ctx.author_id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+    if (ctx.author.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(ctx, f"{ctx.author} cannot autoblock")
-        await ctx.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await ctx.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
         user_id = int(user)
     except:
         log_debug(ctx, f"{user} is not a valid ID")
-        await ctx.send(content=f"{user} is not a valid ID", hidden=True)
+        await ctx.send(content=f"{user} is not a valid ID", ephemeral=True)
         return
         
     data = sql.try_autoblock(user_id, mod.id, reason)
@@ -820,6 +861,6 @@ async def _autoblock(ctx: SlashContext, **kwargs):
         prev_mod_id, prev_reason, date = data
         prev_mod = bot.get_user(prev_mod_id)
         msg = f"That user has already been pre-blocked by {prev_mod.mention} on {date}: {prev_reason}"
-    await ctx.send(content=msg, hidden=True)
+    await ctx.send(content=msg, ephemeral=True)
 
-bot.run(TOKEN)
+bot.start()

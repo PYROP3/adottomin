@@ -1,6 +1,6 @@
 beautifulsoup4==4.11.1
 discord.py==2.0.1
-discord_py_slash_command==3.0.3
+discord-py-interactions==4.3.2
 Flask==2.0.2
 matplotlib==3.5.3
 numpy==1.23.2
