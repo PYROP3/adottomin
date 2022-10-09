@@ -784,8 +784,11 @@ async def _rawsql(ctx: SlashContext, **kwargs):
             return
         
         await ctx.send(content=f"Top 10 users for {utils.to_date(_pdate)}!", hidden=_hidden)
+        app.logger.debug(f"Got daily top 10 in channel id {ctx.channel_id}")
+        channel = bot.get_channel(ctx.channel_id)
+        app.logger.debug(f"Got actual channel {channel}")
         for msg in [" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data)]:
-            await ctx.channel.send(content=msg, allowed_mentions=discord.AllowedMentions.users)
+            await channel.send(content=msg, allowed_mentions=discord.AllowedMentions.users)
 
 opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
 opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
