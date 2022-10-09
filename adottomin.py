@@ -772,7 +772,7 @@ async def _rawsql(ctx: SlashContext, **kwargs):
             _hidden = True
         else:
             msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
-            msg += "\n".join(" | ".join([utils.to_podium(idx + 1), utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
+            msg += "\n".join(" | ".join([utils.to_podium(idx + 1), "\\" + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
             msg += "\n"
             if len(msg) > 2000:
                 aux = "\nTRUNC"
