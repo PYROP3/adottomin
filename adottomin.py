@@ -89,7 +89,7 @@ game_channel_ids = [
 
 admin_id = int(os.getenv('ADMIN_ID'))
 
-bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all())
+bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all(), allowed_mentions=discord.AllowedMentions.all())
 slash = SlashCommand(bot, sync_commands=True)
 app = Flask(__name__)
 app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
