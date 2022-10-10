@@ -25,6 +25,7 @@ def generate_new_user_graph(logger, time_range=None):
 
     min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
 
+    # TODO a lot of this processing can be done with better SQL queries
     data = cur.execute("SELECT * FROM age_data WHERE date > :date", {"date": min_date}).fetchall()
     con.close()
     

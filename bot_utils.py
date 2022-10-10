@@ -5,12 +5,12 @@ import random
 import requests
 import string
 import subprocess
+import typing
 
 import db
 
 from datetime import datetime
 from discord.ext import commands
-from discord_slash import SlashContext
 try:
     from ipcqueue import sysvmq
 except ImportError:
@@ -145,18 +145,22 @@ class utils:
             if not will_send: continue
             fmt_msg_chain = await self._format_msg_chain(member, msg)
 
-            if msg.author.bot: # TODO after update to discord.py 2.0, check if there is a msg.interaction to find out original user who used command
-                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
+            if msg.author.bot:
+                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you{self._interaction_detail(msg.interaction)} in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             else:
                 content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{fmt_msg_chain}\n"
             content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
             await self._split_dm(content, member)
 
-    async def get_icon_default(self, **kwargs):
-        if "user" not in kwargs: return None
-        return await self.get_user_icon(kwargs["user"])
+    def _interaction_detail(self, interaction: typing.Optional[discord.MessageInteraction]):
+        if interaction is None: return ""
+        return f" at the request of {interaction.user.mention}'s /{interaction.name}"
 
-    async def get_user_icon(self, user):
+    async def get_icon_default(self, user: typing.Optional[discord.Member]):
+        if user is None: return None
+        return await self.get_user_icon(user)
+
+    async def get_user_icon(self, user: discord.Member):
         try:
             self.logger.debug(f"avatar={user.avatar}")
             av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
@@ -172,21 +176,21 @@ class utils:
             self.logger.error(f"Error while trying to get avatar: {e}\n{traceback.format_exc()}")
             return None
 
-    def _get_display_name(self, **kwargs):
-        if "user" not in kwargs: return None
+    def _get_display_name(self, user: typing.Optional[discord.Member]):
+        if user is None: return None
         try:
-            return kwargs["user"].display_name
+            return user.display_name
         except:
             return None
 
-    def _fallback_get_text(self, **kwargs):
+    def _fallback_get_text(self, user):
         try:
-            return kwargs["user"]
+            return str(user)
         except:
             return None
 
-    def get_text(self, **kwargs):
-        return self._get_display_name(**kwargs) or self._fallback_get_text(**kwargs)
+    def get_text(self, user):
+        return self._get_display_name(user) or self._fallback_get_text(user)
 
     def to_ord(self, num):
         _num = int(num) % 10
