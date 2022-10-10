@@ -43,23 +43,23 @@ class utils:
 
         self._recreate_queues()
 
-    def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
+    async def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.author.id != self.admin.id: raise e()
 
-    def _enforce_not_admin(self, msg, e: HandlerException=HandlerIgnoreException):
+    async def _enforce_not_admin(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.author.id == self.admin.id: raise e()
 
-    def _enforce_dms(self, msg, e: HandlerException=HandlerIgnoreException):
+    async def _enforce_dms(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.channel.type != discord.ChannelType.private: raise e()
 
-    def _enforce_not_dms(self, msg, e: HandlerException=HandlerIgnoreException):
+    async def _enforce_not_dms(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.channel.type == discord.ChannelType.private: raise e()
 
-    def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
+    async def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
-        member = self.guild.get_member(msg.author.id)
+        member = await self.guild.fetch_member(msg.author.id)
         if member is None: 
             self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
             raise e()
@@ -143,7 +143,7 @@ class utils:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
     async def handle_offline_mentions(self, msg: discord.Message):
-        self._enforce_not_dms(msg)
+        await self._enforce_not_dms(msg)
         for member in msg.mentions:
             will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
@@ -213,15 +213,15 @@ class utils:
         return str(pos)
 
     async def handle_dm(self, msg: discord.Message):
-        self._enforce_dms(msg)
-        self._enforce_not_admin(msg)
+        await self._enforce_dms(msg)
+        await self._enforce_not_admin(msg)
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
     async def handle_chat_dm(self, msg: discord.Message):
-        # self._enforce_admin_only(msg)
-        self._enforce_has_role(msg, self.chatting_roles_allowlist)
-        self._enforce_dms(msg)
+        # await self._enforce_admin_only(msg)
+        await self._enforce_has_role(msg, self.chatting_roles_allowlist)
+        await self._enforce_dms(msg)
         if self.chatbot_queue_req is None or not self._is_chatbot_available(): 
             await self._dm_user("Sorry, but the chatting submodule is currently turned off~", msg.author)
             return

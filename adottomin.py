@@ -325,35 +325,24 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
     meme_file.close()
     os.remove(meme_name)
 
-@bot.tree.command(description='Do you believe?')
-@discord.app_commands.describe(user='Who to use in the meme')
-async def supremacy(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "supremacy", user=user)
+def make_user_meme_cmd(name, description, meme_code):
+    @bot.tree.command(name=name, description=description)
+    @discord.app_commands.describe(user="Who to use in the meme")
+    async def _cmd(interaction: discord.Interaction, user: discord.Member):
+        await _meme(interaction, meme_code, user=user)
 
-@bot.tree.command(description='Awww')
-@discord.app_commands.describe(user='Who to use in the meme')
-async def deeznuts(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "deeznuts", user=user)
+user_meme_cmds = {
+    'supremacy': ('supremacy', 'Do you believe?'),
+    'deeznuts': ('deeznuts', 'Awww'),
+    'pills': ('pills', 'You need those pills'),
+    'bromeme': ('bromeme', 'Bro'),
+    'mig': ('fivemins', 'Please'),
+    'sally': ('sally', 'Your loss')
+}
 
-@bot.tree.command(description='You need those pills')
-@discord.app_commands.describe(user='Who to use in the meme')
-async def pills(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "pills", user=user)
-
-@bot.tree.command(description='Bro')
-@discord.app_commands.describe(user='Who to use in the meme')
-async def bromeme(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "bromeme", user=user)
-
-@bot.tree.command(description='Please')
-@discord.app_commands.describe(user='Who to use in the meme')
-async def mig(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "fivemins", user=user)
-
-@bot.tree.command(description='Your loss')
-@discord.app_commands.describe(user='Who else to use in the meme')
-async def sally(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "sally", user=user)
+for cmd in user_meme_cmds:
+    code, description = user_meme_cmds[cmd]
+    make_user_meme_cmd(cmd, description, code)
 
 @bot.tree.command(description='Traditional Maslow\'s hierarchy')
 @discord.app_commands.describe(contents='What to say in the meme')
