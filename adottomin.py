@@ -262,7 +262,6 @@ async def on_member_join(member: discord.Member):
         await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
         logger.debug(f"[{channel}] Error exit on_member_join")
 
-# opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
 @bot.tree.command(description='Turn raid mode on or off (auto kick or ban)')
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
@@ -326,49 +325,41 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
     meme_file.close()
     os.remove(meme_name)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @bot.tree.command(description='Do you believe?')
 @discord.app_commands.describe(user='Who to use in the meme')
 async def supremacy(interaction: discord.Interaction, user: discord.Member):
     await _meme(interaction, "supremacy", user=user)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @bot.tree.command(description='Awww')
 @discord.app_commands.describe(user='Who to use in the meme')
 async def deeznuts(interaction: discord.Interaction, user: discord.Member):
     await _meme(interaction, "deeznuts", user=user)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @bot.tree.command(description='You need those pills')
 @discord.app_commands.describe(user='Who to use in the meme')
 async def pills(interaction: discord.Interaction, user: discord.Member):
     await _meme(interaction, "pills", user=user)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @bot.tree.command(description='Bro')
 @discord.app_commands.describe(user='Who to use in the meme')
 async def bromeme(interaction: discord.Interaction, user: discord.Member):
     await _meme(interaction, "bromeme", user=user)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
 @bot.tree.command(description='Please')
 @discord.app_commands.describe(user='Who to use in the meme')
 async def mig(interaction: discord.Interaction, user: discord.Member):
     await _meme(interaction, "fivemins", user=user)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who else to use in the meme", option_type=6, required=True)]
 @bot.tree.command(description='Your loss')
 @discord.app_commands.describe(user='Who else to use in the meme')
 async def sally(interaction: discord.Interaction, user: discord.Member):
     await _meme(interaction, "sally", user=user)
 
-# opts = [discord_slash.manage_commands.create_option(name="contents", description="What to say in the meme", option_type=3, required=True)]
 @bot.tree.command(description='Traditional Maslow\'s hierarchy')
 @discord.app_commands.describe(contents='What to say in the meme')
 async def needs(interaction: discord.Interaction, contents: str):
     await _meme(interaction, "needs", text=contents)
 
-# opts = [discord_slash.manage_commands.create_option(name=f"element_{i + 1}", description="What to put in your bingo", option_type=3, required=True) for i in range(24)]
 @bot.tree.command(description='Get a custom bingo sheet!')
 async def mybingo(
     interaction: discord.Interaction,
@@ -409,7 +400,6 @@ async def randomcitizen(interaction: discord.Interaction):
     member = random.choice(guild.members)
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member.mention}~")
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to ship you with", option_type=6, required=True)]
 @bot.tree.command(description='Ship yourself with someone!')
 @discord.app_commands.describe(user='Who to ship you with')
 async def shipme(interaction: discord.Interaction, user: discord.Member):
@@ -439,7 +429,6 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
 
     await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3")
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
 @bot.tree.command(description='Rate your gae!')
 @discord.app_commands.describe(user='Who to rate (if empty, rates you)')
 async def gayrate(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
@@ -453,7 +442,6 @@ async def gayrate(interaction: discord.Interaction, user: typing.Optional[discor
 
     await interaction.response.send_message(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3")
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
 @bot.tree.command(description='Rate your horny!')
 @discord.app_commands.describe(user='Who to rate (if empty, rates you)')
 async def hornyrate(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
@@ -475,7 +463,6 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
 
     await interaction.response.send_message(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3")
 
-# opts = [discord_slash.manage_commands.create_option(name="expression", description="What to search", option_type=3, required=False)]
 @bot.tree.command(description='Explain it like you\'re a boomer')
 @discord.app_commands.describe(expression='What to search')
 async def boomersplain(interaction: discord.Interaction, expression: str):
@@ -485,7 +472,6 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
 
     await interaction.response.send_message(content=formatted_definition)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
 @bot.tree.command(description='No horny in main!')
 @discord.app_commands.describe(user='Who to mention (optional)')
 async def horny(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
@@ -502,7 +488,6 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
 
     await interaction.followup.send(content=content, file=meme_file)
 
-# opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 @bot.tree.command(description='Get analytics data for new users')
 @discord.app_commands.describe(range='Max days to fetch')
 async def report(interaction: discord.Interaction, range: typing.Optional[int] = 7):
@@ -522,8 +507,6 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
 
     os.remove(report_name)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="User to warn", option_type=6, required=True)]
-# opts += [discord_slash.manage_commands.create_option(name="reason", description="Why are they being warned", option_type=3, required=False)]
 @bot.tree.command(description='Warn a user for bad behavior, auto bans if there are too many strikes')
 @discord.app_commands.describe(user='User to warn', reason='Why are they being warned')
 async def strike(interaction: discord.Interaction, user: discord.Member, reason: str):
@@ -557,8 +540,6 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
         channel = bot.get_channel(channel_ids[0])
         await age_handler.do_ban(channel, user, reason=age_handling.REASON_WARNINGS, tally=False)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
-# opts += [discord_slash.manage_commands.create_option(name="all", description="Get all strikes (only gets active strikes by default)", option_type=5, required=False)]
 @bot.tree.command(description='Check the user\'s previous strikes')
 @discord.app_commands.describe(user='User to check', all='Get all strikes (only gets active strikes by default)')
 async def getstrikes(interaction: discord.Interaction, user: discord.Member, all: typing.Optional[bool]=False):
@@ -584,7 +565,6 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
 
     await interaction.response.send_message(content=msg)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="User to promote", option_type=6, required=True)]
 @bot.tree.command(description='Promote a user to the next tier')
 @discord.app_commands.describe(user='User to promote')
 async def promote(interaction: discord.Interaction, user: discord.Member):
@@ -623,7 +603,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
         log_debug(interaction, e)
         await interaction.response.send_message(content="I still can't give promotions and it's probably Khris' fault~", hidden=True)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="User to check", option_type=6, required=True)]
 @bot.tree.command(description='Check a user\'s reported age')
 @discord.app_commands.describe(user='User to check')
 async def age(interaction: discord.Interaction, user: discord.Member):
@@ -644,7 +623,6 @@ async def age(interaction: discord.Interaction, user: discord.Member):
     log_debug(interaction, f"{msg}")
     await interaction.followup.send(content=msg, hidden=True)
 
-# opts = [discord_slash.manage_commands.create_option(name="user_id", description="User ID to check", option_type=3, required=True)]
 @bot.tree.command(description='Check a user\'s reported age (search by id)')
 @discord.app_commands.describe(user_id='User ID to check')
 async def agealt(interaction: discord.Interaction, user_id: str):
@@ -673,9 +651,6 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     log_debug(interaction, f"{msg}")
     await interaction.followup.send(content=msg, hidden=True)
 
-# opts = [discord_slash.manage_commands.create_option(name="pasta", description="Copy pasta", option_type=3, required=True, choices=copypasta_utils.AVAILABLE_PASTAS)]
-# opts += [discord_slash.manage_commands.create_option(name="name", description="Who your pasta is about", option_type=3, required=True)]
-# opts += [discord_slash.manage_commands.create_option(name="pronouns", description="Which pronouns to use", option_type=3, required=True, choices=copypasta_utils.PRON_OPTS)]
 @bot.tree.command(description='Generate a copy pasta')
 @discord.app_commands.describe(pasta='Copy pasta', name='Who your pasta is about', pronouns='Which pronouns to use')
 @discord.app_commands.choices(
@@ -698,7 +673,6 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
 
     await interaction.response.send_message(content=msg)
 
-# opts = [discord_slash.manage_commands.create_option(name="enable", description="Enable (on) or disable (off) notifications", option_type=3, required=True, choices=["on", "off"])]
 @bot.tree.command(description='Update settings on whether to notify you about pings while you\'re offline')
 @discord.app_commands.describe(enable='Enable (on) or disable (off) notifications')
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
@@ -726,7 +700,6 @@ async def offlinepings(interaction: discord.Interaction, enable: discord.app_com
 
 #     await interaction.response.send_message(content=f"This functionality is not available yet, try again later~")
 
-# opts = [discord_slash.manage_commands.create_option(name="which", description="Bingo sheet to retrieve (will get a random one by default)", option_type=3, required=False, choices=memes.get_bingos())]
 @bot.tree.command(description='Get a clean bingo sheet!')
 @discord.app_commands.describe(which='Bingo sheet to retrieve (will get a random one by default)')
 @discord.app_commands.choices(which=[discord.app_commands.Choice(name=b, value=b) for b in memes.get_bingos()])
@@ -757,8 +730,6 @@ async def suicide(interaction: discord.Interaction):
 
     await interaction.response.send_message(content=msg, hidden=True)
 
-# opts = [discord_slash.manage_commands.create_option(name="file", description="File to connect", option_type=3, required=True, choices=db.sql_files)]
-# opts += [discord_slash.manage_commands.create_option(name="query", description="SQL query", option_type=3, required=True)]
 @bot.tree.command(description='Perform a SQL query')
 @discord.app_commands.describe(file='File to connect', query='SQL query')
 @discord.app_commands.choices(file=[discord.app_commands.Choice(name=b, value=b) for b in db.sql_files])
@@ -794,8 +765,6 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
             msg = msg[:2000-len(aux)-1] + aux
     await interaction.followup.send(content=msg, hidden=True)
 
-# opts = [discord_slash.manage_commands.create_option(name="date", description="When to fetch data", option_type=3, required=False)]
-# opts += [discord_slash.manage_commands.create_option(name="hidden", description="Hide or show response", option_type=5, required=False)]
 @bot.tree.command(description='Get the daily top 10 rankings')
 @discord.app_commands.describe(date='When to fetch data', hidden='Hide or show response')
 async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], hidden: typing.Optional[bool]):
@@ -834,8 +803,6 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
             msg = msg[:2000-len(aux)-1] + aux
     await interaction.followup.send(content=msg, hidden=_hidden)
 
-# opts = [discord_slash.manage_commands.create_option(name="user", description="User ID to block", option_type=3, required=True)]
-# opts += [discord_slash.manage_commands.create_option(name="reason", description="Reason for block", option_type=3, required=True)]
 @bot.tree.command(description='Pre-block a user before they\'ve even joined')
 @discord.app_commands.describe(user='User ID to block', reason='Reason for block')
 async def autoblock(interaction: discord.Interaction, user: str, reason: str):
