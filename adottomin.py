@@ -5,10 +5,12 @@ import discord
 import logging
 import os
 import random
+import sys
 import traceback
 import typing
 
 import age_handling
+import botlogger
 import bot_utils
 import copypasta_utils
 import db
@@ -16,7 +18,6 @@ import graphlytics
 import memes
 
 from flask import Flask
-from discord.ext import commands
 from dotenv import load_dotenv
 from os.path import exists
 
@@ -100,33 +101,29 @@ class BottoBot(discord.Client):
         self.tree.copy_global_to(guild=GUILD_OBJ)
         await self.tree.sync(guild=GUILD_OBJ)
 
-# bot = commands.Bot(command_prefix="/", self_bot=True, intents=discord.Intents.all(), allowed_mentions=discord.AllowedMentions.all())
-# slash = SlashCommand(bot, sync_commands=True)
 bot = BottoBot(intents=discord.Intents.all())
-app = Flask(__name__)
-app.logger.root.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL') or 'DEBUG'))
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))
+logger = botlogger.get_logger("adottomin")
 
 def log_debug(interaction: discord.Interaction, msg: str):
-    app.logger.debug(f"[{interaction.channel}] {msg}")
+    logger.debug(f"[{interaction.channel}] {msg}")
 
 def log_info(interaction: discord.Interaction, msg: str):
-    app.logger.info(f"[{interaction.channel}] {msg}")
+    logger.info(f"[{interaction.channel}] {msg}")
 
 def log_warn(interaction: discord.Interaction, msg: str):
-    app.logger.warning(f"[{interaction.channel}] {msg}")
+    logger.warning(f"[{interaction.channel}] {msg}")
 
 def log_error(interaction: discord.Interaction, msg: str):
-    app.logger.error(f"[{interaction.channel}] {msg}")
+    logger.error(f"[{interaction.channel}] {msg}")
 
-app.logger.info(f"Channel ID = {channel_ids[0]}")
-app.logger.info(f"Guild ID = {GUILD_ID}")
-app.logger.info(f"Role IDs = {role_ids}")
-app.logger.info(f"Tallly channel IDs = {tally_channel}")
+logger.info(f"Channel ID = {channel_ids[0]}")
+logger.info(f"Guild ID = {GUILD_ID}")
+logger.info(f"Role IDs = {role_ids}")
+logger.info(f"Tallly channel IDs = {tally_channel}")
 
-sql = db.database(LENIENCY_COUNT, app.logger)
-age_handler = age_handling.age_handler(bot, sql, app.logger, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, sql, app.logger, [divine_role_id], chatbot_service)
+sql = db.database(LENIENCY_COUNT)
+age_handler = age_handling.age_handler(bot, sql, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+utils = bot_utils.utils(bot, sql, [divine_role_id], chatbot_service)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -148,7 +145,7 @@ async def _dm_log_error(msg):
         dm_chan = admin_user.dm_channel or await admin_user.create_dm()
         await dm_chan.send(content=f"Error thrown during operation:\n```\n{msg}\n```")
     except Exception as e:
-        app.logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error while trying to log error: {e}\n{traceback.format_exc()}")
 
 def _get_message_for_age(ctx: discord.Interaction, age_data, mention):
     if age_data is None:
@@ -166,7 +163,7 @@ def _get_message_for_age(ctx: discord.Interaction, age_data, mention):
 
 @bot.event
 async def on_ready():
-    app.logger.info(f"{bot.user} has connected to Discord")
+    logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
     utils.inject_guild(bot.get_guild(GUILD_ID))
 
@@ -186,13 +183,13 @@ async def execute_handlers(msg, handlers):
         except bot_utils.HandlerException:
             pass
         except Exception as e:
-            app.logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
+            logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
 
 @bot.event
 async def on_message(msg: discord.Message):
     if len(msg.content) == 0: return
-    # app.logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
+    # logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
     await execute_handlers(msg, bot_message_handlers)
 
@@ -204,31 +201,31 @@ async def on_message(msg: discord.Message):
         try:
             sql.register_message(msg.author.id, msg.id, msg.channel.id)
         except Exception as e:
-            app.logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
+            logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
     else:
-        app.logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
+        logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
 
 @bot.event
 async def on_member_join(member: discord.Member):
     channel = bot.get_channel(channel_ids[0])
-    app.logger.info(f"[{channel}] {member} just joined")
+    logger.info(f"[{channel}] {member} just joined")
     try:
         if member.bot:
-            app.logger.info(f"[{channel}] {member} is a bot, ignoring")
+            logger.info(f"[{channel}] {member} is a bot, ignoring")
             return
 
         if member.id == bot.user.id: return
         
         if RAID_MODE or is_raid_mode():
-            app.logger.info(f"[{channel}] Raid mode ON: {member}")
+            logger.info(f"[{channel}] Raid mode ON: {member}")
             await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
             return
 
         autoblock = sql.is_autoblocked(member.id)
         if autoblock is not None:
             mod, reason, date = autoblock
-            app.logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
+            logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
             await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
             return
 
@@ -237,33 +234,33 @@ async def on_member_join(member: discord.Member):
 
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
-            app.logger.debug(f"[{channel}] {member} Waiting to send reminder")
+            logger.debug(f"[{channel}] {member} Waiting to send reminder")
             await asyncio.sleep(LENIENCY_REMINDER_TIME_S)
             try:
                 must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
                 if not must_continue:
-                    app.logger.debug(f"[{channel}] Early exit on_member_join")
+                    logger.debug(f"[{channel}] Early exit on_member_join")
                     return
                 else:
-                    app.logger.debug(f"[{channel}] {member} Sending reminder message")
+                    logger.debug(f"[{channel}] {member} Sending reminder message")
                     await channel.send(age_handling.MSG_GREETING_REMINDER.format(member.mention))
             except Exception as e:
-                app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+                logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
                 await _dm_log_error(f"[{channel}] [reminder] do_age_check\n{e}\n{traceback.format_exc()}")
 
         await asyncio.sleep(LENIENCY_TIME_S if LENIENCY_REMINDER_TIME_S is None else LENIENCY_TIME_S - LENIENCY_REMINDER_TIME_S)
         try:
             await age_handler.do_age_check(channel, member)
         except Exception as e:
-            app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+            logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{channel}] [final] do_age_check\n{e}\n{traceback.format_exc()}")
         
-        app.logger.debug(f"[{channel}] Exit on_member_join")
+        logger.debug(f"[{channel}] Exit on_member_join")
 
     except Exception as e:
-        app.logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
+        logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
-        app.logger.debug(f"[{channel}] Error exit on_member_join")
+        logger.debug(f"[{channel}] Error exit on_member_join")
 
 # opts = [discord_slash.manage_commands.create_option(name="active", description="Whether to turn raid mode on or off", option_type=5, required=True)]
 @bot.tree.command(description='Turn raid mode on or off (auto kick or ban)')
@@ -307,10 +304,7 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
         await interaction.followup.send(content="Oops, there was an error~")
         return 
 
-    meme_file = discord.File(meme_name, filename=f"{interaction.user.name}_{meme_code}.png")
-    
-    if _icon is not None:
-        os.remove(_icon)
+    meme_file = discord.File(meme_name, filename=f"{interaction.user.id}_{meme_code}.png")
 
     if msg == "Enjoy your fresh meme~":
         try:
@@ -322,7 +316,14 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
             pass
 
     await interaction.followup.send(content=msg, file=meme_file)
+    
+    if _icon is not None:
+        os.remove(_icon)
 
+    if _author_icon is not None:
+        os.remove(_author_icon)
+
+    meme_file.close()
     os.remove(meme_name)
 
 # opts = [discord_slash.manage_commands.create_option(name="user", description="Who to use in the meme", option_type=6, required=True)]
@@ -513,7 +514,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
         await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
         return
 
-    report_name = graphlytics.generate_new_user_graph(app.logger, range)
+    report_name = graphlytics.generate_new_user_graph(logger, range)
     log_debug(interaction, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
 

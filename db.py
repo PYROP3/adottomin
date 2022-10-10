@@ -2,6 +2,8 @@ import datetime
 import os
 import sqlite3
 
+import botlogger
+
 db_home = os.getenv("DB_HOME") or os.getenv("BOT_HOME") or os.getcwd()
 
 def _dbfile(id: str, version: int):
@@ -76,12 +78,13 @@ schemas = {
 }
 
 class database:
-    def __init__(self, max_leniency, logger):
+    def __init__(self, max_leniency):
+        self.logger = botlogger.get_logger(__name__)
         # Initialize db
         for db_file in schemas:
-            logger.debug(f"Checking db file '{db_file}'")
+            self.logger.debug(f"Checking db file '{db_file}'")
             if not os.path.exists(db_file):
-                logger.info(f"CREATING db file '{db_file}'")
+                self.logger.info(f"CREATING db file '{db_file}'")
                 try:
                     con = sqlite3.connect(db_file)
                     cur = con.cursor()
@@ -90,9 +93,8 @@ class database:
                     con.commit()
                     con.close()
                 except:
-                    logger.error(f"[__init__] Error creating {db_file}")
+                    self.logger.error(f"[__init__] Error creating {db_file}")
         
-        self.logger = logger
         self.max_leniency = max_leniency
 
     def raw_sql(self, file, query):

@@ -1,6 +1,8 @@
 import discord
 import re
 
+import botlogger
+
 REASON_MINOR = "minor"
 REASON_TIMEOUT = "did not say age"
 REASON_SPAM = "spam"
@@ -18,14 +20,15 @@ AGE_MAX = 60
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql, logger, greeting_channel, tally_channel, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql, greeting_channel, tally_channel, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
-        self.logger = logger
         self.greeting_channel = greeting_channel
         self.tally_channel = tally_channel
         self.valid_role_ids = valid_role_ids
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
+
+        self.logger = botlogger.get_logger(__name__)
         
         # Age regex
         self.mention_prog = re.compile(r"<@[0-9]+>")

@@ -7,6 +7,7 @@ import string
 import subprocess
 import typing
 
+import botlogger
 import db
 
 from datetime import datetime
@@ -30,14 +31,16 @@ class HandlerIgnoreException(HandlerException):
     pass
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, logger, chatting_roles_allowlist=[], chatting_servicename: str=None):
+    def __init__(self, bot: commands.Bot, database: db.database, chatting_roles_allowlist=[], chatting_servicename: str=None):
         self.database = database
         self.bot = bot
-        self.logger = logger
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.chatting_servicename = chatting_servicename
         self.admin = None
         self.guild = None
+
+        self.logger = botlogger.get_logger(__name__)
+
         self._recreate_queues()
 
     def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
@@ -157,19 +160,29 @@ class utils:
         return f" at the request of {interaction.user.mention}'s /{interaction.name}"
 
     async def get_icon_default(self, user: typing.Optional[discord.Member]):
-        if user is None: return None
+        if user is None: 
+            self.logger.warning("User is None")
+            return None
         return await self.get_user_icon(user)
 
     async def get_user_icon(self, user: discord.Member):
         try:
             self.logger.debug(f"avatar={user.avatar}")
-            av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
+            # av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
             icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
             self.logger.debug(f"icon_name={icon_name}")
 
-            file = open(icon_name, "wb")
-            file.write(requests.get(av_url).content)
-            file.close()
+            await user.avatar.save(fp=icon_name)
+
+            # with open(icon_name, "wb") as fp:
+            #     await user.avatar.save(fp=fp)
+
+            # file = open(icon_name, "wb")
+            # resp = requests.get(av_url)
+            # self.logger.debug(f"get response => {resp}")
+            # sz = file.write(resp.content)
+            # self.logger.debug(f"wrote {sz} bytes")
+            # file.close()
 
             return icon_name
         except Exception as e:

@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import db
+import botlogger
 
 string_len = 20
 
@@ -19,7 +20,7 @@ def _get_label(age):
 def _get_daily(parsed, date):
     return len(parsed[date]["tags"]) + len(parsed[date]["adult"]) + len(parsed[date]["minor"]) + len(parsed[date]["unknown"])
 
-def generate_new_user_graph(logger, time_range=None):
+def generate_new_user_graph( time_range=None):
     con = sqlite3.connect(db.validations_db_file)
     cur = con.cursor()
 
@@ -29,6 +30,7 @@ def generate_new_user_graph(logger, time_range=None):
     data = cur.execute("SELECT * FROM age_data WHERE date > :date", {"date": min_date}).fetchall()
     con.close()
     
+    logger = botlogger.get_logger(__name__)
     logger.debug(f"[GRAPHLYTICS] Got {len(data)} datapoints")
 
     dates = sorted(list(set([datetime.datetime.strptime(entry[2], '%Y-%m-%d %H:%M:%S.%f').date() for entry in data])))

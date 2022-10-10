@@ -8,6 +8,8 @@ import string
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
 
+import botlogger
+
 memes_folder = "meme_stuff"
 
 no_horny = f"{memes_folder}/no_horny.png"
@@ -17,6 +19,8 @@ if use_pilmoji:
     from pilmoji import Pilmoji
 
 string_len = 20
+
+logger = botlogger.get_logger(__name__)
 
 def get_bingos():
     return [file[:-4] for file in os.listdir(f"{memes_folder}/bingos") if file[-4:] == ".png"]
@@ -94,7 +98,7 @@ def automeme(template, rules):
             try:
                 _baserules[rule](im, draw, args)
             except Exception as e:
-                # print(f"Error while trying to execute rule: {e}\n{traceback.format_exc()}")
+                logger.error(f"Error while trying to execute rule: {e}\n{traceback.format_exc()}")
                 pass
 
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
