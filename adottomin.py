@@ -275,19 +275,19 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
     if enable.value == "on":
         if set_raid_mode():
             log_info(interaction, f"{interaction.user} enabled raidmode")
-            await interaction.response.send_message(content=MSG_RAID_MODE_ON.format(interaction.user.mention), hidden=False)
+            await interaction.response.send_message(content=MSG_RAID_MODE_ON.format(interaction.user.mention))
         else:
             log_debug(interaction, f"{interaction.user} enabled raidmode (already enabled)")
             await interaction.response.send_message(content=MSG_RAID_MODE_ON_ALREADY, hidden=True)
     else:
         if unset_raid_mode():
             log_info(interaction, f"{interaction.user} disabled raidmode")
-            await interaction.response.send_message(content=MSG_RAID_MODE_OFF.format(interaction.user.mention), hidden=False)
+            await interaction.response.send_message(content=MSG_RAID_MODE_OFF.format(interaction.user.mention))
         else:
             log_debug(interaction, f"{interaction.user} disabled raidmode (already disabled)")
             await interaction.response.send_message(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
 
-async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member], text: str=None, msg="Enjoy your fresh meme~"):
+async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg="Enjoy your fresh meme~"):
     await interaction.response.defer()
 
     log_info(interaction, f"{interaction.user} requested {meme_code}")
@@ -415,11 +415,11 @@ async def randomcitizen(interaction: discord.Interaction):
 async def shipme(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested ship with {user}")
     if (user.id == interaction.user.id):
-        await interaction.response.send_message(content=f"No selfcest, {interaction.user.mention}!", hidden=False)
+        await interaction.response.send_message(content=f"No selfcest, {interaction.user.mention}!")
         return
 
     if (user.id == bot.user.id):
-        await interaction.response.send_message(content=f"I'm not shipping myself with you, {interaction.user.mention}~", hidden=False)
+        await interaction.response.send_message(content=f"I'm not shipping myself with you, {interaction.user.mention}~")
         return
 
     smaller = min(int(user.id), int(interaction.user.id))
@@ -437,7 +437,7 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
     else:
         emote = ":revolving_hearts:"
 
-    await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3", hidden=False)
+    await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3")
 
 # opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
 @bot.tree.command(description='Rate your gae!')
@@ -446,12 +446,12 @@ async def gayrate(interaction: discord.Interaction, user: typing.Optional[discor
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested gayrate for {user}")
     if (user.id == bot.user.id):
-        await interaction.response.send_message(content=f"Wouldn't you like to know, {interaction.user.mention}~?", hidden=False)
+        await interaction.response.send_message(content=f"Wouldn't you like to know, {interaction.user.mention}~?")
         return
 
     pct, nice = memes.percent_from(f"gay/{int(user.id)}")
 
-    await interaction.response.send_message(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", hidden=False)
+    await interaction.response.send_message(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3")
 
 # opts = [discord_slash.manage_commands.create_option(name="user", description="Who to rate (if empty, rates you)", option_type=6, required=False)]
 @bot.tree.command(description='Rate your horny!')
@@ -460,7 +460,7 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested hornyrate for {user}")
     if (user.id == bot.user.id):
-        await interaction.response.send_message(content=f"Wouldn't you like to know, {interaction.user.mention}~?", hidden=False)
+        await interaction.response.send_message(content=f"Wouldn't you like to know, {interaction.user.mention}~?")
         return
 
     pct, nice = memes.percent_from(f"horny/{int(user.id)}")
@@ -473,7 +473,7 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
     else:
         emote = ":smiling_imp:"
 
-    await interaction.response.send_message(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", hidden=False)
+    await interaction.response.send_message(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3")
 
 # opts = [discord_slash.manage_commands.create_option(name="expression", description="What to search", option_type=3, required=False)]
 @bot.tree.command(description='Explain it like you\'re a boomer')
@@ -483,7 +483,7 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
 
     formatted_definition = memes.get_formatted_definition(expression)
 
-    await interaction.response.send_message(content=formatted_definition, hidden=False)
+    await interaction.response.send_message(content=formatted_definition)
 
 # opts = [discord_slash.manage_commands.create_option(name="user", description="Who to mention (optional)", option_type=6, required=False)]
 @bot.tree.command(description='No horny in main!')
@@ -547,13 +547,13 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
         msg = f"{user.mention} is being warned by {interaction.user.mention}! That's {active_strikes} strikes so far~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
-        await interaction.response.send_message(content=msg, hidden=False)
+        await interaction.response.send_message(content=msg)
     else:
         log_info(interaction, f"{user} now has {active_strikes} active strikes, and will be banned")
         msg = f"{user.mention} is being warned by {interaction.user.mention}! That's {active_strikes} strikes, and so you must go~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
-        await interaction.response.send_message(content=msg, hidden=False)
+        await interaction.response.send_message(content=msg)
         channel = bot.get_channel(channel_ids[0])
         await age_handler.do_ban(channel, user, reason=age_handling.REASON_WARNINGS, tally=False)
 
@@ -582,7 +582,7 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
             msg += " active"
         msg += f" strikes~"
 
-    await interaction.response.send_message(content=msg, hidden=False)
+    await interaction.response.send_message(content=msg)
 
 # opts = [discord_slash.manage_commands.create_option(name="user", description="User to promote", option_type=6, required=True)]
 @bot.tree.command(description='Promote a user to the next tier')
@@ -617,7 +617,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
         member = interaction.guild.get_member(user.id)
         new_role = interaction.guild.get_role(new_role_id)
         await member.add_roles(new_role, reason=f"{interaction.user} said so")
-        await interaction.response.send_message(content=msg, hidden=False)
+        await interaction.response.send_message(content=msg)
     except discord.HTTPException as e:
         log_error(interaction, f"Failed to give role {new_role} to {user}")
         log_debug(interaction, e)
@@ -688,7 +688,7 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
     log_info(interaction, f"{interaction.user} requested copypasta: {_pasta} for {name} ({_pronouns})")
 
     if "botto" in name.lower():
-        await interaction.response.send_message(content=f"I'm not gonna write myself into your copypasta, {interaction.user.mention}~", hidden=False)
+        await interaction.response.send_message(content=f"I'm not gonna write myself into your copypasta, {interaction.user.mention}~")
         return
 
     try:
@@ -696,7 +696,7 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
     except KeyError:
         msg = "Hmm I can't fill that pasta with the data you provided..."
 
-    await interaction.response.send_message(content=msg, hidden=False)
+    await interaction.response.send_message(content=msg)
 
 # opts = [discord_slash.manage_commands.create_option(name="enable", description="Enable (on) or disable (off) notifications", option_type=3, required=True, choices=["on", "off"])]
 @bot.tree.command(description='Update settings on whether to notify you about pings while you\'re offline')

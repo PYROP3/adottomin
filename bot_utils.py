@@ -160,29 +160,15 @@ class utils:
         return f" at the request of {interaction.user.mention}'s /{interaction.name}"
 
     async def get_icon_default(self, user: typing.Optional[discord.Member]):
-        if user is None: 
-            self.logger.warning("User is None")
-            return None
+        if user is None: return None
         return await self.get_user_icon(user)
 
     async def get_user_icon(self, user: discord.Member):
         try:
-            self.logger.debug(f"avatar={user.avatar}")
-            # av_url = AVATAR_CDN_URL.format(user.id, user.avatar)
             icon_name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
             self.logger.debug(f"icon_name={icon_name}")
 
             await user.avatar.save(fp=icon_name)
-
-            # with open(icon_name, "wb") as fp:
-            #     await user.avatar.save(fp=fp)
-
-            # file = open(icon_name, "wb")
-            # resp = requests.get(av_url)
-            # self.logger.debug(f"get response => {resp}")
-            # sz = file.write(resp.content)
-            # self.logger.debug(f"wrote {sz} bytes")
-            # file.close()
 
             return icon_name
         except Exception as e:
