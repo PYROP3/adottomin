@@ -68,9 +68,11 @@ class utils:
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
     def inject_admin(self, admin):
+        self.logger.debug(f"Injected admin {admin}")
         self.admin = admin
 
     def inject_guild(self, guild: discord.Guild):
+        self.logger.debug(f"Injected guild {guild}")
         self.guild = guild
 
     def _is_chatbot_available(self):

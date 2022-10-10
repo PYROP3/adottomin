@@ -165,7 +165,7 @@ def _get_message_for_age(ctx: discord.Interaction, age_data, mention):
 async def on_ready():
     logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
-    utils.inject_guild(bot.get_guild(GUILD_ID))
+    utils.inject_guild(await bot.fetch_guild(GUILD_ID))
 
 bot_message_handlers = [
     utils.handle_offline_mentions
