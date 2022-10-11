@@ -318,34 +318,37 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
             return
 
         for pin in all_pins:
-            if sql.is_pinned(pin.id):
-                logger.debug(f"Message {pin.id} is already pinned, skipping...")
-                return
+            try:
+                if sql.is_pinned(pin.id):
+                    logger.debug(f"Message {pin.id} is already pinned, skipping...")
+                    return
 
-            pinEmbed = discord.Embed(
-                description="\"" + pin.content + "\"",
-                colour=random.choice(EMBED_COLORS)
-            )
+                pinEmbed = discord.Embed(
+                    description="\"" + pin.content + "\"",
+                    colour=random.choice(EMBED_COLORS)
+                )
 
-            attachments = pin.attachments
-            if len(attachments) >= 1:
-                pinEmbed.set_image(url=attachments[0].url)
+                attachments = pin.attachments
+                if len(attachments) >= 1:
+                    pinEmbed.set_image(url=attachments[0].url)
 
-            pinEmbed.add_field(name="Jump", value=pin.jump_url, inline=False)
-            
-            pinEmbed.set_footer(text=f'Sent in: {pin.channel.name} - at: {pin.created_at}')
-            
-            pinEmbed.set_author(name=f'Sent by {pin.author}')
-            archived = await pin_channel.send(embed=pinEmbed)
+                pinEmbed.add_field(name="Jump", value=pin.jump_url, inline=False)
+                
+                pinEmbed.set_footer(text=f'Sent in: {pin.channel.name} - at: {pin.created_at}')
+                
+                pinEmbed.set_author(name=f'Sent by {pin.author}')
+                archived = await pin_channel.send(embed=pinEmbed)
 
-            sql.register_pin(pin.author, pin.id, archived.id)
+                sql.register_pin(pin.author, pin.id, archived.id)
+            except Exception as e:
+                logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
             # updated = True
 
         # if updated:
         #     await pin.channel.send(f"Your pinned message is in {pin_channel.mention}~")
 
     except Exception as e:
-        logger.error(f"Exception while trying to handle pin updates: {e}")
+        logger.error(f"Exception while trying to handle pin updates: {e}\n{traceback.format_exc()}")
 
 @bot.tree.command(description='Turn raid mode on or off (auto kick or ban)')
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
