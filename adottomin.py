@@ -339,7 +339,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 pinEmbed.set_author(name=f'Sent by {pin.author}')
                 archived = await pin_channel.send(embed=pinEmbed)
 
-                sql.register_pin(pin.author, pin.id, archived.id)
+                sql.register_pin(pin.id, archived.id)
             except Exception as e:
                 logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
             # updated = True

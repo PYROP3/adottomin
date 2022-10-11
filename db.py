@@ -19,7 +19,7 @@ activity_version = 2
 activity_db_file = _dbfile('activity', activity_version)
 autoblocklist_version = 1
 autoblocklist_db_file = _dbfile('autoblocklist', autoblocklist_version)
-pins_archive_version = 1
+pins_archive_version = 2
 pins_archive_db_file = _dbfile('pins_archive', pins_archive_version)
 
 sql_files = [
@@ -80,7 +80,6 @@ schemas = {
             );'''],
     pins_archive_db_file: ['''
             CREATE TABLE pins (
-                user int NOT NULL,
                 original_message int NOT NULL,
                 archived_message int NOT NULL,
                 date TIMESTAMP
@@ -318,10 +317,10 @@ class database:
             self.logger.error(f"get_dailytopten error: {e}")
             return None
 
-    def register_pin(self, user, message_id, pin_id):
+    def register_pin(self, message_id, pin_id):
         con = sqlite3.connect(pins_archive_db_file)
         cur = con.cursor()
-        cur.execute("INSERT INTO pins VALUES (?, ?, ?, ?)", [user, message_id, pin_id, datetime.datetime.now()])
+        cur.execute("INSERT INTO pins VALUES (?, ?, ?)", [message_id, pin_id, datetime.datetime.now()])
         con.commit()
         con.close()
 
