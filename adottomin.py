@@ -307,7 +307,11 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
         return
 
     try:
-        all_pins = await channel.pins()
+        try:
+            all_pins = await channel.pins()
+        except AttributeError:
+            logger.debug(f"{channel} does not have pins")
+            return
 
         # updated = False
         
