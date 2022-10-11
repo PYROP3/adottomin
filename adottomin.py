@@ -444,30 +444,11 @@ async def needs(interaction: discord.Interaction, contents: str):
 @bot.tree.command(description='Get a custom bingo sheet!')
 async def mybingo(
     interaction: discord.Interaction,
-    element_1: str,
-    element_2: str,
-    element_3: str,
-    element_4: str,
-    element_5: str,
-    element_6: str,
-    element_7: str,
-    element_8: str,
-    element_9: str,
-    element_10: str,
-    element_11: str,
-    element_12: str,
-    element_13: str,
-    element_14: str,
-    element_15: str,
-    element_16: str,
-    element_17: str,
-    element_18: str,
-    element_19: str,
-    element_20: str,
-    element_21: str,
-    element_22: str,
-    element_23: str,
-    element_24: str
+    element_1: str,    element_2: str,    element_3: str,    element_4: str,    element_5: str,
+    element_6: str,    element_7: str,    element_8: str,    element_9: str,    element_10: str,
+    element_11: str,   element_12: str,                      element_13: str,   element_14: str,
+    element_15: str,   element_16: str,   element_17: str,   element_18: str,   element_19: str,
+    element_20: str,   element_21: str,   element_22: str,   element_23: str,   element_24: str
 ):
     _args = [element_1, element_2, element_3, element_4, element_5, element_6, element_7, element_8, element_9, element_10, element_11, element_12, element_13, element_14, element_15, element_16, element_17, element_18, element_19, element_20, element_21, element_22, element_23, element_24]
     await _meme(interaction, "custom_bingo", text=[interaction.user.display_name] + _args, msg="Enjoy your custom bingo~")
