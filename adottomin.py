@@ -491,6 +491,38 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
 
     await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3")
 
+@bot.tree.command(description='Ship yourself with people!')
+@discord.app_commands.describe(user1='Who to ship you with', user2='Who else to ship you with')
+async def shipus(interaction: discord.Interaction, user1: discord.Member, user2: discord.Member):
+    log_info(interaction, f"{interaction.user} requested ship with {user1} and {user2}")
+    if (user1.id == interaction.user.id or user2.id == interaction.user.id):
+        await interaction.response.send_message(content=f"No selfcest, {interaction.user.mention}!")
+        return
+
+    if (user1.id == user2.id):
+        await interaction.response.send_message(content=f"Try two different people, {interaction.user.mention}!")
+        return
+
+    if (user1.id == bot.user.id or user2.id == bot.user.id):
+        await interaction.response.send_message(content=f"I'm not shipping myself with you, {interaction.user.mention}~")
+        return
+
+    ids = sorted(int(user1.id), int(user2.id), int(interaction.user.id))
+    pct, nice = memes.percent_from("ship/" + "/".join([str(id) for id in ids]))
+
+    if pct == 69:
+        emote = ":sunglasses:"
+    elif pct < 33:
+        emote = ":broken_heart:"
+    elif pct < 66:
+        emote = ":heart:"
+    elif pct < 100:
+        emote = ":two_hearts:"
+    else:
+        emote = ":revolving_hearts:"
+
+    await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention}, {user1.mention} and {user2.mention} today is {emote} {pct}%{nice} :3")
+
 @bot.tree.command(description='Rate your gae!')
 @discord.app_commands.describe(user='Who to rate (if empty, rates you)')
 async def gayrate(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
