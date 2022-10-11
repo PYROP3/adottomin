@@ -200,7 +200,7 @@ async def on_ready():
     utils.inject_guild(await bot.fetch_guild(GUILD_ID))
 
     for channel in bot.get_all_channels():
-        on_guild_channel_pins_update(channel, None)
+        await on_guild_channel_pins_update(channel, None)
 
     logger.info(f"Finished on_ready setup")
 
