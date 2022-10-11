@@ -510,7 +510,7 @@ async def shipus(interaction: discord.Interaction, user1: discord.Member, user2:
         await interaction.response.send_message(content=f"I'm not shipping myself with you, {interaction.user.mention}~")
         return
 
-    ids = sorted(int(user1.id), int(user2.id), int(interaction.user.id))
+    ids = sorted([int(user1.id), int(user2.id), int(interaction.user.id)])
     pct, nice = memes.percent_from("ship/" + "/".join([str(id) for id in ids]))
 
     if pct == 69:
