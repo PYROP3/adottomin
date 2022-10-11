@@ -157,7 +157,7 @@ logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT)
 age_handler = age_handling.age_handler(bot, sql, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-utils = bot_utils.utils(bot, sql, [divine_role_id], chatbot_service)
+utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -331,7 +331,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                     return
 
                 pinEmbed = discord.Embed(
-                    description="\"" + pin.content + "\"",
+                    description="\"" + pin.content + "\"" if len(pin.content) > 0 else None,
                     colour=random.choice(EMBED_COLORS)
                 )
 
@@ -343,7 +343,13 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 
                 pinEmbed.set_footer(text=f'Sent in: {pin.channel.name} - at: {pin.created_at}')
                 
-                pinEmbed.set_author(name=f'Sent by {pin.author}')
+                try:
+                    icon_url = pin.author.display_icon.url
+                except Exception as e:
+                    logger.warning(f"Exception while trying to handle pin {pin.id} thumbnail: {e}\n{traceback.format_exc()}")
+                    icon_url = None
+
+                pinEmbed.set_author(name=f'Sent by {pin.author}', icon_url=icon_url)
                 archived = await pin_channel.send(embed=pinEmbed)
 
                 sql.register_pin(pin.id, archived.id)
@@ -572,9 +578,14 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
 @bot.tree.command(description='No horny in main!')
 @discord.app_commands.describe(user='Who to mention (optional)')
 async def horny(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
-    await interaction.response.defer()
-
     log_info(interaction, f"{interaction.user} requested No Horny for {user}")
+
+    if interaction.channel.nsfw:
+        log_debug(interaction, f"{interaction.channel} is marked as nsfw")
+        await interaction.followup.send(content=f"People are allowed to be horny here!", ephemeral=True)
+        return
+
+    await interaction.response.defer()
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
 
