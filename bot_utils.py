@@ -59,7 +59,11 @@ class utils:
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
-        member = await self.guild.fetch_member(msg.author.id)
+        try:
+            member = await self.guild.fetch_member(msg.author.id)
+        except discord.errors.NotFound:
+            self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
+            raise e()
         if member is None: 
             self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
             raise e()
