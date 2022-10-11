@@ -363,7 +363,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 async def raidmode(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
     if not (divine_role_id in [role.id for role in interaction.user.roles]):
         log_debug(interaction, f"{interaction.user} cannot use raidmode")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     if enable.value == "on":
@@ -372,14 +372,14 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
             await interaction.response.send_message(content=MSG_RAID_MODE_ON.format(interaction.user.mention))
         else:
             log_debug(interaction, f"{interaction.user} enabled raidmode (already enabled)")
-            await interaction.response.send_message(content=MSG_RAID_MODE_ON_ALREADY, hidden=True)
+            await interaction.response.send_message(content=MSG_RAID_MODE_ON_ALREADY, ephemeral=True)
     else:
         if unset_raid_mode():
             log_info(interaction, f"{interaction.user} disabled raidmode")
             await interaction.response.send_message(content=MSG_RAID_MODE_OFF.format(interaction.user.mention))
         else:
             log_debug(interaction, f"{interaction.user} disabled raidmode (already disabled)")
-            await interaction.response.send_message(content=MSG_RAID_MODE_OFF_ALREADY, hidden=True)
+            await interaction.response.send_message(content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
 
 async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg="Enjoy your fresh meme~"):
     await interaction.response.defer()
@@ -460,7 +460,7 @@ async def mybingo(
 async def randomcitizen(interaction: discord.Interaction):
     guild = interaction.guild
     if guild is None: 
-        await interaction.response.send_message(content=f"That command only works in a server!", hidden=True)
+        await interaction.response.send_message(content=f"That command only works in a server!", ephemeral=True)
         return
     member = random.choice(guild.members)
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member.mention}~")
@@ -593,7 +593,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
     log_info(interaction, f"{interaction.user} requested report")
     if (interaction.user.id != admin_id) and not (divine_role_id in [role.id for role in interaction.user.roles]):
         log_debug(interaction, f"{interaction.user} cannot get report")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     report_name = graphlytics.generate_new_user_graph(logger, range)
@@ -611,13 +611,13 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
     log_info(interaction, f"{interaction.user} requested strike for {user}: '{reason}'")
     if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(interaction, f"{interaction.user} cannot warn people")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     _user_roles = [role.id for role in user.roles]
     if (divine_role_id in _user_roles or secretary_role_id in _user_roles):
         log_debug(interaction, f"{user} cannot be warned")
-        await interaction.response.send_message(content=MSG_CANT_DO_IT, hidden=True)
+        await interaction.response.send_message(content=MSG_CANT_DO_IT, ephemeral=True)
         return
 
     active_strikes = sql.create_warning(user.id, interaction.user.id, reason, WARNING_VALIDITY_DAYS)
@@ -643,7 +643,7 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
     log_info(interaction, f"{interaction.user} requested strikes for {user}")
     if (interaction.user.id != admin_id) and not (divine_role_id in [role.id for role in interaction.user.roles]):
         log_debug(interaction, f"{interaction.user} cannot get strikes")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     strikes = sql.get_warnings(user.id, None if all else WARNING_VALIDITY_DAYS)
@@ -669,18 +669,18 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested promotion for {user}")
     if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(interaction, f"{interaction.user} cannot promote people")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     _user_roles = [role.id for role in user.roles]
     if friends_role_ids[2] in _user_roles:
         log_debug(interaction, f"{user} already at max tier")
-        await interaction.response.send_message(content=MSG_USER_ALREADY_MAXED, hidden=True)
+        await interaction.response.send_message(content=MSG_USER_ALREADY_MAXED, ephemeral=True)
         return
 
     if friends_role_ids[1] in _user_roles:
         log_debug(interaction, f"{user} will NOT be promoted to tier 3")
-        await interaction.response.send_message(content="Khris said no promotions to t3~", hidden=True)
+        await interaction.response.send_message(content="Khris said no promotions to t3~", ephemeral=True)
         return
         # msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
         # new_role_id = friends_role_ids[2]
@@ -698,7 +698,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
     except discord.HTTPException as e:
         log_error(interaction, f"Failed to give role {new_role} to {user}")
         log_debug(interaction, e)
-        await interaction.response.send_message(content="I still can't give promotions and it's probably Khris' fault~", hidden=True)
+        await interaction.response.send_message(content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
 
 @bot.tree.command(description='Check a user\'s reported age')
 @discord.app_commands.describe(user='User to check')
@@ -709,7 +709,7 @@ async def age(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested age for {user}")
     if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(interaction, f"{interaction.user} cannot check ages")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
         
     age_data = sql.get_age(user.id)
@@ -718,7 +718,7 @@ async def age(interaction: discord.Interaction, user: discord.Member):
     msg = _get_message_for_age(interaction, age_data, mention)
 
     log_debug(interaction, f"{msg}")
-    await interaction.followup.send(content=msg, hidden=True)
+    await interaction.followup.send(content=msg, ephemeral=True)
 
 @bot.tree.command(description='Check a user\'s reported age (search by id)')
 @discord.app_commands.describe(user_id='User ID to check')
@@ -729,14 +729,14 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     log_info(interaction, f"{interaction.user} requested age for ID {user_id}")
     if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(interaction, f"{interaction.user} cannot check ages")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
         user_id = int(user_id)
     except ValueError:
         log_debug(interaction, f"{interaction.user} {user_id} casting failed")
-        await interaction.followup.send(content="That is not a valid ID", hidden=True)
+        await interaction.followup.send(content="That is not a valid ID", ephemeral=True)
         return
         
     user = bot.get_user(user_id)
@@ -746,7 +746,7 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     msg = _get_message_for_age(interaction, age_data, mention)
 
     log_debug(interaction, f"{msg}")
-    await interaction.followup.send(content=msg, hidden=True)
+    await interaction.followup.send(content=msg, ephemeral=True)
 
 @bot.tree.command(description='Generate a copy pasta')
 @discord.app_commands.describe(pasta='Copy pasta', name='Who your pasta is about', pronouns='Which pronouns to use')
@@ -778,10 +778,10 @@ async def offlinepings(interaction: discord.Interaction, enable: discord.app_com
 
     if enable.value == "on":
         sql.remove_from_offline_ping_blocklist(interaction.user.id)
-        await interaction.response.send_message(content="Okay, I'll let you know if you're pinged~", hidden=True)
+        await interaction.response.send_message(content="Okay, I'll let you know if you're pinged~", ephemeral=True)
     else:
         sql.add_to_offline_ping_blocklist(interaction.user.id)
-        await interaction.response.send_message(content="Okay, I won't send you notifications if you're pinged~", hidden=True)
+        await interaction.response.send_message(content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
 
 # # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 # # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
@@ -792,7 +792,7 @@ async def offlinepings(interaction: discord.Interaction, enable: discord.app_com
 #     log_info(interaction, f"{interaction.user} requested activity")
 #     if (interaction.user.id != admin_id) and not (divine_role_id in [role.id for role in interaction.user.roles]):
 #         log_debug(interaction, f"{interaction.user} cannot get activity")
-#         await interaction.response.send_message(content=MSG_NOT_ALLOWED, hidden=True)
+#         await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
 #         return
 
 #     await interaction.response.send_message(content=f"This functionality is not available yet, try again later~")
@@ -825,7 +825,7 @@ async def suicide(interaction: discord.Interaction):
     msg += f"Please please please reach out to someone you trust if you're feeling down. If you need, you can also google \"suicide prevention\" to get the hotline number for your country: https://www.google.com/search?q=suicide+prevention\n"
     msg += f"Suicide is never the answer, okay? It may seem like they way out in a place of desperation, but you will get through this rough patch... {admin_user.mention} & I believe in you, friend!"
 
-    await interaction.response.send_message(content=msg, hidden=True)
+    await interaction.response.send_message(content=msg, ephemeral=True)
 
 @bot.tree.command(description='Perform a SQL query')
 @discord.app_commands.describe(file='File to connect', query='SQL query')
@@ -836,19 +836,19 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     log_info(interaction, f"{interaction.user} requested sql query for {file}")
     if (interaction.user.id != admin_id):
         log_debug(interaction, f"{interaction.user} cannot query db")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
         data = sql.raw_sql(file, query)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
-        await interaction.followup.send(content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", hidden=True)
+        await interaction.followup.send(content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
         return
     except Exception as e:
         log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
         await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await interaction.followup.send(content="Failed to execute query", hidden=True)
+        await interaction.followup.send(content="Failed to execute query", ephemeral=True)
         return
         
     if data is None:
@@ -860,7 +860,7 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
         if len(msg) > 2000:
             aux = "```\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await interaction.followup.send(content=msg, hidden=True)
+    await interaction.followup.send(content=msg, ephemeral=True)
 
 @bot.tree.command(description='Get the daily top 10 rankings')
 @discord.app_commands.describe(date='When to fetch data', hidden='Hide or show response')
@@ -873,19 +873,19 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
     log_info(interaction, f"{interaction.user} requested daily top 10 for {_date}")
     if (interaction.user.id != admin_id):
         log_debug(interaction, f"{interaction.user} cannot query db")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
         data = sql.get_dailytopten(_date, game_channel_ids)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query daily top ten failed : {e}")
-        await interaction.followup.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", hidden=True)
+        await interaction.followup.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
         return
     except Exception as e:
         log_debug(interaction, f"{interaction.user} query for daily top ten failed : {e}")
         await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await interaction.followup.send(content="Failed to execute query", hidden=True)
+        await interaction.followup.send(content="Failed to execute query", ephemeral=True)
         return
         
     if data is None:
@@ -898,7 +898,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await interaction.followup.send(content=msg, hidden=_hidden)
+    await interaction.followup.send(content=msg, ephemeral=_hidden)
 
 @bot.tree.command(description='Pre-block a user before they\'ve even joined')
 @discord.app_commands.describe(user='User ID to block', reason='Reason for block')
@@ -910,14 +910,14 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
     log_info(interaction, f"{interaction.user} requested age for {user}")
     if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
         log_debug(interaction, f"{interaction.user} cannot autoblock")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, hidden=True)
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
     try:
         user_id = int(user)
     except:
         log_debug(interaction, f"{user} is not a valid ID")
-        await interaction.followup.send(content=f"{user} is not a valid ID", hidden=True)
+        await interaction.followup.send(content=f"{user} is not a valid ID", ephemeral=True)
         return
         
     data = sql.try_autoblock(user_id, mod.id, reason)
@@ -927,6 +927,6 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
         prev_mod_id, prev_reason, date = data
         prev_mod = bot.get_user(prev_mod_id)
         msg = f"That user has already been pre-blocked by {prev_mod.mention} on {date}: {prev_reason}"
-    await interaction.followup.send(content=msg, hidden=True)
+    await interaction.followup.send(content=msg, ephemeral=True)
 
 bot.run(TOKEN)
