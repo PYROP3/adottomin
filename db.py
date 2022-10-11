@@ -19,13 +19,16 @@ activity_version = 2
 activity_db_file = _dbfile('activity', activity_version)
 autoblocklist_version = 1
 autoblocklist_db_file = _dbfile('autoblocklist', autoblocklist_version)
+pins_archive_version = 1
+pins_archive_db_file = _dbfile('pins_archive', pins_archive_version)
 
 sql_files = [
     validations_db_file,
     warnings_db_file,
     offline_ping_blocklist_db_file,
     activity_db_file,
-    autoblocklist_db_file
+    autoblocklist_db_file,
+    pins_archive_db_file
 ]
 
 schemas = {
@@ -64,7 +67,7 @@ schemas = {
             CREATE TABLE messages (
                 user int NOT NULL,
                 message_id int NOT NULL,
-                channel it NOT NULL,
+                channel int NOT NULL,
                 date TIMESTAMP
             );'''],
     autoblocklist_db_file: ['''
@@ -74,7 +77,14 @@ schemas = {
                 reason TEXT,
                 date TIMESTAMP,
                 PRIMARY KEY (user)
-            );''']
+            );'''],
+    pins_archive_db_file: ['''
+            CREATE TABLE pins (
+                user int NOT NULL,
+                original_message int NOT NULL,
+                archived_message int NOT NULL,
+                date TIMESTAMP
+            );'''],
 }
 
 class database:
@@ -307,3 +317,21 @@ class database:
         except Exception as e:
             self.logger.error(f"get_dailytopten error: {e}")
             return None
+
+    def register_pin(self, user, message_id, pin_id):
+        con = sqlite3.connect(pins_archive_db_file)
+        cur = con.cursor()
+        cur.execute("INSERT INTO pins VALUES (?, ?, ?, ?)", [user, message_id, pin_id, datetime.datetime.now()])
+        con.commit()
+        con.close()
+
+    def is_pinned(self, message_id):
+        try:
+            con = sqlite3.connect(pins_archive_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT * FROM pins WHERE original_message = :id", {"id": message_id}).fetchone()
+            con.commit()
+            con.close()
+            return res is not None
+        except:
+            return False

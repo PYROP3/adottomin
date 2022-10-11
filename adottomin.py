@@ -90,7 +90,39 @@ game_channel_ids = [
     1006961483869077664
 ]
 
+pin_archive_channel_id = 1029194727452577792
+pin_archive_blocklist_ids = [
+    1006965262244925650,
+    1005356623650377740,
+    1005363538560307211,
+    1004948805956948128,
+    1003626066113466389,
+    1009950736567771177
+]
+
 admin_id = int(os.getenv('ADMIN_ID'))
+
+EMBED_COLORS = [
+    discord.Colour.magenta(),
+    discord.Colour.blurple(),
+    discord.Colour.dark_teal(),
+    discord.Colour.blue(),
+    discord.Colour.dark_blue(),
+    discord.Colour.dark_gold(),
+    discord.Colour.dark_green(),
+    discord.Colour.dark_grey(),
+    discord.Colour.dark_magenta(),
+    discord.Colour.dark_orange(),
+    discord.Colour.dark_purple(),
+    discord.Colour.dark_red(),
+    discord.Colour.darker_grey(),
+    discord.Colour.gold(),
+    discord.Colour.green(),
+    discord.Colour.greyple(),
+    discord.Colour.orange(),
+    discord.Colour.purple(),
+    discord.Colour.magenta(),
+]
 
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -166,6 +198,9 @@ async def on_ready():
     logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
     utils.inject_guild(await bot.fetch_guild(GUILD_ID))
+
+    for channel in bot.get_all_channels():
+        on_guild_channel_pins_update(channel, None)
 
 bot_message_handlers = [
     utils.handle_offline_mentions
@@ -261,6 +296,53 @@ async def on_member_join(member: discord.Member):
         logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
         logger.debug(f"[{channel}] Error exit on_member_join")
+
+@bot.event
+async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):
+    if channel.id in pin_archive_blocklist_ids:
+        logger.debug(f"Ignoring pin update in {channel}")
+        return
+
+    try:
+        all_pins = await channel.pins()
+
+        # updated = False
+        
+        pin_channel = await bot.fetch_channel(pin_archive_channel_id)
+        if pin_channel is None:
+            logger.error(f"Pin channel {pin_archive_channel_id} does not exist")
+            await channel.send("I couldn't find the pin archive channels... :c")
+            return
+
+        for pin in all_pins:
+            if sql.is_pinned(pin.id):
+                logger.debug(f"Message {pin.id} is already pinned, skipping...")
+                return
+
+            pinEmbed = discord.Embed(
+                description="\"" + pin.content + "\"",
+                colour=random.choice(EMBED_COLORS)
+            )
+
+            attachments = pin.attachments
+            if len(attachments) >= 1:
+                pinEmbed.set_image(url=attachments[0].url)
+
+            pinEmbed.add_field(name="Jump", value=pin.jump_url, inline=False)
+            
+            pinEmbed.set_footer(text=f'Sent in: {pin.channel.name} - at: {pin.created_at}')
+            
+            pinEmbed.set_author(name=f'Sent by {pin.author}')
+            archived = await pin_channel.send(embed=pinEmbed)
+
+            sql.register_pin(pin.author, pin.id, archived.id)
+            # updated = True
+
+        # if updated:
+        #     await pin.channel.send(f"Your pinned message is in {pin_channel.mention}~")
+
+    except Exception as e:
+        logger.error(f"Exception while trying to handle pin updates: {e}")
 
 @bot.tree.command(description='Turn raid mode on or off (auto kick or ban)')
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
