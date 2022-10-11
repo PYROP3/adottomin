@@ -202,6 +202,8 @@ async def on_ready():
     for channel in bot.get_all_channels():
         on_guild_channel_pins_update(channel, None)
 
+    logger.info(f"Finished on_ready setup")
+
 bot_message_handlers = [
     utils.handle_offline_mentions
 ]
@@ -299,6 +301,7 @@ async def on_member_join(member: discord.Member):
 
 @bot.event
 async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):
+    logger.debug(f"Received pin update in {channel}")
     if channel.id in pin_archive_blocklist_ids:
         logger.debug(f"Ignoring pin update in {channel}")
         return
