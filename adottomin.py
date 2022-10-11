@@ -38,6 +38,8 @@ LENIENCY_REMINDER = 3 # messages before asking again (can be None)
 WARNING_VALIDITY_DAYS = 30
 WARNINGS_BEFORE_BAN = 3
 
+REDO_ALL_PINS = False
+
 assert (LENIENCY_REMINDER_TIME_S is None) or (LENIENCY_REMINDER_TIME_S < LENIENCY_TIME_S), "Reminder time must be smaller than total time"
 assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Reminder count must be smaller than total leniency"
 
@@ -199,8 +201,9 @@ async def on_ready():
     utils.inject_admin(bot.get_user(admin_id))
     utils.inject_guild(await bot.fetch_guild(GUILD_ID))
 
-    for channel in bot.get_all_channels():
-        await on_guild_channel_pins_update(channel, None)
+    if REDO_ALL_PINS:
+        for channel in bot.get_all_channels():
+            await on_guild_channel_pins_update(channel, None)
 
     logger.info(f"Finished on_ready setup")
 
