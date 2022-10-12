@@ -55,7 +55,7 @@ def get_max_size(text: str, font_family: str, bbox: tuple, draw_ctx: ImageDraw.D
             return sz - 2
         sz += 2
 
-def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox: tuple, draw_ctx: ImageDraw.Draw, img, fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center'):
+def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox: tuple, draw_ctx: ImageDraw.Draw, img, fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor='mm'):
     use_emoji = re.search(r"[^\x00-\x7f]", text) is not None
     # _align = 'left' if use_emoji else 'center'
     sz = get_max_size(text, font_family, bbox, draw_ctx, align)
@@ -65,9 +65,9 @@ def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox:
         _anchor = (center_anchor[0], int(center_anchor[1] - _bbox[3]/2))
         # _txt = re.sub(r'[^\x00-\x7F]',' ', text)
         with Pilmoji(img) as pilmoji:
-            pilmoji.text(_anchor, get_wrapped_text(text, fnt, bbox[0], False), font=fnt, anchor="mm", fill=fill, align=align, emoji_position_offset=(int(-_bbox[2]/4), int(-_bbox[3]/4)))
+            pilmoji.text(_anchor, get_wrapped_text(text, fnt, bbox[0], False), font=fnt, anchor=anchor, fill=fill, align=align, emoji_position_offset=(int(-_bbox[2]/4), int(-_bbox[3]/4)))
     else:
-        draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor="mm", fill=fill, align=align)
+        draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor=anchor, fill=fill, align=align)
 
 def paste_centered(icon, ic_size, base, pos):
     if icon is None: return
@@ -78,14 +78,14 @@ def paste_centered(icon, ic_size, base, pos):
 # text: text, bbox, position
 _baserules = {
     "icon": lambda image, draw, args: paste_centered(args["icon"], args["size"], image, args["position"]),
-    "text": lambda image, draw, args: draw_text_with_bbox(args["text"], "arial.ttf", args["position"], args["bbox"], draw, image, fill=args["fill"], align=args["align"])
+    "text": lambda image, draw, args: draw_text_with_bbox(args["text"], "arial.ttf", args["position"], args["bbox"], draw, image, fill=args["fill"], align=args["align"], anchor=args["anchor"])
 }
 
 def _args_icon(icon: str, size: tuple[int, int], position: tuple[int, int]):
     return ("icon", {"icon": icon, "size": size, "position": position})
     
-def _args_text(text: str, bbox: tuple[int, int], position: tuple[int, int], fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center'):
-    return ("text", {"text": text, "bbox": bbox, "position": position, "fill": fill, "align": align})
+def _args_text(text: str, bbox: tuple[int, int], position: tuple[int, int], fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor: str='mm'):
+    return ("text", {"text": text, "bbox": bbox, "position": position, "fill": fill, "align": align, "anchor": anchor})
 
 def automeme(template, rules):
     with Image.open(template) as im:
@@ -114,9 +114,9 @@ def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
     if id == "fivemins": return [_args_icon(icon, (150, 150), (244, 735))]
     if id == "sally": return [_args_icon(icon, (100, 100), (123, 171)), _args_icon(author_icon, (100, 100), (358, 120))]
     if id == "walt": return [
-        _args_text(f"{text}, put your".upper(), (300, 76), (227, 109), fill=(255,255,255,255), align='left'), 
-        _args_text("DICK", (200, 110), (177, 202), fill=(255,255,255,255), align='left'), 
-        _args_text(f"away, {text}".upper(), (300, 76), (227, 295), fill=(255,255,255,255), align='left')]
+        _args_text(f"{text}, put your".upper(), (300, 76), (39, 147), fill=(255,255,255,255), align='left', anchor='ld'), 
+        _args_text("DICK", (300, 110), (177, 202), fill=(255,255,255,255), align='left'), 
+        _args_text(f"away, {text}".upper(), (300, 76), (39, 257), fill=(255,255,255,255), align='left', anchor='la')]
     if id == "random_citizen": return [_args_icon(author_icon, (116, 116), (262, 165))]
     if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
                 for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
