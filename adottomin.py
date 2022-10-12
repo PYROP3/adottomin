@@ -439,17 +439,13 @@ user_meme_cmds = {
     'pills': ('pills', 'You need those pills'),
     'bromeme': ('bromeme', 'Bro'),
     'mig': ('fivemins', 'Please'),
-    'sally': ('sally', 'Your loss')
+    'sally': ('sally', 'Your loss'),
+    'walt': ('walt', 'Put it away')
 }
 
 for cmd in user_meme_cmds:
     code, description = user_meme_cmds[cmd]
     make_user_meme_cmd(cmd, description, code)
-
-@bot.tree.command(description='Put it away')
-@discord.app_commands.describe(user='Who to use in the meme')
-async def walt(interaction: discord.Interaction, user: discord.Member):
-    await _meme(interaction, "walt", text=f"{user.display_name}, put your dick away, {user.display_name}".upper())
 
 @bot.tree.command(description='Traditional Maslow\'s hierarchy')
 @discord.app_commands.describe(contents='What to say in the meme')
