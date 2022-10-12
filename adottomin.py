@@ -344,7 +344,8 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 pinEmbed.set_footer(text=f'Sent in: {pin.channel.name} - at: {pin.created_at}')
                 
                 try:
-                    icon_url = pin.author.display_icon.url
+                    creator = await channel.guild.fetch_member(pin.author.id)
+                    icon_url = creator.display_icon.url
                 except Exception as e:
                     logger.warning(f"Exception while trying to handle pin {pin.id} thumbnail: {e}\n{traceback.format_exc()}")
                     icon_url = None
