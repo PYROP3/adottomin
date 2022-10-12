@@ -331,7 +331,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                     return
 
                 pinEmbed = discord.Embed(
-                    description="\"" + pin.content + "\"" if len(pin.content) > 0 else None,
+                    description=pin.content if len(pin.content) > 0 else None,
                     colour=random.choice(EMBED_COLORS)
                 )
 
@@ -445,6 +445,11 @@ user_meme_cmds = {
 for cmd in user_meme_cmds:
     code, description = user_meme_cmds[cmd]
     make_user_meme_cmd(cmd, description, code)
+
+@bot.tree.command(description='Put it away')
+@discord.app_commands.describe(user='Who to use in the meme')
+async def walt(interaction: discord.Interaction, user: discord.Member):
+    await _meme(interaction, "walt", text=f"{user.display_name}, put your dick away, {user.display_name}".upper())
 
 @bot.tree.command(description='Traditional Maslow\'s hierarchy')
 @discord.app_commands.describe(contents='What to say in the meme')
