@@ -102,7 +102,7 @@ class utils:
                         chain += [None]
                         break
                     ref = fetched
-                except AttributeError:
+                except:
                     chain += [None]
                     break
             current = ref
@@ -111,6 +111,8 @@ class utils:
                 max_depth -= 1
                 if max_depth <= 0:
                     break
+            if type(current) == discord.DeletedReferencedMessage:
+                break
         return chain
 
     async def _format_msg_chain(self, user: discord.User, original_msg: discord.Message, max_size: int = 1500):
