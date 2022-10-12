@@ -388,7 +388,7 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
             log_debug(interaction, f"{interaction.user} disabled raidmode (already disabled)")
             await interaction.response.send_message(content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
 
-async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg="Enjoy your fresh meme~"):
+async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg=""):
     await interaction.response.defer()
 
     log_info(interaction, f"{interaction.user} requested {meme_code}")
@@ -407,7 +407,7 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
 
     meme_file = discord.File(meme_name, filename=f"{interaction.user.id}_{meme_code}.png")
 
-    if msg == "Enjoy your fresh meme~":
+    if len(msg) == 0:
         try:
             if (user.id == interaction.user.id):
                 msg = "Lmao did you really make it for yourself??"
