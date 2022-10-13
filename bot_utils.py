@@ -200,6 +200,7 @@ class utils:
         return self._get_display_name(user) or self._fallback_get_text(user)
 
     def to_ord(self, num):
+        if int(num) in [11,12,13]: return "th"
         _num = int(num) % 10
         if _num == 1: return "st"
         if _num == 2: return "nd"
