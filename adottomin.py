@@ -9,6 +9,8 @@ import sys
 import traceback
 import typing
 
+from regex import R
+
 import age_handling
 import botlogger
 import bot_utils
@@ -795,6 +797,95 @@ async def offlinepings(interaction: discord.Interaction, enable: discord.app_com
     else:
         sql.add_to_offline_ping_blocklist(interaction.user.id)
         await interaction.response.send_message(content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
+
+@bot.tree.command(description='Start simping for someone!')
+@discord.app_commands.describe(user='Who you wanna simp for')
+async def simp(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} starting to simp: {user}")
+    if user.id == interaction.user.id:
+        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        return
+
+    res = sql.start_simping(interaction.user.id, user.id)
+    
+    if res:
+        msg = f"{interaction.user.mention} is simping for {user.mention}~"
+        hidden = False
+    else:
+        msg = f"You're already simping for {user.mention}"
+        hidden = True
+    await interaction.response.send_message(content=msg, ephemeral=hidden)
+
+@bot.tree.command(description='Stop simping for someone!')
+@discord.app_commands.describe(user='Who you wanna stop simping for')
+async def nosimp(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} stopping to simp: {user}")
+    if user.id == interaction.user.id:
+        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        return
+
+    res = sql.stop_simping(interaction.user.id, user.id)
+    if res:
+        msg = f"{interaction.user.mention} is not simping for {user.mention} anymore~"
+        hidden = False
+    else:
+        msg = f"You're not simping for {user.mention}"
+        hidden = True
+    await interaction.response.send_message(content=msg, ephemeral=hidden)
+
+@bot.tree.command(description='Validate your simp\'s affection')
+@discord.app_commands.describe(user='Which simp you want to validate')
+async def validatesimp(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} validating simp: {user}")
+    if user.id == interaction.user.id:
+        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        return
+
+    exists, success = sql.star_simping(user.id, interaction.user.id)
+    if not exists:
+        msg = f"{user.mention} is not simping for you"
+        hidden = True
+    elif not success:
+        msg = f"{user.mention} is already validated"
+        hidden = True
+    else:
+        msg = f"{interaction.user.mention} is validating {user.mention}'s simping~"
+        hidden = False
+    await interaction.response.send_message(content=msg, ephemeral=hidden)
+
+@bot.tree.command(description='Invalidate your simp\'s affection')
+@discord.app_commands.describe(user='Which simp you want to invalidate')
+async def invalidatesimp(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} invalidating simp: {user}")
+    if user.id == interaction.user.id:
+        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        return
+
+    exists, success = sql.unstar_simping(user.id, interaction.user.id)
+    if not exists:
+        msg = f"{user.mention} is not simping for you"
+        hidden = True
+    elif not success:
+        msg = f"{user.mention} isn't validated"
+        hidden = True
+    else:
+        msg = f"{interaction.user.mention} is not validating {user.mention}'s simping anymore~"
+        hidden = False
+    await interaction.response.send_message(content=msg, ephemeral=hidden)
+    
+@bot.tree.command(description='Know who\'s simping for someone!')
+async def simps(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} checking simps: {user}")
+    
+    simps = sql.get_simps(user.id)
+    
+    if simps is None or len(simps) == 0:
+        await interaction.response.send_message(content=f"Awww... {user.mention} doesn't have any simps yet")
+        return
+
+    msg = f"Here are {user.mention}'s simps~\n>"
+    msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
+    await interaction.response.send_message(content=msg)
 
 # # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 # # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]

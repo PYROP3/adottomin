@@ -21,6 +21,8 @@ autoblocklist_version = 1
 autoblocklist_db_file = _dbfile('autoblocklist', autoblocklist_version)
 pins_archive_version = 2
 pins_archive_db_file = _dbfile('pins_archive', pins_archive_version)
+simps_version = 1
+simps_db_file = _dbfile('simps', autoblocklist_version)
 
 sql_files = [
     validations_db_file,
@@ -82,6 +84,13 @@ schemas = {
             CREATE TABLE pins (
                 original_message int NOT NULL,
                 archived_message int NOT NULL,
+                date TIMESTAMP
+            );'''],
+    simps_db_file: ['''
+            CREATE TABLE simps (
+                simp int NOT NULL,
+                simp_for int NOT NULL,
+                starred int NOT NULL,
                 date TIMESTAMP
             );'''],
 }
@@ -334,3 +343,74 @@ class database:
             return res is not None
         except:
             return False
+
+    def is_simping(self, simp, simp_for, cur=None):
+        _close = False
+        if cur is None:
+            con = sqlite3.connect(simps_db_file)
+            cur = con.cursor()
+            _close = True
+        res = cur.execute("SELECT * FROM simps WHERE simp = :simp AND simp_for = :simp_for", {"simp": simp, "simp_for": simp_for}).fetchone()
+        if _close:
+            con.commit()
+            con.close()
+        self.logger.debug(f"Is simping {simp}x{simp_for}: {res}")
+        return res
+
+    def start_simping(self, simp, simp_for):
+        con = sqlite3.connect(simps_db_file)
+        cur = con.cursor()
+        res = self.is_simping(simp, simp_for, cur=cur)
+        if res is None:
+            cur.execute("INSERT INTO simps VALUES (?, ?, 0, ?)", [simp, simp_for, datetime.datetime.now()])
+        con.commit()
+        con.close()
+        return res is None
+
+    def stop_simping(self, simp, simp_for):
+        con = sqlite3.connect(simps_db_file)
+        cur = con.cursor()
+        res = self.is_simping(simp, simp_for, cur=cur)
+        if res is not None:
+            cur.execute("DELETE FROM simps WHERE simp=:simp AND simp_for=:simp_for", {"simp": simp, "simp_for": simp_for})
+        con.commit()
+        con.close()
+        return res is not None
+
+    def star_simping(self, simp, simp_for):
+        res = self._update_simping(simp, simp_for, 1) # Set to true
+        if res is None: # Was not simping
+            return (False, False)
+        if res[2] == 1: # Was already true
+            return (True, False)
+        return (True, True)
+
+    def unstar_simping(self, simp, simp_for):
+        res = self._update_simping(simp, simp_for, 0) # Set to false
+        if res is None: # Was not simping
+            return (False, False)
+        if res[2] == 0: # Was already false
+            return (True, False)
+        return (True, True)
+
+    def _update_simping(self, simp, simp_for, new_state):
+        con = sqlite3.connect(simps_db_file)
+        cur = con.cursor()
+        res = self.is_simping(simp, simp_for, cur=cur)
+        if res is not None:
+            cur.execute("UPDATE simps SET starred=:new_state WHERE simp=:simp AND simp_for = simp_for", {"simp": simp, "simp_for": simp_for, "new_state": new_state})
+        con.commit()
+        con.close()
+        self.logger.debug(f"Update_simping: {simp} x {simp_for} - {new_state}: {res}")
+        return res
+
+    def get_simps(self, simp_for):
+        try:
+            con = sqlite3.connect(simps_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT simp, starred FROM simps WHERE simp_for = :id", {"id": simp_for}).fetchall()
+            con.commit()
+            con.close()
+            return res
+        except:
+            return None
