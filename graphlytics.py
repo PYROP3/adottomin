@@ -20,7 +20,7 @@ def _get_label(age):
 def _get_daily(parsed, date):
     return len(parsed[date]["tags"]) + len(parsed[date]["adult"]) + len(parsed[date]["minor"]) + len(parsed[date]["unknown"])
 
-def generate_new_user_graph( time_range=None):
+def generate_new_user_graph(time_range=None):
     con = sqlite3.connect(db.validations_db_file)
     cur = con.cursor()
 

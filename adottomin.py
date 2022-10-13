@@ -609,7 +609,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
         await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
         return
 
-    report_name = graphlytics.generate_new_user_graph(logger, range)
+    report_name = graphlytics.generate_new_user_graph(range)
     log_debug(interaction, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
 
