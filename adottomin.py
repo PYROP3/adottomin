@@ -79,6 +79,7 @@ friends_role_ids = [
     1002676012573794394, # Tier 2
     1002676963485417592 # Tier 3
 ]
+nsfw_role_id = 1010670864758493215
 
 game_channel_ids = [
     1006949968826863636,
@@ -208,6 +209,26 @@ async def on_ready():
             await on_guild_channel_pins_update(channel, None)
 
     logger.info(f"Finished on_ready setup")
+
+@bot.event
+async def on_member_update(before: discord.Member, after: discord.Member):
+    logger.info(f"{after} has updated profile")
+
+    try:
+        await _handle_nsfw_added(before, after)
+    except Exception as e:
+        logger.error(f"Error during on_member_update::_handle_nsfw_added: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"on_member_update::_handle_nsfw_added\n{e}\n{traceback.format_exc()}")
+
+    logger.debug(f"Finished on_member_update")
+
+async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
+    if (nsfw_role_id in utils.role_ids(before)) or (nsfw_role_id not in utils.role_ids(after)): return
+    if not utils.just_joined(before.id): return
+    # nsfw_role = [role for role in after.roles if role.id == nsfw_role_id]
+    await after.remove_roles([nsfw_role_id])
+    notif = after.guild.get_channel(channel_ids[0])
+    await notif.send(content=f"Straight for the NSFW and didn't even tell me your age, {after.mention}?~")
 
 bot_message_handlers = [
     utils.handle_offline_mentions

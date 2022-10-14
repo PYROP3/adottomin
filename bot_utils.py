@@ -261,4 +261,10 @@ class utils:
 
     def _bot_name(self, bot):
         return "I" if bot.id == self.bot.user.id else bot.mention
+
+    def just_joined(self, user: int):
+        return self.database.get_leniency(user) is not None
+
+    def role_ids(self, user: discord.Member):
+        return set([role.id for role in user.roles])
         
