@@ -2,6 +2,9 @@ import discord
 import re
 
 import botlogger
+import emoter
+
+em = emoter.Emoter()
 
 REASON_MINOR = "minor"
 REASON_TIMEOUT = "did not say age"
@@ -9,11 +12,11 @@ REASON_SPAM = "spam"
 REASON_RAID = "raid"
 REASON_WARNINGS = "you've been warned"
 
-MSG_GREETING = ":wave: Hello {}! May I ask your age, pls?"
+MSG_GREETING = f"{em.e('NekoHi', 'wave')} Hello {'{}'}! May I ask your age, pls?"
 MSG_TRY_AGAIN = "Try again, {}"
-MSG_GREETING_REMINDER = "Hey {}! Could you tell me your age? Or I'll have to do something drastic~"
-MSG_WELCOME = "Thank you {}! :space_invader: Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
-MSG_WELCOME_NO_TAGS = "Thank you {}! :space_invader: Welcome to the server!"
+MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
+MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! Tags are in <#1005395967429836851> if you want ^^"
+MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!"
 
 AGE_MAX = 60
 
