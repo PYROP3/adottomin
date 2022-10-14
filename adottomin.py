@@ -463,7 +463,8 @@ user_meme_cmds = {
     'bromeme': ('bromeme', 'Bro'),
     'mig': ('fivemins', 'Please'),
     'sally': ('sally', 'Your loss'),
-    'walt': ('walt', 'Put it away')
+    'walt': ('walt', 'Put it away'),
+    'simpcard': ('simpcard', 'Officially recognized')
 }
 
 for cmd in user_meme_cmds:

@@ -118,6 +118,7 @@ def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
         _args_text("DICK", (300, 110), (177, 202), fill=(255,255,255,255), align='left'), 
         _args_text(f"away, {text}".upper(), (300, 76), (39, 257), fill=(255,255,255,255), align='left', anchor='la')]
     if id == "random_citizen": return [_args_icon(author_icon, (116, 116), (262, 165))]
+    if id == "simpcard": return[_args_icon(icon, (210, 320), (183, 245))]
     if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
                 for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
 
