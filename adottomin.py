@@ -1075,4 +1075,10 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
         msg = f"That user has already been pre-blocked by {prev_mod.mention} on {date}: {prev_reason}"
     await interaction.followup.send(content=msg, ephemeral=True)
 
+@bot.tree.command(description='Pop pop pop!')
+async def bubblewrap(interaction: discord.Interaction):
+    width, height = 10, 10
+    msg = "\n".join(["||pop||" * width for _ in range(height)])
+    await interaction.response.send_message(content=msg, ephemeral=True)
+
 bot.run(TOKEN)
