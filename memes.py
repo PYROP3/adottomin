@@ -55,10 +55,10 @@ def get_max_size(text: str, font_family: str, bbox: tuple, draw_ctx: ImageDraw.D
             return sz - 2
         sz += 2
 
-def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox: tuple, draw_ctx: ImageDraw.Draw, img, fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor='mm'):
+def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox: tuple, draw_ctx: ImageDraw.Draw, img, fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor='mm', size=None):
     use_emoji = re.search(r"[^\x00-\x7f]", text) is not None
     # _align = 'left' if use_emoji else 'center'
-    sz = get_max_size(text, font_family, bbox, draw_ctx, align)
+    sz = size or get_max_size(text, font_family, bbox, draw_ctx, align)
     fnt = ImageFont.truetype(font_family, sz)
     if use_pilmoji and use_emoji:
         _bbox = draw_ctx.textbbox((0,0), get_wrapped_text(text, fnt, bbox[0], False), font=fnt, align=align)
@@ -78,14 +78,14 @@ def paste_centered(icon, ic_size, base, pos):
 # text: text, bbox, position
 _baserules = {
     "icon": lambda image, draw, args: paste_centered(args["icon"], args["size"], image, args["position"]),
-    "text": lambda image, draw, args: draw_text_with_bbox(args["text"], "arial.ttf", args["position"], args["bbox"], draw, image, fill=args["fill"], align=args["align"], anchor=args["anchor"])
+    "text": lambda image, draw, args: draw_text_with_bbox(args["text"], args["font"], args["position"], args["bbox"], draw, image, fill=args["fill"], align=args["align"], anchor=args["anchor"], size=args["size"])
 }
 
 def _args_icon(icon: str, size: tuple[int, int], position: tuple[int, int]):
     return ("icon", {"icon": icon, "size": size, "position": position})
     
-def _args_text(text: str, bbox: tuple[int, int], position: tuple[int, int], fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor: str='mm'):
-    return ("text", {"text": text, "bbox": bbox, "position": position, "fill": fill, "align": align, "anchor": anchor})
+def _args_text(text: str, bbox: tuple[int, int], position: tuple[int, int], fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor: str='mm', size=None, font='arial.ttf'):
+    return ("text", {"text": text, "bbox": bbox, "position": position, "fill": fill, "align": align, "anchor": anchor, "size": size, "font": font})
 
 def automeme(template, rules):
     with Image.open(template) as im:
@@ -106,21 +106,24 @@ def automeme(template, rules):
     return name
 
 def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
-    if id == "supremacy": return [_args_text(text, (800, 150), (600, 310)), _args_icon(icon, (300,300), (220, 563))] # (1200, 1127)
-    if id == "deeznuts": return [_args_icon(icon, (598, 582), (299, 874))] # (1196, 1165)
-    if id == "pills": return [_args_icon(icon, (150, 150), (250, 220))]
-    if id == "bromeme": return [_args_icon(icon, (270, 270), (575, 205))] # (828, 807)
-    if id == "needs": return [_args_text(text, (210, 280), (377, 402))]
-    if id == "fivemins": return [_args_icon(icon, (150, 150), (244, 735))]
-    if id == "sally": return [_args_icon(icon, (100, 100), (123, 171)), _args_icon(author_icon, (100, 100), (358, 120))]
-    if id == "walt": return [
-        _args_text(f"{text}, put your".upper(), (300, 76), (39, 147), fill=(255,255,255,255), align='left', anchor='ld'), 
-        _args_text("DICK", (300, 110), (177, 202), fill=(255,255,255,255), align='left'), 
-        _args_text(f"away, {text}".upper(), (300, 76), (39, 257), fill=(255,255,255,255), align='left', anchor='la')]
-    if id == "random_citizen": return [_args_icon(author_icon, (116, 116), (262, 165))]
-    if id == "simpcard": return[_args_icon(icon, (210, 320), (183, 245))]
-    if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
-                for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
+    with Image.open(f"{memes_folder}/blank.png") as im:
+        if id == "supremacy": return [_args_text(text, (800, 150), (600, 310)), _args_icon(icon, (300,300), (220, 563))] # (1200, 1127)
+        if id == "deeznuts": return [_args_icon(icon, (598, 582), (299, 874))] # (1196, 1165)
+        if id == "pills": return [_args_icon(icon, (150, 150), (250, 220))]
+        if id == "bromeme": return [_args_icon(icon, (270, 270), (575, 205))] # (828, 807)
+        if id == "needs": return [_args_text(text, (210, 280), (377, 402))]
+        if id == "fivemins": return [_args_icon(icon, (150, 150), (244, 735))]
+        if id == "sally": return [_args_icon(icon, (100, 100), (123, 171)), _args_icon(author_icon, (100, 100), (358, 120))]
+        if id == "walt": 
+            sz = get_max_size(f"{text}, put your".upper(), "arial.ttf", (300, 76), ImageDraw.Draw(im), align='left')
+            return [
+            _args_text(f"{text}, put your".upper(), (300, 76), (39, 147), fill=(255,255,255,255), align='left', anchor='ld', size=sz), 
+            _args_text("DICK", (300, 110), (177, 202), fill=(255,255,255,255), align='left'), 
+            _args_text(f"away, {text}".upper(), (300, 76), (39, 257), fill=(255,255,255,255), align='left', anchor='la', size=sz)]
+        if id == "random_citizen": return [_args_icon(author_icon, (116, 116), (262, 165))]
+        if id == "simpcard": return[_args_icon(icon, (210, 320), (183, 245))]
+        if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
+                    for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
 
 def create_meme(id: str, author_icon: str=None, icon: str=None, text: str=None):
     return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, author_icon=author_icon, icon=icon, text=text))
