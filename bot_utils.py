@@ -225,6 +225,17 @@ class utils:
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
+    async def handle_failed_command(self, msg: discord.Message):
+        await self._enforce_not_dms(msg)
+        # await self._enforce_not_admin(msg)
+        content = msg.content.split()[0]
+        if content[0] != '/': return
+        if self.bot.tree.get_command(content[1:]) is None:
+            self.logger.debug(f"{content[1:]} not in command list")
+            return
+        reply = f"lol boomer"
+        await msg.reply(content=reply)
+
     async def handle_chat_dm(self, msg: discord.Message):
         # await self._enforce_admin_only(msg)
         await self._enforce_has_role(msg, self.chatting_roles_allowlist)
