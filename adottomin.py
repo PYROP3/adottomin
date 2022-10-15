@@ -600,9 +600,26 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
 async def boomersplain(interaction: discord.Interaction, expression: str):
     log_info(interaction, f"{interaction.user} requested definition for {expression}")
 
-    formatted_definition = memes.get_formatted_definition(expression)
+    word_txt, meaning_txt, example_txt = memes.get_formatted_definition(expression)
+    
+    embed = discord.Embed(
+        title=f"**{word_txt}**",
+        colour=random.choice(EMBED_COLORS)
+    )
 
-    await interaction.response.send_message(content=formatted_definition)
+    if meaning_txt is not None and len(meaning_txt) > 0:
+        embed.add_field(name="Definition", value=meaning_txt, inline=False)
+
+    if example_txt is not None and len(example_txt) > 0:
+        embed.add_field(name="Usage", value=f"_{example_txt}_", inline=False)
+    
+    # try:
+    #     icon_url = interaction.user.display_icon.url
+    # except:
+    #     icon_url = None
+
+    # embed.set_author(name=f'Requested by {interaction.user.display_name}', icon_url=icon_url)
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(description='No horny in main!')
 @discord.app_commands.describe(user='Who to mention (optional)')

@@ -156,13 +156,14 @@ def get_formatted_definition(contents):
     for elem in meaning.find_all(["br"]):
         elem.replace_with('\n')
     meaning_txt = meaning.text.replace("\n\n", "\n")
-    meaning_txt = "".join([f"\t{line}\n" for line in meaning_txt.split("\n")]).rstrip()
+    meaning_txt = "".join([f"{line}\n" for line in meaning_txt.split("\n")]).rstrip()
 
     # Example
     example = definition.find("div", {"class": "example"})
     for elem in example.find_all(["br"]):
         elem.replace_with('\n')
     example_txt = example.text.replace("\n\n", "\n")
-    example_txt = "".join([f"> {line}\n" for line in example_txt.split("\n")]).rstrip()
+    example_txt = "".join([f"{line}\n" for line in example_txt.split("\n")]).rstrip()
 
-    return f"**{word_txt}**\n\n{meaning_txt}\n\n{example_txt}"
+    # return f"**{word_txt}**\n\n{meaning_txt}\n\n{example_txt}"
+    return (word_txt, meaning_txt, example_txt)
