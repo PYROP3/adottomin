@@ -229,7 +229,7 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
         return
     nsfw_role = [role for role in after.roles if role.id == nsfw_role_id]
     logger.info(f"{after} added nsfw role but is still being verified")
-    await after.remove_roles([nsfw_role], reason="Not verified")
+    await after.remove_roles([[nsfw_role]], reason="Not verified")
     notif = after.guild.get_channel(channel_ids[0])
     await notif.send(content=f"Straight for the NSFW and didn't even tell me your age, {after.mention}?~")
 
