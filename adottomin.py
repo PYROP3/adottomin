@@ -212,7 +212,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
-    logger.info(f"{after} has updated profile")
+    # logger.info(f"{after} has updated profile")
 
     try:
         await _handle_nsfw_added(before, after)
@@ -220,14 +220,15 @@ async def on_member_update(before: discord.Member, after: discord.Member):
         logger.error(f"Error during on_member_update::_handle_nsfw_added: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"on_member_update::_handle_nsfw_added\n{e}\n{traceback.format_exc()}")
 
-    logger.debug(f"Finished on_member_update")
+    # logger.debug(f"Finished on_member_update")
 
 async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     if (nsfw_role_id in utils.role_ids(before)) or (nsfw_role_id not in utils.role_ids(after)): return
     if not utils.just_joined(before.id): 
         logger.info(f"{after} added nsfw role and is a previous user")
         return
-    nsfw_role = [role for role in after.roles if role.id == nsfw_role_id]
+    # nsfw_role = [role for role in after.roles if role.id == nsfw_role_id]
+    nsfw_role = discord.utils.get(after.guild.roles, name="NSFW")
     logger.info(f"{after} added nsfw role but is still being verified")
     await after.remove_roles(*[nsfw_role], reason="Not verified", atomic=False)
     notif = after.guild.get_channel(channel_ids[0])
