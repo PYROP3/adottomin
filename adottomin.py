@@ -311,7 +311,7 @@ async def on_member_join(member: discord.Member):
         for name in usernames_blocked:
             if name in member.name.lower():
                 logger.info(f"[{channel}] {member} is name-blocked: annoying")
-                await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
+                await age_handler.kick_or_ban(member, channel, reason="annoying", force_ban=True)
                 return
 
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
