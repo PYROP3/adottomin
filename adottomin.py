@@ -227,6 +227,10 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     if not utils.just_joined(before.id): 
         logger.info(f"{after} added nsfw role and is a previous user")
         return
+    user_age_roles = set([role.id for role in after.roles]).intersection(set(role_ids))
+    if user_age_roles != set(): 
+        logger.info(f"{after} added nsfw role and has age tags: {user_age_roles}")
+        return
     # nsfw_role = [role for role in after.roles if role.id == nsfw_role_id]
     nsfw_role = discord.utils.get(after.guild.roles, name="NSFW")
     logger.info(f"{after} added nsfw role but is still being verified")
