@@ -318,7 +318,7 @@ async def on_member_join(member: discord.Member):
         sql.create_entry(member.id, greeting.id)
 
         if pendelton_mode:
-            await greeting.reply(content=f"{member.mention} If someone asked you to say \"Pendelton\", kindly ignore them!\nAnd, if you still can, tell them to suck an egg ^^")
+            await greeting.reply(content=f"{member.mention} If someone asked you to say \"Pendelton\", or any other password, kindly ignore them!\nAnd, if you still can, tell them to suck an egg ^^")
 
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
