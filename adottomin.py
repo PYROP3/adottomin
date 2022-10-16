@@ -112,7 +112,7 @@ pin_archive_blocklist_ids = [
 
 admin_id = int(os.getenv('ADMIN_ID'))
 
-pendelton_mode = True
+pendelton_mode = False
 
 EMBED_COLORS = [
     discord.Colour.magenta(),
