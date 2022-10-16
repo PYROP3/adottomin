@@ -107,6 +107,8 @@ pin_archive_blocklist_ids = [
 
 admin_id = int(os.getenv('ADMIN_ID'))
 
+pendelton_mode = True
+
 EMBED_COLORS = [
     discord.Colour.magenta(),
     discord.Colour.blurple(),
@@ -303,6 +305,9 @@ async def on_member_join(member: discord.Member):
 
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
         sql.create_entry(member.id, greeting.id)
+
+        if pendelton_mode:
+            await greeting.reply(content=f"{member.mention} If someone asked you to say \"Pendelton\", kindly ignore them!\nAnd, if you still can, tell them to suck an egg ^^")
 
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
