@@ -72,6 +72,11 @@ tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
+usernames_blocked = [
+    "pendelton",
+    "pennington"
+]
+
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 friends_role_ids = [
@@ -302,6 +307,12 @@ async def on_member_join(member: discord.Member):
             logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
             await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
             return
+
+        for name in usernames_blocked:
+            if name in member.name.lower():
+                logger.info(f"[{channel}] {member} is name-blocked: annoying")
+                await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
+                return
 
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
         sql.create_entry(member.id, greeting.id)
