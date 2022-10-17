@@ -2,9 +2,12 @@
 *.db
 __pycache__/
 .vscode
-copypasta_data.py
 meme_stuff/bingos/*.png
 sql_tests.txt
 trash/*.png
 *.pt
+
+# Must be recreated
+copypasta_data.py
 emote_data.py
+word_blocklist.py

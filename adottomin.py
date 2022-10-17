@@ -5,7 +5,7 @@ import discord
 import logging
 import os
 import random
-import sys
+import re
 import traceback
 import typing
 
@@ -18,6 +18,8 @@ import copypasta_utils
 import db
 import graphlytics
 import memes
+
+from word_blocklist import blocklist
 
 from flask import Flask
 from dotenv import load_dotenv
@@ -76,6 +78,8 @@ usernames_blocked = [
     "pendelton",
     "pennington"
 ]
+
+blocklist_prog = re.compile("|".join(blocklist), flags=re.IGNORECASE)
 
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
@@ -269,6 +273,25 @@ async def execute_handlers(msg, handlers):
 async def on_message(msg: discord.Message):
     if len(msg.content) == 0: return
     # logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
+
+    blocklist_match = blocklist_prog.search(msg.content.lower())
+    if blocklist_match is not None:
+        logger.info(f"[{msg.channel}] {msg.author} used blocked word: {blocklist_match.group(0)}")
+        try:
+            await msg.delete()
+        except discord.errors.Forbidden:
+            secrole = msg.guild.get_role(secretary_role_id)
+            logger.error(f"[{msg.channel}] Forbidden from deleting msg {msg.id}")
+            if secrole is not None:
+                await msg.reply(content=f"Hey {secrole.mention}! This message has a blocked word but I can't delete it...")
+            else:
+                logger.error(f"[{msg.channel}] Secretary role is None!")
+        warn = await msg.channel.send(content=f"Hey {msg.author.mention}, I'd think twice before posting that if I were you~")
+        try:
+            await warn.delete(delay=5.)
+        except discord.errors.Forbidden:
+            logger.error(f"[{msg.channel}] Forbidden from deleting blocked word warning")
+        return
 
     await execute_handlers(msg, bot_message_handlers)
 
