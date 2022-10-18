@@ -1031,7 +1031,7 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
         return
 
     try:
-        data = sql.raw_sql(file, query)
+        data = sql.raw_sql(file.value, query)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
         await interaction.followup.send(content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
