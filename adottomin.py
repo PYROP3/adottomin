@@ -370,7 +370,7 @@ async def on_member_join(member: discord.Member):
             old_aliases = utils.get_unique_aliases(member)
             if len(old_aliases) > 0: # Returning user
                 if member.display_name not in old_aliases: # New display name
-                    exclusive_aliases = [f"Or should I say, {alias}?" for alias in old_aliases if alias != member.display_name]
+                    exclusive_aliases = [f" Or should I say, {alias}?" for alias in old_aliases if alias != member.display_name]
                 else: # Same display name
                     exclusive_aliases = ""
                 await greeting.reply(content=f"Btw {member.mention} haven't I seen you before?{''.join(exclusive_aliases)}")
