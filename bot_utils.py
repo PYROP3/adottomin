@@ -1,10 +1,10 @@
 import discord
+import inspect
 import queue
-import traceback
 import random
-import requests
 import string
 import subprocess
+import traceback
 import typing
 
 import botlogger
@@ -20,6 +20,11 @@ except ImportError:
 VALID_NOTIFY_STATUS = [discord.Status.offline]
 
 AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
+
+MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
+
+divine_role_id = 1021892234829906043
+secretary_role_id = 1002385294152179743
 
 def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
@@ -294,3 +299,17 @@ class utils:
     def plural(self, word, amount):
         if int(amount) == 1: return word
         return word + 's'
+
+    async def ensure_secretary(self, interaction):
+        return await self._ensure_roles(interaction, divine_role_id, secretary_role_id)
+
+    async def ensure_divine(self, interaction):
+        return await self._ensure_roles(interaction, divine_role_id)
+
+    async def _ensure_roles(self, interaction, *roles):
+        _author_roles = self.role_ids(interaction.user)
+        if (interaction.user.id != self.admin.id) and set(_author_roles).intersection(roles) == set():
+            self.logger.debug(interaction, f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
+            await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+            return False
+        return True

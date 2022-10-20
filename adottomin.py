@@ -480,10 +480,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
 async def raidmode(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
-    if not (divine_role_id in [role.id for role in interaction.user.roles]):
-        log_debug(interaction, f"{interaction.user} cannot use raidmode")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_divine(interaction): return
 
     if enable.value == "on":
         if set_raid_mode():
@@ -734,10 +731,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
     await interaction.response.defer()
 
     log_info(interaction, f"{interaction.user} requested report")
-    if (interaction.user.id != admin_id) and not (divine_role_id in [role.id for role in interaction.user.roles]):
-        log_debug(interaction, f"{interaction.user} cannot get report")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_divine(interaction): return
 
     report_name = graphlytics.generate_new_user_graph(range)
     log_debug(interaction, f"report_name={report_name}")
@@ -750,15 +744,10 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
 @bot.tree.command(description='Warn a user for bad behavior, auto bans if there are too many strikes')
 @discord.app_commands.describe(user='User to warn', reason='Why are they being warned')
 async def strike(interaction: discord.Interaction, user: discord.Member, reason: str):
-    _author_roles = [role.id for role in interaction.user.roles]
     log_info(interaction, f"{interaction.user} requested strike for {user}: '{reason}'")
-    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(interaction, f"{interaction.user} cannot warn people")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
 
-    _user_roles = [role.id for role in user.roles]
-    if (divine_role_id in _user_roles or secretary_role_id in _user_roles):
+    if set(utils.role_ids(user)).intersection(set([divine_role_id, secretary_role_id])) != set():
         log_debug(interaction, f"{user} cannot be warned")
         await interaction.response.send_message(content=MSG_CANT_DO_IT, ephemeral=True)
         return
@@ -784,10 +773,7 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
 @discord.app_commands.describe(user='User to check', all='Get all strikes (only gets active strikes by default)')
 async def getstrikes(interaction: discord.Interaction, user: discord.Member, all: typing.Optional[bool]=False):
     log_info(interaction, f"{interaction.user} requested strikes for {user}")
-    if (interaction.user.id != admin_id) and not (divine_role_id in [role.id for role in interaction.user.roles]):
-        log_debug(interaction, f"{interaction.user} cannot get strikes")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
 
     strikes = sql.get_warnings(user.id, None if all else WARNING_VALIDITY_DAYS)
 
@@ -808,12 +794,8 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
 @bot.tree.command(description='Promote a user to the next tier')
 @discord.app_commands.describe(user='User to promote')
 async def promote(interaction: discord.Interaction, user: discord.Member):
-    _author_roles = [role.id for role in interaction.user.roles]
     log_info(interaction, f"{interaction.user} requested promotion for {user}")
-    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(interaction, f"{interaction.user} cannot promote people")
-        await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
 
     _user_roles = [role.id for role in user.roles]
     if friends_role_ids[2] in _user_roles:
@@ -848,12 +830,8 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
 async def age(interaction: discord.Interaction, user: discord.Member):
     await interaction.response.defer(ephemeral=True)
 
-    _author_roles = [role.id for role in interaction.user.roles]
     log_info(interaction, f"{interaction.user} requested age for {user}")
-    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(interaction, f"{interaction.user} cannot check ages")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
         
     age_data = sql.get_age(user.id)
     mention = user.mention
@@ -868,12 +846,8 @@ async def age(interaction: discord.Interaction, user: discord.Member):
 async def agealt(interaction: discord.Interaction, user_id: str):
     await interaction.response.defer(ephemeral=True)
     
-    _author_roles = [role.id for role in interaction.user.roles]
     log_info(interaction, f"{interaction.user} requested age for ID {user_id}")
-    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(interaction, f"{interaction.user} cannot check ages")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
 
     try:
         user_id = int(user_id)
@@ -1022,12 +996,8 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
 async def activity(interaction: discord.Interaction, user: discord.Member, ignore_games: bool=True, range: int=14):
     await interaction.response.defer(ephemeral=True)
 
-    _author_roles = utils.role_ids(interaction.user)
     log_info(interaction, f"{interaction.user} requested activity for {user}: {ignore_games}, {range}")
-    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(interaction, f"{interaction.user} cannot get activity")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
 
     try:
         data = sql.get_activity(user.id, game_channel_ids if ignore_games else [], range)
@@ -1163,10 +1133,7 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
     mod = interaction.user
     _author_roles = [role.id for role in interaction.user.roles]
     log_info(interaction, f"{interaction.user} requested age for {user}")
-    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
-        log_debug(interaction, f"{interaction.user} cannot autoblock")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
-        return
+    if not utils.ensure_secretary(interaction): return
 
     try:
         user_id = int(user)
