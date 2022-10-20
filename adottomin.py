@@ -43,7 +43,7 @@ WARNING_VALIDITY_DAYS = 30
 WARNINGS_BEFORE_BAN = 3
 
 REDO_ALL_PINS = False
-REDO_ALL_ALIASES = True
+REDO_ALL_ALIASES = False
 
 assert (LENIENCY_REMINDER_TIME_S is None) or (LENIENCY_REMINDER_TIME_S < LENIENCY_TIME_S), "Reminder time must be smaller than total time"
 assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Reminder count must be smaller than total leniency"
