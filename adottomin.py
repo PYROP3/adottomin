@@ -1018,8 +1018,9 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
 # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
 @bot.tree.command(description='Get analytics data for user activity')
+@discord.app_commands.describe(user='Who you want to query', ignore_games='Ignore messages sent in game channels (default is true)', range='How many days from the current date (default is 14)')
 async def activity(interaction: discord.Interaction, user: discord.Member, ignore_games: bool=True, range: int=14):
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
 
     _author_roles = utils.role_ids(interaction.user)
     log_info(interaction, f"{interaction.user} requested activity for {user}: {ignore_games}, {range}")
@@ -1029,7 +1030,7 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
         return
 
     try:
-        data = sql.get_activity(user, game_channel_ids if ignore_games else [], range)
+        data = sql.get_activity(user.id, game_channel_ids if ignore_games else [], range)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query activity failed : {e}")
         await interaction.followup.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
@@ -1044,7 +1045,7 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
         msg = "Your query returned None"
     else:
         msg = f"Here is {user.mention}'s daily activity!\n"
-        msg += "\n".join(f'{data[0]}: {data[1]} {utils.plural("message", data[1])}')
+        msg += "\n".join([f'{line[0]}: {line[1]} {utils.plural("message", line[1])}' for line in data])
         msg += "\n"
         if len(msg) > 2000:
             aux = "\nTRUNC"

@@ -292,5 +292,5 @@ class utils:
         return f'{delimiter}{self.escape(string, delimiter, delimiter_right)}{delimiter_right}'
 
     def plural(self, word, amount):
-        if amount == 1: return word
+        if int(amount) == 1: return word
         return word + 's'

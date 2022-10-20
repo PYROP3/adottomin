@@ -326,7 +326,7 @@ class database:
             con = sqlite3.connect(activity_db_file)
             cur = con.cursor()
             _q = self._schema_dailytopten(date, ignorelist)
-            self.logger.debug(f"get_dailytopten query: {_q}")
+            # self.logger.debug(f"get_dailytopten query: {_q}")
             res = cur.execute(_q).fetchall()
             con.commit()
             con.close()
@@ -335,18 +335,18 @@ class database:
             self.logger.error(f"get_dailytopten error: {e}")
             return None
 
-    def _schema_activity(self, user, min_date, ignorelist):
-        schema = f'SELECT date(substr(date, 1, 10)), count(*) as "messages" FROM messages WHERE user = "{user}" AND date > {min_date}'
+    def _schema_activity(self, user, time_range, ignorelist):
+        schema = f'SELECT date(substr(date, 1, 10)), count(*) as "messages" FROM messages WHERE user = "{user}" AND date > date("now","-{time_range} day")'
         schema += ''.join([f' AND channel != {channel}' for channel in ignorelist])
-        schema += ' GROUP BY date(substr(date, 1, 10)) ORDER BY	date(substr(date, 1, 10)) DESC LIMIT 14'
+        schema += ' GROUP BY date(substr(date, 1, 10)) ORDER BY date(substr(date, 1, 10)) DESC LIMIT 14'
         return schema
 
-    def get_activity(self, user, ignorelist, time_range=7):
+    def get_activity(self, user, ignorelist, time_range=14):
         try:
             con = sqlite3.connect(activity_db_file)
             cur = con.cursor()
-            min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
-            _q = self._schema_activity(user, min_date, ignorelist)
+            _q = self._schema_activity(user, time_range, ignorelist)
+            # self.logger.debug(f"get_dailytopten query: {_q}")
             res = cur.execute(_q).fetchall()
             con.commit()
             con.close()
