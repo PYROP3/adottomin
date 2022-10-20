@@ -583,7 +583,7 @@ async def randomcitizen(interaction: discord.Interaction):
     if guild is None: 
         await interaction.response.send_message(content=f"That command only works in a server!", ephemeral=True)
         return
-    member = random.choice(guild.members)
+    member = random.choice([member for member in guild.members if not member.bot])
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member.mention}~")
 
 @bot.tree.command(description='Ship yourself with someone!')
@@ -1015,19 +1015,41 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
     msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
     await interaction.response.send_message(content=msg)
 
-# # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
-# # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
-# @bot.tree.command(description='Get analytics data for useractivity')
-# async def activity(interaction: discord.Interaction):
-#     await interaction.response.defer()
+# opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
+# opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
+@bot.tree.command(description='Get analytics data for user activity')
+async def activity(interaction: discord.Interaction, user: discord.Member, ignore_games: bool=True, range: int=14):
+    await interaction.response.defer()
 
-#     log_info(interaction, f"{interaction.user} requested activity")
-#     if (interaction.user.id != admin_id) and not (divine_role_id in [role.id for role in interaction.user.roles]):
-#         log_debug(interaction, f"{interaction.user} cannot get activity")
-#         await interaction.response.send_message(content=MSG_NOT_ALLOWED, ephemeral=True)
-#         return
+    _author_roles = utils.role_ids(interaction.user)
+    log_info(interaction, f"{interaction.user} requested activity for {user}: {ignore_games}, {range}")
+    if (interaction.user.id != admin_id) and not (divine_role_id in _author_roles or secretary_role_id in _author_roles):
+        log_debug(interaction, f"{interaction.user} cannot get activity")
+        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+        return
 
-#     await interaction.response.send_message(content=f"This functionality is not available yet, try again later~")
+    try:
+        data = sql.get_activity(user, game_channel_ids if ignore_games else [], range)
+    except sqlite3.DatabaseError as e:
+        log_debug(interaction, f"{interaction.user} query activity failed : {e}")
+        await interaction.followup.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
+        return
+    except Exception as e:
+        log_debug(interaction, f"{interaction.user} query for activity failed : {e}")
+        await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
+        await interaction.followup.send(content="Failed to execute query", ephemeral=True)
+        return
+        
+    if data is None or len(data) == 0:
+        msg = "Your query returned None"
+    else:
+        msg = f"Here is {user.mention}'s daily activity!\n"
+        msg += "\n".join(f'{data[0]}: {data[1]} {utils.plural("message", data[1])}')
+        msg += "\n"
+        if len(msg) > 2000:
+            aux = "\nTRUNC"
+            msg = msg[:2000-len(aux)-1] + aux
+    await interaction.followup.send(content=msg, ephemeral=True)
 
 @bot.tree.command(description='Get a clean bingo sheet!')
 @discord.app_commands.describe(which='Bingo sheet to retrieve (will get a random one by default)')
@@ -1172,7 +1194,7 @@ async def bubblewrap(interaction: discord.Interaction):
 async def aliases(interaction: discord.Interaction, user: discord.Member):
     aliases = utils.get_unique_aliases(user)
     msg = f"These are {user.mention}'s known aliases~\n> "
-    msg += ", ".join([str(alias) for alias in aliases])
+    msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
     await interaction.response.send_message(content=msg, ephemeral=True)
 
 bot.run(TOKEN)

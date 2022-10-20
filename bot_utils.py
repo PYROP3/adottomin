@@ -281,4 +281,16 @@ class utils:
 
     def get_unique_aliases(self, user: discord.Member):
         return {alias[0]: alias[1] for alias in self.database.get_aliases(user.id)}
-        
+
+    def escape(self, string: str, *chars: typing.Iterable[str]):
+        for char in chars:
+            string = string.replace(char, f'\\{char}')
+        return string
+
+    def markdown_surround(self, string: str, delimiter: str, delimiter_right: str=None):
+        delimiter_right = delimiter_right or delimiter
+        return f'{delimiter}{self.escape(string, delimiter, delimiter_right)}{delimiter_right}'
+
+    def plural(self, word, amount):
+        if amount == 1: return word
+        return word + 's'

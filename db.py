@@ -335,6 +335,26 @@ class database:
             self.logger.error(f"get_dailytopten error: {e}")
             return None
 
+    def _schema_activity(self, user, min_date, ignorelist):
+        schema = f'SELECT date(substr(date, 1, 10)), count(*) as "messages" FROM messages WHERE user = "{user}" AND date > {min_date}'
+        schema += ''.join([f' AND channel != {channel}' for channel in ignorelist])
+        schema += ' GROUP BY date(substr(date, 1, 10)) ORDER BY	date(substr(date, 1, 10)) DESC LIMIT 14'
+        return schema
+
+    def get_activity(self, user, ignorelist, time_range=7):
+        try:
+            con = sqlite3.connect(activity_db_file)
+            cur = con.cursor()
+            min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
+            _q = self._schema_activity(user, min_date, ignorelist)
+            res = cur.execute(_q).fetchall()
+            con.commit()
+            con.close()
+            return res 
+        except Exception as e:
+            self.logger.error(f"get_activity error: {e}")
+            return None
+
     def register_pin(self, message_id, pin_id):
         con = sqlite3.connect(pins_archive_db_file)
         cur = con.cursor()
