@@ -43,6 +43,7 @@ WARNING_VALIDITY_DAYS = 30
 WARNINGS_BEFORE_BAN = 3
 
 REDO_ALL_PINS = False
+REDO_ALL_ALIASES = True
 
 assert (LENIENCY_REMINDER_TIME_S is None) or (LENIENCY_REMINDER_TIME_S < LENIENCY_TIME_S), "Reminder time must be smaller than total time"
 assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Reminder count must be smaller than total leniency"
@@ -213,11 +214,16 @@ def _get_message_for_age(ctx: discord.Interaction, age_data, mention):
 async def on_ready():
     logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
-    utils.inject_guild(await bot.fetch_guild(GUILD_ID))
+    guild = await bot.fetch_guild(GUILD_ID)
+    utils.inject_guild(guild)
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
             await on_guild_channel_pins_update(channel, None)
+        
+    if REDO_ALL_ALIASES:
+        async for member in guild.fetch_members():
+            await _handle_new_alias(None, member)
 
     logger.info(f"Finished on_ready setup")
 
@@ -230,6 +236,12 @@ async def on_member_update(before: discord.Member, after: discord.Member):
     except Exception as e:
         logger.error(f"Error during on_member_update::_handle_nsfw_added: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"on_member_update::_handle_nsfw_added\n{e}\n{traceback.format_exc()}")
+
+    try:
+        await _handle_new_alias(before, after)
+    except Exception as e:
+        logger.error(f"Error during on_member_update::_handle_new_alias: {e}\n{traceback.format_exc()}")
+        await _dm_log_error(f"on_member_update::_handle_new_alias\n{e}\n{traceback.format_exc()}")
 
     # logger.debug(f"Finished on_member_update")
 
@@ -248,6 +260,17 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     await after.remove_roles(*[nsfw_role], reason="Not verified", atomic=False)
     notif = after.guild.get_channel(channel_ids[0])
     await notif.send(content=f"Straight for the NSFW and didn't even tell me your age, {after.mention}?~")
+
+async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
+    if before is not None and after.display_name == before.display_name:
+        logger.debug(f"{after} did not change alias")
+        return
+    old_aliases = utils.get_unique_aliases(after)
+    if after.display_name in old_aliases: 
+        logger.info(f"{after} added known alias {after.display_name}")
+        return
+    logger.info(f"{after} adding new alias {after.display_name}")
+    sql.create_alias(after.id, after.display_name)
 
 bot_message_handlers = [
     utils.handle_offline_mentions
@@ -342,6 +365,24 @@ async def on_member_join(member: discord.Member):
 
         if pendelton_mode:
             await greeting.reply(content=f"{member.mention} If someone asked you to say \"Pendelton\", or any other password, kindly ignore them!\nAnd, if you still can, tell them to suck an egg ^^")
+
+        try:
+            old_aliases = utils.get_unique_aliases(member)
+            if len(old_aliases) > 0: # Returning user
+                if member.display_name not in old_aliases: # New display name
+                    exclusive_aliases = [f"Or should I say, {alias}?" for alias in old_aliases if alias != member.display_name]
+                else: # Same display name
+                    exclusive_aliases = ""
+                await greeting.reply(content=f"Btw {member.mention} haven't I seen you before?{''.join(exclusive_aliases)}")
+        except Exception as e:
+            logger.error(f"[{channel}] Error during on_member_join::get_unique_aliases: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{channel}] [reminder] get_unique_aliases\n{e}\n{traceback.format_exc()}")
+
+        try:
+            await _handle_new_alias(None, member)
+        except Exception as e:
+            logger.error(f"[{channel}] Error during on_member_join::_handle_new_alias: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{channel}] [reminder] _handle_new_alias\n{e}\n{traceback.format_exc()}")
 
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
@@ -1124,6 +1165,14 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
 async def bubblewrap(interaction: discord.Interaction):
     width, height = 10, 10
     msg = "\n".join(["||pop||" * width for _ in range(height)])
+    await interaction.response.send_message(content=msg, ephemeral=True)
+
+@bot.tree.command(description='We do a little bit of stalking')
+@discord.app_commands.describe(user='User to search')
+async def aliases(interaction: discord.Interaction, user: discord.Member):
+    aliases = utils.get_unique_aliases(user)
+    msg = f"These are {user.mention}'s known aliases~\n> "
+    msg += ", ".join([str(alias) for alias in aliases])
     await interaction.response.send_message(content=msg, ephemeral=True)
 
 bot.run(TOKEN)

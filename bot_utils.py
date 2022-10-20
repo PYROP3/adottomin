@@ -278,4 +278,7 @@ class utils:
 
     def role_ids(self, user: discord.Member):
         return set([role.id for role in user.roles])
+
+    def get_unique_aliases(self, user: discord.Member):
+        return {alias[0]: alias[1] for alias in self.database.get_aliases(user.id)}
         

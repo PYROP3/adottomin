@@ -22,7 +22,9 @@ autoblocklist_db_file = _dbfile('autoblocklist', autoblocklist_version)
 pins_archive_version = 2
 pins_archive_db_file = _dbfile('pins_archive', pins_archive_version)
 simps_version = 1
-simps_db_file = _dbfile('simps', autoblocklist_version)
+simps_db_file = _dbfile('simps', simps_version)
+aliases_version = 1
+aliases_db_file = _dbfile('aliases', aliases_version)
 
 sql_files = [
     validations_db_file,
@@ -30,7 +32,8 @@ sql_files = [
     offline_ping_blocklist_db_file,
     activity_db_file,
     autoblocklist_db_file,
-    pins_archive_db_file
+    pins_archive_db_file,
+    aliases_db_file
 ]
 
 schemas = {
@@ -91,6 +94,12 @@ schemas = {
                 simp int NOT NULL,
                 simp_for int NOT NULL,
                 starred int NOT NULL,
+                date TIMESTAMP
+            );'''],
+    aliases_db_file: ['''
+            CREATE TABLE aliases (
+                user int NOT NULL,
+                alias TEXT,
                 date TIMESTAMP
             );'''],
 }
@@ -409,6 +418,24 @@ class database:
             con = sqlite3.connect(simps_db_file)
             cur = con.cursor()
             res = cur.execute("SELECT simp, starred FROM simps WHERE simp_for = :id", {"id": simp_for}).fetchall()
+            con.commit()
+            con.close()
+            return res
+        except:
+            return None
+
+    def create_alias(self, user, alias):
+        con = sqlite3.connect(aliases_db_file)
+        cur = con.cursor()
+        cur.execute("INSERT INTO aliases VALUES (?, ?, ?)", [user, alias, datetime.datetime.now()])
+        con.commit()
+        con.close()
+    
+    def get_aliases(self, user):
+        try:
+            con = sqlite3.connect(aliases_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT alias, date FROM aliases WHERE user = :id", {"id": user}).fetchall()
             con.commit()
             con.close()
             return res
