@@ -583,6 +583,14 @@ async def randomcitizen(interaction: discord.Interaction):
     member = random.choice([member for member in guild.members if not member.bot])
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member.mention}~")
 
+@bot.tree.command(description='Get a random fortune!')
+async def fortune(interaction: discord.Interaction):
+    fortune = memes.generate_fortune()
+    random.seed(hash(memes.prepared_content(str(interaction.user.id))))
+    numbers = [f'`{random.choice(range(100)):02}`' for _ in range(6)]
+    msg = f"> {fortune}\nYour lucky numbers today: {', '.join(numbers)}"
+    await interaction.response.send_message(content=msg)
+
 @bot.tree.command(description='Ship yourself with someone!')
 @discord.app_commands.describe(user='Who to ship you with')
 async def shipme(interaction: discord.Interaction, user: discord.Member):

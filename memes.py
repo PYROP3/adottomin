@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
 
 import botlogger
+import fortune
 
 memes_folder = "meme_stuff"
 
@@ -129,10 +130,14 @@ def create_meme(id: str, author_icon: str=None, icon: str=None, text: str=None):
     return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, author_icon=author_icon, icon=icon, text=text))
 
 def percent_from(content, daily=True):
-    if daily:
-        content += f"/{datetime.datetime.now().strftime('%d/%m/%Y')}"
+    content = prepared_content(content, daily=daily)
     pct = hash(content) % 101
     return (pct, " (nice!)" if pct == 69 else "")
+
+def prepared_content(content, daily=True):
+    if daily:
+        content += f"/{datetime.datetime.now().strftime('%d/%m/%Y')}"
+    return content
 
 dad_program = re.compile(r"im|i'm|i am|Im|I'm|I am")
 def hi_dad(msg):
@@ -170,3 +175,7 @@ def get_formatted_definition(contents):
 
     # return f"**{word_txt}**\n\n{meaning_txt}\n\n{example_txt}"
     return (word_txt, meaning_txt, example_txt)
+
+fortune_generator = fortune.fortunes_generator
+def generate_fortune():
+    return fortune_generator.make_sentence(min_words=5, tries=20)
