@@ -120,9 +120,9 @@ def generate_new_user_graph(time_range=None):
     plt.savefig(name)
     return name
 
-def generate_world_heatmap(cmap: str = 'gist-ncar'):
+def generate_world_heatmap(cmap: str = 'gist_ncar'):
     if cmap not in cmaps: return None
-    
+
     con = sqlite3.connect(db.worldmap_db_file)
     cur = con.cursor()
     data = cur.execute("SELECT location, COUNT(location) FROM world GROUP BY location").fetchall()
