@@ -154,7 +154,7 @@ class utils:
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
-    def _is_self_mention(msg: discord.Message, member: discord.Member):
+    def _is_self_mention(self, msg: discord.Message, member: discord.Member):
         return (member.id == msg.author.id) or (msg.author.bot and msg.interaction != None and msg.interaction.user.id == member.id)
 
     async def handle_offline_mentions(self, msg: discord.Message):
