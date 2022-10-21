@@ -154,10 +154,13 @@ class utils:
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
+    def _is_self_mention(msg: discord.Message, member: discord.Member):
+        return (member.id == msg.author.id) or (msg.author.bot and msg.interaction != None and msg.interaction.user.id == member.id)
+
     async def handle_offline_mentions(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         for member in msg.mentions:
-            will_send = member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
+            will_send = not self._is_self_mention(msg, member) and member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if not will_send: continue
             fmt_msg_chain = await self._format_msg_chain(member, msg)
