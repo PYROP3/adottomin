@@ -25,6 +25,8 @@ simps_version = 1
 simps_db_file = _dbfile('simps', simps_version)
 aliases_version = 1
 aliases_db_file = _dbfile('aliases', aliases_version)
+worldmap_version = 1
+worldmap_db_file = _dbfile('worldmap', worldmap_version)
 
 sql_files = [
     validations_db_file,
@@ -101,6 +103,13 @@ schemas = {
                 user int NOT NULL,
                 alias TEXT,
                 date TIMESTAMP
+            );'''],
+    worldmap_db_file: ['''
+            CREATE TABLE world (
+                user int NOT NULL,
+                location TEXT,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user)
             );'''],
 }
 
@@ -461,3 +470,27 @@ class database:
             return res
         except:
             return None
+
+    def insert_worldmap(self, user, location):
+        con = sqlite3.connect(worldmap_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO world VALUES (?, ?, ?)", [user, location, datetime.datetime.now()])
+            updated = False
+        except sqlite3.IntegrityError:
+            cur.execute("UPDATE world SET location=:location WHERE user=:id", {"id": user, "location": location})
+            updated = True
+        con.commit()
+        con.close()
+        return updated
+
+    def get_worldmap(self):
+        try:
+            con = sqlite3.connect(worldmap_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT location, COUNT(location) FROM world GROUP BY location").fetchall()
+            con.commit()
+            con.close()
+            return res
+        except:
+            return []

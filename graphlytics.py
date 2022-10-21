@@ -1,4 +1,6 @@
 import datetime
+import country_converter as coco
+import geopandas as gpd
 import random
 import sqlite3
 import string
@@ -10,6 +12,24 @@ import db
 import botlogger
 
 string_len = 20
+
+cmaps = [   'viridis', 'plasma', 'inferno', 'magma', 'cividis',
+            'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
+            'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone', 'pink',
+            'spring', 'summer', 'autumn', 'winter', 'cool', 'Wistia',
+            'hot', 'afmhot', 'gist_heat', 'copper',
+            'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu',
+            'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
+            'twilight', 'twilight_shifted', 'hsv',
+            'Pastel1', 'Pastel2', 'Paired', 'Accent',
+            'Dark2', 'Set1', 'Set2', 'Set3',
+            'tab10', 'tab20', 'tab20b', 'tab20c',
+            'flag', 'prism', 'ocean', 'gist_earth', 'terrain', 'gist_stern',
+            'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
+            'gist_rainbow', 'rainbow', 'jet', 'turbo', 'nipy_spectral',
+            'gist_ncar']
 
 def _get_label(age):
     if age > 100: return "tags"
@@ -95,6 +115,72 @@ def generate_new_user_graph(time_range=None):
     ax.set_title('New users daily')
     plt.xticks(rotation=90)
     ax.legend()
+
+    name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+    plt.savefig(name)
+    return name
+
+def generate_world_heatmap(cmap: str = 'gist-ncar'):
+    if cmap not in cmaps: return None
+    
+    con = sqlite3.connect(db.worldmap_db_file)
+    cur = con.cursor()
+    data = cur.execute("SELECT location, COUNT(location) FROM world GROUP BY location").fetchall()
+
+    # Setting the path to the shapefile
+    SHAPEFILE = 'data/shapefiles/worldmap/ne_10m_admin_0_countries.shp'
+
+    # Read shapefile using Geopandas
+    geo_df = gpd.read_file(SHAPEFILE)[['ADMIN', 'ADM0_A3', 'geometry']]
+
+    # Rename columns.
+    geo_df.columns = ['country', 'country_code', 'geometry']
+    
+    # Drop row for 'Antarctica'. It takes a lot of space in the map and is not of much use
+    geo_df = geo_df.drop(geo_df.loc[geo_df['country'] == 'Antarctica'].index)
+
+    # Get ISO3 names for the countries
+    iso3_codes_list = coco.convert(names=geo_df['country'].to_list(), to='ISO3', not_found='NULL')
+
+    # Add the list with iso2 codes to the dataframe
+    geo_df['iso3_code'] = iso3_codes_list
+
+    # Default is 0 users per country
+    geo_df['users'] = 0
+    
+    # Add the values we have from the DB
+    for line in data:
+        loc, users = line[0], line[1]
+        geo_df.loc[geo_df['iso3_code'] == loc, 'users'] = users
+
+    title = 'World users'
+    col = 'users'
+    vmin = geo_df[col].min()
+    vmax = geo_df[col].max()
+
+    # Create figure and axes for Matplotlib
+    fig, ax = plt.subplots(1, figsize=(20, 8))
+
+    # Remove the axis
+    ax.axis('off')
+    geo_df.plot(column=col, ax=ax, edgecolor='0.8', linewidth=1, cmap=cmap)
+
+    # Add a title
+    ax.set_title(title, fontdict={'fontsize': '25', 'fontweight': '3'})
+
+    # Create an annotation for the data source
+    # ax.annotate(source, xy=(0.1, .08), xycoords='figure fraction', horizontalalignment='left', 
+    #             verticalalignment='bottom', fontsize=10)
+                
+    # Create colorbar as a legend
+    sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=vmin, vmax=vmax), cmap=cmap)
+
+    # Empty array for the data range
+    sm._A = []
+
+    # Add the colorbar to the figure
+    cbaxes = fig.add_axes([0.15, 0.25, 0.01, 0.4])
+    cbar = fig.colorbar(sm, cax=cbaxes, ticks=[0, max(1, int(vmax))])
 
     name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
     plt.savefig(name)

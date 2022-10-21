@@ -1165,4 +1165,37 @@ async def aliases(interaction: discord.Interaction, user: discord.Member):
     msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
     await interaction.response.send_message(content=msg, ephemeral=True)
 
+@bot.tree.command(description='Contribute to the server\'s world (heat) map')
+@discord.app_commands.describe(country='Where you\'re from')
+async def locate(interaction: discord.Interaction, country: str):
+    validated_country = utils.validate_country(country)
+
+    if validated_country is None:
+        await interaction.response.send_message(content=f"I don't know that country... Can you try again, please?", ephemeral=True)
+
+    updated = sql.insert_worldmap(interaction.user.id, validated_country)
+
+    if updated:
+        msg = f"Okay, I moved you to {validated_country}/{country}~"
+    else:
+        msg = f"Okay, I added you to {validated_country}/{country}~"
+
+    await interaction.response.send_message(content=msg, ephemeral=True)
+
+# TODO parameterize color scheme (graphlytics.cmaps)
+@bot.tree.command(description='Get a heatmap with the users of the server (contribute with /locate)')
+async def worldmap(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    log_info(interaction, f"{interaction.user} requested worldmap")
+    if not utils.ensure_secretary(interaction): return
+
+    report_name = graphlytics.generate_world_heatmap()
+    log_debug(interaction, f"report_name={report_name}")
+    report_file = discord.File(report_name, filename=f"user_report.png")
+
+    await interaction.followup.send(content=f"Here you go! And if you haven't already, you can add yourself to the map with `/locate` :heart:", file=report_file)
+
+    os.remove(report_name)
+
 bot.run(TOKEN)

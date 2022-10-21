@@ -1,3 +1,4 @@
+import country_converter as coco
 import discord
 import inspect
 import queue
@@ -313,3 +314,7 @@ class utils:
             await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
             return False
         return True
+
+    def validate_country(self, country: str):
+        country = coco.convert(names=country, to='ISO3', not_found='NULL')
+        return country if country != 'NULL' else None
