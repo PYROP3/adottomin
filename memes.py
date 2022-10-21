@@ -115,6 +115,7 @@ def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
         if id == "needs": return [_args_text(text, (210, 280), (377, 402))]
         if id == "fivemins": return [_args_icon(icon, (150, 150), (244, 735))]
         if id == "sally": return [_args_icon(icon, (100, 100), (123, 171)), _args_icon(author_icon, (100, 100), (358, 120))]
+        if id == "peace": return [_args_icon(icon, (280, 280), (622, 491)), _args_icon(author_icon, (300, 300), (290, 168))]
         if id == "walt": 
             sz = get_max_size(f"{text}, put your".upper(), "arial.ttf", (400, 36), ImageDraw.Draw(im), align='left')
             return [

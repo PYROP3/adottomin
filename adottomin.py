@@ -550,7 +550,8 @@ user_meme_cmds = {
     'mig': ('fivemins', 'Please'),
     'sally': ('sally', 'Your loss'),
     'walt': ('walt', 'Put it away'),
-    'simpcard': ('simpcard', 'Officially recognized')
+    'simpcard': ('simpcard', 'Officially recognized'),
+    'peace': ('peace', 'Good for you')
 }
 
 for cmd in user_meme_cmds:
