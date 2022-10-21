@@ -480,7 +480,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
 async def raidmode(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
-    if not utils.ensure_divine(interaction): return
+    if not await utils.ensure_divine(interaction): return
 
     if enable.value == "on":
         if set_raid_mode():
@@ -731,7 +731,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
     await interaction.response.defer()
 
     log_info(interaction, f"{interaction.user} requested report")
-    if not utils.ensure_divine(interaction): return
+    if not await utils.ensure_divine(interaction): return
 
     report_name = graphlytics.generate_new_user_graph(range)
     log_debug(interaction, f"report_name={report_name}")
@@ -745,7 +745,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
 @discord.app_commands.describe(user='User to warn', reason='Why are they being warned')
 async def strike(interaction: discord.Interaction, user: discord.Member, reason: str):
     log_info(interaction, f"{interaction.user} requested strike for {user}: '{reason}'")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     if set(utils.role_ids(user)).intersection(set([divine_role_id, secretary_role_id])) != set():
         log_debug(interaction, f"{user} cannot be warned")
@@ -773,7 +773,7 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
 @discord.app_commands.describe(user='User to check', all='Get all strikes (only gets active strikes by default)')
 async def getstrikes(interaction: discord.Interaction, user: discord.Member, all: typing.Optional[bool]=False):
     log_info(interaction, f"{interaction.user} requested strikes for {user}")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     strikes = sql.get_warnings(user.id, None if all else WARNING_VALIDITY_DAYS)
 
@@ -795,7 +795,7 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
 @discord.app_commands.describe(user='User to promote')
 async def promote(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested promotion for {user}")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     _user_roles = [role.id for role in user.roles]
     if friends_role_ids[2] in _user_roles:
@@ -831,7 +831,7 @@ async def age(interaction: discord.Interaction, user: discord.Member):
     await interaction.response.defer(ephemeral=True)
 
     log_info(interaction, f"{interaction.user} requested age for {user}")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
         
     age_data = sql.get_age(user.id)
     mention = user.mention
@@ -847,7 +847,7 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     await interaction.response.defer(ephemeral=True)
     
     log_info(interaction, f"{interaction.user} requested age for ID {user_id}")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     try:
         user_id = int(user_id)
@@ -997,7 +997,7 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
     await interaction.response.defer(ephemeral=True)
 
     log_info(interaction, f"{interaction.user} requested activity for {user}: {ignore_games}, {range}")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     try:
         data = sql.get_activity(user.id, game_channel_ids if ignore_games else [], range)
@@ -1133,7 +1133,7 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
     mod = interaction.user
     _author_roles = [role.id for role in interaction.user.roles]
     log_info(interaction, f"{interaction.user} requested age for {user}")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     try:
         user_id = int(user)
@@ -1188,7 +1188,7 @@ async def worldmap(interaction: discord.Interaction):
     await interaction.response.defer()
 
     log_info(interaction, f"{interaction.user} requested worldmap")
-    if not utils.ensure_secretary(interaction): return
+    if not await utils.ensure_secretary(interaction): return
 
     report_name = graphlytics.generate_world_heatmap()
     log_debug(interaction, f"report_name={report_name}")
