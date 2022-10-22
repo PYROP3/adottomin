@@ -485,17 +485,17 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
     if enable.value == "on":
         if set_raid_mode():
             log_info(interaction, f"{interaction.user} enabled raidmode")
-            await interaction.response.send_message(content=MSG_RAID_MODE_ON.format(interaction.user.mention))
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_ON.format(interaction.user.mention), send_anyway=True)
         else:
             log_debug(interaction, f"{interaction.user} enabled raidmode (already enabled)")
-            await interaction.response.send_message(content=MSG_RAID_MODE_ON_ALREADY, ephemeral=True)
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_ON_ALREADY, ephemeral=True)
     else:
         if unset_raid_mode():
             log_info(interaction, f"{interaction.user} disabled raidmode")
-            await interaction.response.send_message(content=MSG_RAID_MODE_OFF.format(interaction.user.mention))
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF.format(interaction.user.mention), send_anyway=True)
         else:
             log_debug(interaction, f"{interaction.user} disabled raidmode (already disabled)")
-            await interaction.response.send_message(content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
 
 async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg=""):
     await interaction.response.defer()
@@ -511,7 +511,7 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
     log_debug(interaction, f"meme_name={meme_name}")
 
     if meme_name is None:
-        await interaction.followup.send(content="Oops, there was an error~")
+        await utils.safe_send(interaction, content="Oops, there was an error~", is_followup=True)
         return 
 
     meme_file = discord.File(meme_name, filename=f"{interaction.user.id}_{meme_code}.png")
@@ -525,7 +525,7 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
         except:
             pass
 
-    await interaction.followup.send(content=msg, file=meme_file)
+    await utils.safe_send(interaction, content=msg, file=meme_file, is_followup=True, send_anyway=True)
     
     if _icon is not None:
         os.remove(_icon)
@@ -579,7 +579,7 @@ async def mybingo(
 async def randomcitizen(interaction: discord.Interaction):
     guild = interaction.guild
     if guild is None: 
-        await interaction.response.send_message(content=f"That command only works in a server!", ephemeral=True)
+        await utils.safe_send(interaction, content=f"That command only works in a server!", ephemeral=True)
         return
     member = random.choice([member for member in guild.members if not member.bot])
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member.mention}~")
@@ -590,18 +590,18 @@ async def fortune(interaction: discord.Interaction):
     random.seed(hash(memes.prepared_content(str(interaction.user.id))))
     numbers = [f'`{random.choice(range(100)):02}`' for _ in range(6)]
     msg = f"> {fortune}\nYour lucky numbers today: {', '.join(numbers)}"
-    await interaction.response.send_message(content=msg)
+    await utils.safe_send(interaction, content=msg, send_anyway=True)
 
 @bot.tree.command(description='Ship yourself with someone!')
 @discord.app_commands.describe(user='Who to ship you with')
 async def shipme(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested ship with {user}")
     if (user.id == interaction.user.id):
-        await interaction.response.send_message(content=f"No selfcest, {interaction.user.mention}!")
+        await utils.safe_send(interaction, content=f"No selfcest, {interaction.user.mention}!")
         return
 
     if (user.id == bot.user.id):
-        await interaction.response.send_message(content=f"I'm not shipping myself with you, {interaction.user.mention}~")
+        await utils.safe_send(interaction, content=f"I'm not shipping myself with you, {interaction.user.mention}~")
         return
 
     smaller = min(int(user.id), int(interaction.user.id))
@@ -619,22 +619,22 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
     else:
         emote = ":revolving_hearts:"
 
-    await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3")
+    await utils.safe_send(interaction, content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3", send_anyway=True)
 
 @bot.tree.command(description='Ship yourself with people!')
 @discord.app_commands.describe(user1='Who to ship you with', user2='Who else to ship you with')
 async def shipus(interaction: discord.Interaction, user1: discord.Member, user2: discord.Member):
     log_info(interaction, f"{interaction.user} requested ship with {user1} and {user2}")
     if (user1.id == interaction.user.id or user2.id == interaction.user.id):
-        await interaction.response.send_message(content=f"No selfcest, {interaction.user.mention}!")
+        await utils.safe_send(interaction, content=f"No selfcest, {interaction.user.mention}!")
         return
 
     if (user1.id == user2.id):
-        await interaction.response.send_message(content=f"Try two different people, {interaction.user.mention}!")
+        await utils.safe_send(interaction, content=f"Try two different people, {interaction.user.mention}!")
         return
 
     if (user1.id == bot.user.id or user2.id == bot.user.id):
-        await interaction.response.send_message(content=f"I'm not shipping myself with you, {interaction.user.mention}~")
+        await utils.safe_send(interaction, content=f"I'm not shipping myself with you, {interaction.user.mention}~")
         return
 
     ids = sorted([int(user1.id), int(user2.id), int(interaction.user.id)])
@@ -651,7 +651,7 @@ async def shipus(interaction: discord.Interaction, user1: discord.Member, user2:
     else:
         emote = ":revolving_hearts:"
 
-    await interaction.response.send_message(content=f"The ship compatibility between {interaction.user.mention}, {user1.mention} and {user2.mention} today is {emote} {pct}%{nice} :3")
+    await utils.safe_send(interaction, content=f"The ship compatibility between {interaction.user.mention}, {user1.mention} and {user2.mention} today is {emote} {pct}%{nice} :3", send_anyway=True)
 
 @bot.tree.command(description='Rate your gae!')
 @discord.app_commands.describe(user='Who to rate (if empty, rates you)')
@@ -659,12 +659,12 @@ async def gayrate(interaction: discord.Interaction, user: typing.Optional[discor
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested gayrate for {user}")
     if (user.id == bot.user.id):
-        await interaction.response.send_message(content=f"Wouldn't you like to know, {interaction.user.mention}~?")
+        await utils.safe_send(interaction, content=f"Wouldn't you like to know, {interaction.user.mention}~?")
         return
 
     pct, nice = memes.percent_from(f"gay/{int(user.id)}")
 
-    await interaction.response.send_message(content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3")
+    await utils.safe_send(interaction, content=f"{user.mention} is :rainbow_flag: {pct}% gay today!{nice} :3", send_anyway=True)
 
 @bot.tree.command(description='Rate your horny!')
 @discord.app_commands.describe(user='Who to rate (if empty, rates you)')
@@ -672,7 +672,7 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested hornyrate for {user}")
     if (user.id == bot.user.id):
-        await interaction.response.send_message(content=f"Wouldn't you like to know, {interaction.user.mention}~?")
+        await utils.safe_send(interaction, content=f"Wouldn't you like to know, {interaction.user.mention}~?")
         return
 
     pct, nice = memes.percent_from(f"horny/{int(user.id)}")
@@ -685,7 +685,7 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
     else:
         emote = ":smiling_imp:"
 
-    await interaction.response.send_message(content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3")
+    await utils.safe_send(interaction, content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", send_anyway=True)
 
 @bot.tree.command(description='Explain it like you\'re a boomer')
 @discord.app_commands.describe(expression='What to search')
@@ -711,7 +711,7 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
     #     icon_url = None
 
     # embed.set_author(name=f'Requested by {interaction.user.display_name}', icon_url=icon_url)
-    await interaction.response.send_message(embed=embed)
+    await utils.safe_send(interaction, embed=embed, send_anyway=True)
 
 @bot.tree.command(description='No horny in main!')
 @discord.app_commands.describe(user='Who to mention (optional)')
@@ -720,7 +720,7 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
 
     if interaction.channel.nsfw:
         log_debug(interaction, f"{interaction.channel} is marked as nsfw")
-        await interaction.followup.send(content=f"People are allowed to be horny here!", ephemeral=True)
+        await utils.safe_send(interaction, content=f"People are allowed to be horny here!", ephemeral=True, is_followup=True)
         return
 
     await interaction.response.defer()
@@ -732,7 +732,7 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
     embed = discord.Embed()
     embed.set_image(url=f"attachment://{meme_name}")
 
-    await interaction.followup.send(content=content, file=meme_file)
+    await utils.safe_send(interaction, content=content, file=meme_file, is_followup=True)
 
 @bot.tree.command(description='Get analytics data for new users')
 @discord.app_commands.describe(range='Max days to fetch')
@@ -746,7 +746,7 @@ async def report(interaction: discord.Interaction, range: typing.Optional[int] =
     log_debug(interaction, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
 
-    await interaction.followup.send(content=f"Here you go~", file=report_file)
+    await utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
 
     os.remove(report_name)
 
@@ -758,7 +758,7 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
 
     if set(utils.role_ids(user)).intersection(set([divine_role_id, secretary_role_id])) != set():
         log_debug(interaction, f"{user} cannot be warned")
-        await interaction.response.send_message(content=MSG_CANT_DO_IT, ephemeral=True)
+        await utils.safe_send(interaction, content=MSG_CANT_DO_IT, ephemeral=True)
         return
 
     active_strikes = sql.create_warning(user.id, interaction.user.id, reason, WARNING_VALIDITY_DAYS)
@@ -768,13 +768,13 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
         msg = f"{user.mention} is being warned by {interaction.user.mention}! That's {active_strikes} strikes so far~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
-        await interaction.response.send_message(content=msg)
+        await utils.safe_send(interaction, content=msg)
     else:
         log_info(interaction, f"{user} now has {active_strikes} active strikes, and will be banned")
         msg = f"{user.mention} is being warned by {interaction.user.mention}! That's {active_strikes} strikes, and so you must go~"
         if len(reason) > 0:
             msg += f" Reason: {reason}"
-        await interaction.response.send_message(content=msg)
+        await utils.safe_send(interaction, content=msg)
         channel = bot.get_channel(channel_ids[0])
         await age_handler.do_ban(channel, user, reason=age_handling.REASON_WARNINGS, tally=False)
 
@@ -798,7 +798,7 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
             msg += " active"
         msg += f" strikes~"
 
-    await interaction.response.send_message(content=msg)
+    await utils.safe_send(interaction, content=msg)
 
 @bot.tree.command(description='Promote a user to the next tier')
 @discord.app_commands.describe(user='User to promote')
@@ -809,12 +809,12 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
     _user_roles = [role.id for role in user.roles]
     if friends_role_ids[2] in _user_roles:
         log_debug(interaction, f"{user} already at max tier")
-        await interaction.response.send_message(content=MSG_USER_ALREADY_MAXED, ephemeral=True)
+        await utils.safe_send(interaction, content=MSG_USER_ALREADY_MAXED, ephemeral=True)
         return
 
     if friends_role_ids[1] in _user_roles:
         log_debug(interaction, f"{user} will NOT be promoted to tier 3")
-        await interaction.response.send_message(content="Khris said no promotions to t3~", ephemeral=True)
+        await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
         return
         # msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
         # new_role_id = friends_role_ids[2]
@@ -828,11 +828,11 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
         member = interaction.guild.get_member(user.id)
         new_role = interaction.guild.get_role(new_role_id)
         await member.add_roles(new_role, reason=f"{interaction.user} said so")
-        await interaction.response.send_message(content=msg)
+        await utils.safe_send(interaction, content=msg, send_anyway=True)
     except discord.HTTPException as e:
         log_error(interaction, f"Failed to give role {new_role} to {user}")
         log_debug(interaction, e)
-        await interaction.response.send_message(content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
+        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
 
 @bot.tree.command(description='Check a user\'s reported age')
 @discord.app_commands.describe(user='User to check')
@@ -848,7 +848,7 @@ async def age(interaction: discord.Interaction, user: discord.Member):
     msg = _get_message_for_age(interaction, age_data, mention)
 
     log_debug(interaction, f"{msg}")
-    await interaction.followup.send(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Check a user\'s reported age (search by id)')
 @discord.app_commands.describe(user_id='User ID to check')
@@ -862,7 +862,7 @@ async def agealt(interaction: discord.Interaction, user_id: str):
         user_id = int(user_id)
     except ValueError:
         log_debug(interaction, f"{interaction.user} {user_id} casting failed")
-        await interaction.followup.send(content="That is not a valid ID", ephemeral=True)
+        await utils.safe_send(interaction, content="That is not a valid ID", ephemeral=True, is_followup=True)
         return
         
     user = bot.get_user(user_id)
@@ -872,7 +872,7 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     msg = _get_message_for_age(interaction, age_data, mention)
 
     log_debug(interaction, f"{msg}")
-    await interaction.followup.send(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Generate a copy pasta')
 @discord.app_commands.describe(pasta='Copy pasta', name='Who your pasta is about', pronouns='Which pronouns to use')
@@ -886,7 +886,7 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
     log_info(interaction, f"{interaction.user} requested copypasta: {_pasta} for {name} ({_pronouns})")
 
     if "botto" in name.lower():
-        await interaction.response.send_message(content=f"I'm not gonna write myself into your copypasta, {interaction.user.mention}~")
+        await utils.safe_send(interaction, content=f"I'm not gonna write myself into your copypasta, {interaction.user.mention}~")
         return
 
     try:
@@ -894,7 +894,7 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
     except KeyError:
         msg = "Hmm I can't fill that pasta with the data you provided..."
 
-    await interaction.response.send_message(content=msg)
+    await utils.safe_send(interaction, content=msg)
 
 @bot.tree.command(description='Update settings on whether to notify you about pings while you\'re offline')
 @discord.app_commands.describe(enable='Enable (on) or disable (off) notifications')
@@ -904,17 +904,17 @@ async def offlinepings(interaction: discord.Interaction, enable: discord.app_com
 
     if enable.value == "on":
         sql.remove_from_offline_ping_blocklist(interaction.user.id)
-        await interaction.response.send_message(content="Okay, I'll let you know if you're pinged~", ephemeral=True)
+        await utils.safe_send(interaction, content="Okay, I'll let you know if you're pinged~", ephemeral=True)
     else:
         sql.add_to_offline_ping_blocklist(interaction.user.id)
-        await interaction.response.send_message(content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
+        await utils.safe_send(interaction, content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
 
 @bot.tree.command(description='Start simping for someone!')
 @discord.app_commands.describe(user='Who you wanna simp for')
 async def simp(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} starting to simp: {user}")
     if user.id == interaction.user.id:
-        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
         return
 
     res = sql.start_simping(interaction.user.id, user.id)
@@ -925,14 +925,14 @@ async def simp(interaction: discord.Interaction, user: discord.Member):
     else:
         msg = f"You're already simping for {user.mention}"
         hidden = True
-    await interaction.response.send_message(content=msg, ephemeral=hidden)
+    await utils.safe_send(interaction, content=msg, ephemeral=hidden, send_anyway=True)
 
 @bot.tree.command(description='Stop simping for someone!')
 @discord.app_commands.describe(user='Who you wanna stop simping for')
 async def nosimp(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} stopping to simp: {user}")
     if user.id == interaction.user.id:
-        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
         return
 
     res = sql.stop_simping(interaction.user.id, user.id)
@@ -942,14 +942,14 @@ async def nosimp(interaction: discord.Interaction, user: discord.Member):
     else:
         msg = f"You're not simping for {user.mention}"
         hidden = True
-    await interaction.response.send_message(content=msg, ephemeral=hidden)
+    await utils.safe_send(interaction, content=msg, ephemeral=hidden)
 
 @bot.tree.command(description='Validate your simp\'s affection')
 @discord.app_commands.describe(user='Which simp you want to validate')
 async def validatesimp(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} validating simp: {user}")
     if user.id == interaction.user.id:
-        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
         return
 
     exists, success = sql.star_simping(user.id, interaction.user.id)
@@ -962,14 +962,14 @@ async def validatesimp(interaction: discord.Interaction, user: discord.Member):
     else:
         msg = f"{interaction.user.mention} is validating {user.mention}'s simping~"
         hidden = False
-    await interaction.response.send_message(content=msg, ephemeral=hidden)
+    await utils.safe_send(interaction, content=msg, ephemeral=hidden)
 
 @bot.tree.command(description='Invalidate your simp\'s affection')
 @discord.app_commands.describe(user='Which simp you want to invalidate')
 async def invalidatesimp(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} invalidating simp: {user}")
     if user.id == interaction.user.id:
-        await interaction.response.send_message(content="You can't simp for yourself~", ephemeral=True)
+        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
         return
 
     exists, success = sql.unstar_simping(user.id, interaction.user.id)
@@ -982,7 +982,7 @@ async def invalidatesimp(interaction: discord.Interaction, user: discord.Member)
     else:
         msg = f"{interaction.user.mention} is not validating {user.mention}'s simping anymore~"
         hidden = False
-    await interaction.response.send_message(content=msg, ephemeral=hidden)
+    await utils.safe_send(interaction, content=msg, ephemeral=hidden)
     
 @bot.tree.command(description='Know who\'s simping for someone!')
 async def simps(interaction: discord.Interaction, user: discord.Member):
@@ -991,12 +991,12 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
     simps = sql.get_simps(user.id)
     
     if simps is None or len(simps) == 0:
-        await interaction.response.send_message(content=f"Awww... {user.mention} doesn't have any simps yet")
+        await utils.safe_send(interaction, content=f"Awww... {user.mention} doesn't have any simps yet")
         return
 
     msg = f"Here are {user.mention}'s simps~\n> "
     msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
-    await interaction.response.send_message(content=msg)
+    await utils.safe_send(interaction, content=msg)
 
 # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
@@ -1012,12 +1012,12 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
         data = sql.get_activity(user.id, game_channel_ids if ignore_games else [], range)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query activity failed : {e}")
-        await interaction.followup.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
+        await utils.safe_send(interaction, content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True, is_followup=True)
         return
     except Exception as e:
         log_debug(interaction, f"{interaction.user} query for activity failed : {e}")
         await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await interaction.followup.send(content="Failed to execute query", ephemeral=True)
+        await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
         return
         
     if data is None or len(data) == 0:
@@ -1029,7 +1029,7 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await interaction.followup.send(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Get a clean bingo sheet!')
 @discord.app_commands.describe(which='Bingo sheet to retrieve (will get a random one by default)')
@@ -1046,7 +1046,7 @@ async def bingo(interaction: discord.Interaction, which: typing.Optional[discord
 
     bingo_file = discord.File(bingo_name, filename=f"bingo.png")
 
-    await interaction.followup.send(content=f"Hope you get a bingo~", file=bingo_file)
+    await utils.safe_send(interaction, content=f"Hope you get a bingo~", file=bingo_file, is_followup=True)
 
 @bot.tree.command(description='...')
 async def suicide(interaction: discord.Interaction):
@@ -1059,7 +1059,7 @@ async def suicide(interaction: discord.Interaction):
     msg += f"Please please please reach out to someone you trust if you're feeling down. If you need, you can also google \"suicide prevention\" to get the hotline number for your country: https://www.google.com/search?q=suicide+prevention\n"
     msg += f"Suicide is never the answer, okay? It may seem like they way out in a place of desperation, but you will get through this rough patch... {admin_user.mention} & I believe in you, friend!"
 
-    await interaction.response.send_message(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True)
 
 @bot.tree.command(description='Perform a SQL query')
 @discord.app_commands.describe(file='File to connect', query='SQL query')
@@ -1070,19 +1070,19 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     log_info(interaction, f"{interaction.user} requested sql query for {file}")
     if (interaction.user.id != admin_id):
         log_debug(interaction, f"{interaction.user} cannot query db")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+        await utils.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True, is_followup=True)
         return
 
     try:
         data = sql.raw_sql(file.value, query)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
-        await interaction.followup.send(content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
+        await utils.safe_send(interaction, content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", ephemeral=True, is_followup=True)
         return
     except Exception as e:
         log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
         await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await interaction.followup.send(content="Failed to execute query", ephemeral=True)
+        await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
         return
         
     if data is None:
@@ -1094,7 +1094,7 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
         if len(msg) > 2000:
             aux = "```\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await interaction.followup.send(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Get the daily top 10 rankings')
 @discord.app_commands.describe(date='When to fetch data', hidden='Hide or show response')
@@ -1107,19 +1107,19 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
     log_info(interaction, f"{interaction.user} requested daily top 10 for {_date}")
     if (interaction.user.id != admin_id):
         log_debug(interaction, f"{interaction.user} cannot query db")
-        await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+        await utils.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True, is_followup=True)
         return
 
     try:
         data = sql.get_dailytopten(_date, game_channel_ids)
     except sqlite3.DatabaseError as e:
         log_debug(interaction, f"{interaction.user} query daily top ten failed : {e}")
-        await interaction.followup.send(content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True)
+        await utils.safe_send(interaction, content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True, is_followup=True)
         return
     except Exception as e:
         log_debug(interaction, f"{interaction.user} query for daily top ten failed : {e}")
         await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await interaction.followup.send(content="Failed to execute query", ephemeral=True)
+        await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
         return
         
     if data is None:
@@ -1132,7 +1132,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await interaction.followup.send(content=msg, ephemeral=_hidden)
+    await utils.safe_send(interaction, content=msg, ephemeral=_hidden, is_followup=True)
 
 @bot.tree.command(description='Pre-block a user before they\'ve even joined')
 @discord.app_commands.describe(user='User ID to block', reason='Reason for block')
@@ -1148,7 +1148,7 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
         user_id = int(user)
     except:
         log_debug(interaction, f"{user} is not a valid ID")
-        await interaction.followup.send(content=f"{user} is not a valid ID", ephemeral=True)
+        await utils.safe_send(interaction, content=f"{user} is not a valid ID", ephemeral=True, is_followup=True)
         return
         
     data = sql.try_autoblock(user_id, mod.id, reason)
@@ -1158,13 +1158,13 @@ async def autoblock(interaction: discord.Interaction, user: str, reason: str):
         prev_mod_id, prev_reason, date = data
         prev_mod = bot.get_user(prev_mod_id)
         msg = f"That user has already been pre-blocked by {prev_mod.mention} on {date}: {prev_reason}"
-    await interaction.followup.send(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Pop pop pop!')
 async def bubblewrap(interaction: discord.Interaction):
     width, height = 10, 10
     msg = "\n".join(["||pop||" * width for _ in range(height)])
-    await interaction.response.send_message(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True)
 
 @bot.tree.command(description='We do a little bit of stalking')
 @discord.app_commands.describe(user='User to search')
@@ -1172,7 +1172,7 @@ async def aliases(interaction: discord.Interaction, user: discord.Member):
     aliases = utils.get_unique_aliases(user)
     msg = f"These are {user.mention}'s known aliases~\n> "
     msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
-    await interaction.response.send_message(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True)
 
 @bot.tree.command(description='Contribute to the server\'s world (heat) map')
 @discord.app_commands.describe(country='Where you\'re from')
@@ -1180,7 +1180,7 @@ async def locate(interaction: discord.Interaction, country: str):
     validated_country = utils.validate_country(country)
 
     if validated_country is None:
-        await interaction.response.send_message(content=f"I don't know that country... Can you try again, please?", ephemeral=True)
+        await utils.safe_send(interaction, content=f"I don't know that country... Can you try again, please?", ephemeral=True)
 
     updated = sql.insert_worldmap(interaction.user.id, validated_country)
 
@@ -1191,7 +1191,7 @@ async def locate(interaction: discord.Interaction, country: str):
     else:
         msg = f":pushpin::map: Okay, I added you to {country_flag} {validated_country}/{country}~"
 
-    await interaction.response.send_message(content=msg, ephemeral=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True)
 
 # TODO parameterize color scheme (graphlytics.cmaps)
 @bot.tree.command(description='Get a heatmap with the users of the server (contribute with /locate)')
@@ -1207,7 +1207,7 @@ async def worldmap(interaction: discord.Interaction):
 
     amount = sql.count_worldmap()
 
-    await interaction.followup.send(content=f"Here you go! And if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have {amount} registered friends~", file=report_file)
+    await utils.safe_send(interaction, content=f"Here you go! And if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have {amount} registered friends~", file=report_file, is_followup=True, send_anyway=True)
 
     os.remove(report_name)
 

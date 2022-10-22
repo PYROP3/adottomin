@@ -313,7 +313,7 @@ class utils:
     async def _ensure_roles(self, interaction, *roles):
         _author_roles = self.role_ids(interaction.user)
         if (interaction.user.id != self.admin.id) and set(_author_roles).intersection(roles) == set():
-            self.logger.debug(interaction, f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
+            self.logger.debug(f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
             await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
             return False
         return True
@@ -325,3 +325,20 @@ class utils:
     def country_flag(self, country: str):
         country = coco.convert(names=country, to='ISO2', not_found='NULL')
         return f':flag_{country.lower()}:' if country != 'NULL' else ''
+
+    async def safe_send(self, interaction: discord.Interaction, is_followup: bool=False, send_anyway: bool=False, **kwargs):
+        try:
+            if is_followup:
+                await interaction.followup.send(**kwargs)
+                return
+
+            await interaction.response.send_message(**kwargs)
+
+        except discord.errors.NotFound:
+            self.logger.warning(f"NotFound error while trying to send message (send_anyway={send_anyway})")
+            if send_anyway:
+                if 'ephemeral' in kwargs and kwargs['ephemeral']:
+                    self.logger.error(f"Not replying publicly to ephemeral")
+                    return
+                kwargs['msg'] = f"{interaction.user.mention} used /{interaction.command.name}\n{kwargs['msg']}"
+                await interaction.channel.send(**kwargs)
