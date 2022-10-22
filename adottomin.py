@@ -994,7 +994,7 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
         await interaction.response.send_message(content=f"Awww... {user.mention} doesn't have any simps yet")
         return
 
-    msg = f"Here are {user.mention}'s simps~\n>"
+    msg = f"Here are {user.mention}'s simps~\n> "
     msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
     await interaction.response.send_message(content=msg)
 
@@ -1203,7 +1203,9 @@ async def worldmap(interaction: discord.Interaction):
     log_debug(interaction, f"report_name={report_name}")
     report_file = discord.File(report_name, filename=f"user_report.png")
 
-    await interaction.followup.send(content=f"Here you go! And if you haven't already, you can add yourself to the map with `/locate` :heart:", file=report_file)
+    amount = sql.count_worldmap()
+
+    await interaction.followup.send(content=f"Here you go! And if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have {amount} registered friends~", file=report_file)
 
     os.remove(report_name)
 

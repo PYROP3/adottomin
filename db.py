@@ -494,3 +494,14 @@ class database:
             return res
         except:
             return []
+    
+    def count_worldmap(self):
+        try:
+            con = sqlite3.connect(worldmap_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT count(*) FROM world").fetchone()
+            con.commit()
+            con.close()
+            return int(res[0])
+        except:
+            return 0
