@@ -37,7 +37,7 @@ class HandlerException(Exception):
 class HandlerIgnoreException(HandlerException):
     pass
 
-invite_prog = re.compile(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(?<invite>.+)")
+invite_prog = re.compile(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(.+)")
 
 class utils:
     def __init__(self, bot: commands.Bot, database: db.database, chatting_roles_allowlist=[], chatting_servicename: str=None):
