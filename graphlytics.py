@@ -120,6 +120,16 @@ def generate_new_user_graph(time_range=None):
     plt.savefig(name)
     return name
 
+def _fib(until):
+    res = [0, 1]
+    while res[-1] < until:
+        res += [res[-1] + res[-2]]
+    if len(res) > 2:
+        del(res[1]) # remove extra copy of 1 (make sure we keep at least 1 - edge case)
+    if res[-1] != until:
+        res += [until] # make sure we have the max value
+    return res
+
 def generate_world_heatmap(cmap: str = 'gist_ncar'):
     if cmap not in cmaps: return None
 
@@ -179,8 +189,9 @@ def generate_world_heatmap(cmap: str = 'gist_ncar'):
     sm._A = []
 
     # Add the colorbar to the figure
+    ticks = sorted(set([0] + [line[1] for line in data]))
     cbaxes = fig.add_axes([0.15, 0.25, 0.01, 0.4])
-    cbar = fig.colorbar(sm, cax=cbaxes, ticks=[0, max(1, int(vmax))])
+    cbar = fig.colorbar(sm, cax=cbaxes, ticks=ticks)
 
     name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
     plt.savefig(name)
