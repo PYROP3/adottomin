@@ -1184,10 +1184,12 @@ async def locate(interaction: discord.Interaction, country: str):
 
     updated = sql.insert_worldmap(interaction.user.id, validated_country)
 
+    country_flag = utils.country_flag(country)
+
     if updated:
-        msg = f"Okay, I moved you to {validated_country}/{country}~"
+        msg = f":airplane::map: Okay, I moved you to {country_flag} {validated_country}/{country}~"
     else:
-        msg = f"Okay, I added you to {validated_country}/{country}~"
+        msg = f":pushpin::map: Okay, I added you to {country_flag} {validated_country}/{country}~"
 
     await interaction.response.send_message(content=msg, ephemeral=True)
 

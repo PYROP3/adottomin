@@ -321,3 +321,7 @@ class utils:
     def validate_country(self, country: str):
         country = coco.convert(names=country, to='ISO3', not_found='NULL')
         return country if country != 'NULL' else None
+
+    def country_flag(self, country: str):
+        country = coco.convert(names=country, to='ISO2', not_found='NULL')
+        return f':flag_{country.lower()}:' if country != 'NULL' else ''
