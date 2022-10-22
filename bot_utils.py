@@ -3,6 +3,7 @@ import discord
 import inspect
 import queue
 import random
+import re
 import string
 import subprocess
 import traceback
@@ -35,6 +36,8 @@ class HandlerException(Exception):
 
 class HandlerIgnoreException(HandlerException):
     pass
+
+invite_prog = re.compile(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(?<invite>.+)")
 
 class utils:
     def __init__(self, bot: commands.Bot, database: db.database, chatting_roles_allowlist=[], chatting_servicename: str=None):
@@ -244,6 +247,13 @@ class utils:
             return
         reply = f"lol boomer"
         await msg.reply(content=reply)
+
+    async def handle_invite_link(self, msg: discord.Message):
+        await self._enforce_not_dms(msg)
+        if invite_prog.search(msg.content) is None:
+            return
+        await msg.delete()
+        await msg.channel.send(content=f"No discord invites, {msg.author.mention}~")
 
     async def handle_chat_dm(self, msg: discord.Message):
         # await self._enforce_admin_only(msg)
