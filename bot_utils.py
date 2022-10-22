@@ -340,5 +340,5 @@ class utils:
                 if 'ephemeral' in kwargs and kwargs['ephemeral']:
                     self.logger.error(f"Not replying publicly to ephemeral")
                     return
-                kwargs['msg'] = f"{interaction.user.mention} used /{interaction.command.name}\n{kwargs['msg']}"
+                kwargs['content'] = f"{interaction.user.mention} used /{interaction.command.name}\n{kwargs['content']}"
                 await interaction.channel.send(**kwargs)
