@@ -82,6 +82,8 @@ usernames_blocked = [
 
 blocklist_prog = re.compile("|".join(blocklist), flags=re.IGNORECASE)
 
+queen_role_id = 1002077481156743259
+owner_role_id = 1014556813821214780
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 friends_role_ids = [
@@ -1075,10 +1077,7 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     await interaction.response.defer(ephemeral=True)
     
     log_info(interaction, f"{interaction.user} requested sql query for {file}")
-    if (interaction.user.id != admin_id):
-        log_debug(interaction, f"{interaction.user} cannot query db")
-        await utils.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True, is_followup=True)
-        return
+    if not utils.ensure_admin(interaction): return
 
     try:
         data = sql.raw_sql(file.value, query)
@@ -1104,18 +1103,14 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Get the daily top 10 rankings')
-@discord.app_commands.describe(date='When to fetch data', hidden='Hide or show response')
-async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], hidden: typing.Optional[bool]):
-    _hidden = hidden or True
-    await interaction.response.defer(ephemeral=_hidden)
+@discord.app_commands.describe(date='When to fetch data')
+async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str]):
+    await interaction.response.defer(ephemeral=True)
     
     _date = date or (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
     log_info(interaction, f"{interaction.user} requested daily top 10 for {_date}")
-    if (interaction.user.id != admin_id):
-        log_debug(interaction, f"{interaction.user} cannot query db")
-        await utils.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True, is_followup=True)
-        return
+    if not utils.ensure_queen(interaction): return
 
     try:
         data = sql.get_dailytopten(_date, game_channel_ids)
@@ -1131,7 +1126,6 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         
     if data is None:
         msg = "Your query returned None"
-        _hidden = True
     else:
         msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
         msg += "\n".join(" | ".join([utils.to_podium(idx + 1), "\\" + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
@@ -1139,7 +1133,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await utils.safe_send(interaction, content=msg, ephemeral=_hidden, is_followup=True)
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Pre-block a user before they\'ve even joined')
 @discord.app_commands.describe(user='User ID to block', reason='Reason for block')

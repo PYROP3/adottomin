@@ -25,6 +25,8 @@ AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 
+queen_role_id = 1002077481156743259
+owner_role_id = 1014556813821214780
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 
@@ -319,6 +321,19 @@ class utils:
 
     async def ensure_divine(self, interaction):
         return await self._ensure_roles(interaction, divine_role_id)
+
+    async def ensure_owner(self, interaction):
+        return await self._ensure_roles(interaction, owner_role_id)
+
+    async def ensure_queen(self, interaction):
+        return await self._ensure_roles(interaction, queen_role_id)
+
+    async def ensure_admin(self, interaction):
+        if (interaction.user.id != self.admin.id):
+            self.logger.debug(f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
+            await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+            return False
+        return True
 
     async def _ensure_roles(self, interaction, *roles):
         _author_roles = self.role_ids(interaction.user)
