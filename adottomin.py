@@ -385,6 +385,12 @@ async def on_member_join(member: discord.Member):
             logger.error(f"[{channel}] Error during on_member_join::_handle_new_alias: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{channel}] [reminder] _handle_new_alias\n{e}\n{traceback.format_exc()}")
 
+        try:
+            await member.add_roles(member.guild.get_role(friends_role_ids[0]), reason='Just joined (ty Botto)!')
+        except Exception as e:
+            logger.error(f"[{channel}] Error during on_member_join::add_roles: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{channel}] [reminder] add_roles\n{e}\n{traceback.format_exc()}")
+
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
             logger.debug(f"[{channel}] {member} Waiting to send reminder")
