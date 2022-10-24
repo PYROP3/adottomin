@@ -352,3 +352,15 @@ class utils:
                     return
                 kwargs['content'] = f"{interaction.user.mention} used /{interaction.command.name}\n{kwargs['content']}"
                 await interaction.channel.send(**kwargs)
+
+    def _iterate_dec(self, number:int):
+        while number >= 10:
+            yield number % 10
+            number /= 10
+        yield number
+            
+    def _name_number(self, number:int):
+        return ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][number]
+
+    def n_em(self, number: int):
+        return "".join([f':{self._name_number(num)}:' for num in list(self._iterate_dec(number))[::-1]])

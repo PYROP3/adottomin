@@ -1208,7 +1208,7 @@ async def worldmap(interaction: discord.Interaction):
 
     amount = sql.count_worldmap()
 
-    await utils.safe_send(interaction, content=f"Here you go!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have {amount} registered friends~", file=report_file, is_followup=True, send_anyway=True)
+    await utils.safe_send(interaction, content=f"Here you go!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have `{amount}` registered friends~", file=report_file, is_followup=True, send_anyway=True)
 
     os.remove(report_name)
 
@@ -1221,6 +1221,6 @@ async def worldmapcount(interaction: discord.Interaction):
     
     data = sql.count_worldmap()
 
-    await utils.safe_send(interaction, content=f"There are {data} registered users!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:", is_followup=True, send_anyway=True)
+    await utils.safe_send(interaction, content=f"There are {utils.n_em(data)} registered users!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:", is_followup=True, send_anyway=True)
 
 bot.run(TOKEN)
