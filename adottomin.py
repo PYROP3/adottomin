@@ -729,7 +729,7 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
 
     if interaction.channel.nsfw:
         log_debug(interaction, f"{interaction.channel} is marked as nsfw")
-        await utils.safe_send(interaction, content=f"People are allowed to be horny here!", ephemeral=True, is_followup=True)
+        await utils.safe_send(interaction, content=f"People are allowed to be horny here!", ephemeral=True)
         return
 
     await interaction.response.defer()
