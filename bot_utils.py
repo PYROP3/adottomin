@@ -370,9 +370,9 @@ class utils:
 
     def _iterate_dec(self, number:int):
         while number >= 10:
-            yield number % 10
+            yield int(number % 10)
             number /= 10
-        yield number
+        yield int(number)
             
     def _name_number(self, number:int):
         return ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][number]
