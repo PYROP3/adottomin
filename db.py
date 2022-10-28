@@ -553,3 +553,15 @@ class database:
             return True
         except:
             return False
+
+    def nnn_count(self):
+        try:
+            con = sqlite3.connect(nnn_2022_db_file)
+            cur = con.cursor()
+            res1 = cur.execute("SELECT count(*) FROM users").fetchone()
+            res2 = cur.execute("SELECT count(*) FROM failed").fetchone()
+            con.commit()
+            con.close()
+            return (res1[0], res2[0])
+        except:
+            return (0, 0)

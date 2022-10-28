@@ -1262,4 +1262,14 @@ async def failnnn(interaction: discord.Interaction):
 
     await utils.safe_send(interaction, content=content, send_anyway=True)
 
+@bot.tree.command(description='Check the numbers on NNN 20222')
+async def countnnn(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is checking NNN 2022")
+
+    joined, failed = sql.nnn_count()
+
+    content = f"So far, `{joined}` users have joined, and `{failed}` have failed NNN 2022~"
+
+    await utils.safe_send(interaction, content=content, send_anyway=True)
+
 bot.run(TOKEN)
