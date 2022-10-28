@@ -1223,4 +1223,43 @@ async def worldmapcount(interaction: discord.Interaction):
 
     await utils.safe_send(interaction, content=f"There are {utils.n_em(data)} registered users!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:", is_followup=True, send_anyway=True)
 
+@bot.tree.command(description='Join NNN 2022! Please be aware you can only join/wager ONCE!')
+@discord.app_commands.describe(wager='Are you willing to wager one of your roles?')
+async def joinnnn(interaction: discord.Interaction, wager: typing.Optional[bool]):
+    log_info(interaction, f"{interaction.user} is joining NNN 2022")
+
+    joined = sql.nnn_join(interaction.user.id, wager or False)
+
+    if joined:
+        content = f"Thank you for signing up for NNN 2022, {interaction.user.mention}! GLHF~"
+    else:
+        log_info(interaction, f"{interaction.user} already joined NNN 2022")
+        content = f"You've already signed up for NNN 2022, {interaction.user.mention}~"
+
+    await utils.safe_send(interaction, content=content, send_anyway=True)
+
+@bot.tree.command(description='Admit defeat in NNN 2022! Please be aware you cannot take this back!!!')
+async def failnnn(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is joining NNN 2022")
+
+    if datetime.datetime.now().month != 11:
+        await utils.safe_send(interaction, content=f"You can't fail NNN if it's not november yet, silly~", ephemeral=True)
+        return
+
+    data = sql.nnn_status(interaction.user.id)
+    log_debug(interaction, f"Got status = {data}")
+    if data is None:
+        await utils.safe_send(interaction, content=f"You didn't sign up yet, {interaction.user.mention}! You can do that with `/joinnnn`~", send_anyway=True)
+        return
+
+    failed = sql.nnn_fail(interaction.user.id)
+
+    if failed:
+        content = f"Aww there's always next year, {interaction.user.mention}! Thanks for participating and GG no RE~"
+    else:
+        log_info(interaction, f"{interaction.user} already failed NNN 2022")
+        content = f"You've already failed NNN 2022, {interaction.user.mention}, try again next year~"
+
+    await utils.safe_send(interaction, content=content, send_anyway=True)
+
 bot.run(TOKEN)

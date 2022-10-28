@@ -27,6 +27,8 @@ aliases_version = 1
 aliases_db_file = _dbfile('aliases', aliases_version)
 worldmap_version = 1
 worldmap_db_file = _dbfile('worldmap', worldmap_version)
+nnn_2022_version = 1
+nnn_2022_db_file = _dbfile('nnn_2022', nnn_2022_version)
 
 sql_files = [
     validations_db_file,
@@ -108,6 +110,19 @@ schemas = {
             CREATE TABLE world (
                 user int NOT NULL,
                 location TEXT,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user)
+            );'''],
+    nnn_2022_db_file: ['''
+            CREATE TABLE users (
+                user int NOT NULL,
+                wager int,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user)
+            );''',
+            '''
+            CREATE TABLE failed (
+                user int NOT NULL,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
@@ -505,3 +520,36 @@ class database:
             return int(res[0])
         except:
             return 0
+    
+    def nnn_join(self, user, wager=False):
+        try:
+            con = sqlite3.connect(nnn_2022_db_file)
+            cur = con.cursor()
+            cur.execute("INSERT INTO users VALUES (?, ?, ?)", [user, 1 if wager else 0, datetime.datetime.now()])
+            con.commit()
+            con.close()
+            return True
+        except:
+            return False
+
+    def nnn_status(self, user):
+        try:
+            con = sqlite3.connect(nnn_2022_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT * FROM users WHERE user=:id", {"id": user}).fetchone()
+            con.commit()
+            con.close()
+            return res
+        except:
+            return None
+    
+    def nnn_fail(self, user):
+        try:
+            con = sqlite3.connect(nnn_2022_db_file)
+            cur = con.cursor()
+            cur.execute("INSERT INTO failed VALUES (?, ?)", [user, datetime.datetime.now()])
+            con.commit()
+            con.close()
+            return True
+        except:
+            return False
