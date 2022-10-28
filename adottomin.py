@@ -1077,7 +1077,7 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     await interaction.response.defer(ephemeral=True)
     
     log_info(interaction, f"{interaction.user} requested sql query for {file}")
-    if not utils.ensure_admin(interaction): return
+    if not await utils.ensure_admin(interaction): return
 
     try:
         data = sql.raw_sql(file.value, query)
