@@ -1110,7 +1110,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
     _date = date or (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
     log_info(interaction, f"{interaction.user} requested daily top 10 for {_date}")
-    if not utils.ensure_queen(interaction): return
+    if not await utils.ensure_queen(interaction): return
 
     try:
         data = sql.get_dailytopten(_date, game_channel_ids)
