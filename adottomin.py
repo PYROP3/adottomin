@@ -274,6 +274,18 @@ async def _handle_new_alias(before: typing.Optional[discord.Member], after: disc
     logger.info(f"{after} adding new alias {after.display_name}")
     sql.create_alias(after.id, after.display_name)
 
+reaction_blocklist = ["💀"]
+reaction_user_blocklist = [255080118903373834]
+
+@bot.event
+async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
+    logger.info(f"Added reaction {reaction}")
+    emoji = reaction.emoji if type(reaction.emoji) == str else reaction.emoji.name
+    logger.debug(f"Added emoji = {emoji}")
+    if emoji in reaction_blocklist or user.id in reaction_user_blocklist:
+        logger.info(f"Reaction blocklisted, removing")
+        reaction.remove(user)
+
 bot_message_handlers = [
     utils.handle_offline_mentions
 ]
@@ -1269,6 +1281,19 @@ async def countnnn(interaction: discord.Interaction):
     joined, failed = sql.nnn_count()
 
     content = f"So far, `{joined}` users have joined, and `{failed}` have failed NNN 2022~"
+
+    await utils.safe_send(interaction, content=content, send_anyway=True)
+
+@bot.tree.command(description='Nut counter!')
+async def nut(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is adding a nut")
+
+    total = sql.add_nut(interaction.user.id)
+
+    # content = f"{utils.n_em(total)} :chestnut: :peanuts: :coconut:"
+    random.seed(interaction.user.id)
+    nut_emojis = [":chestnut:", ":peanuts:", ":coconut:"]
+    content = " ".join([random.choice(nut_emojis) for _ in range(total)])
 
     await utils.safe_send(interaction, content=content, send_anyway=True)
 

@@ -29,6 +29,8 @@ worldmap_version = 1
 worldmap_db_file = _dbfile('worldmap', worldmap_version)
 nnn_2022_version = 1
 nnn_2022_db_file = _dbfile('nnn_2022', nnn_2022_version)
+nuts_version = 1
+nuts_db_file = _dbfile('nuts', nuts_version)
 
 sql_files = [
     validations_db_file,
@@ -37,7 +39,10 @@ sql_files = [
     activity_db_file,
     autoblocklist_db_file,
     pins_archive_db_file,
-    aliases_db_file
+    aliases_db_file,
+    worldmap_db_file,
+    nnn_2022_db_file,
+    nuts_db_file
 ]
 
 schemas = {
@@ -124,6 +129,12 @@ schemas = {
             CREATE TABLE failed (
                 user int NOT NULL,
                 created_at TIMESTAMP,
+                PRIMARY KEY (user)
+            );'''],
+    nuts_db_file: ['''
+            CREATE TABLE nuts (
+                user int NOT NULL,
+                amount int NOT NULL,
                 PRIMARY KEY (user)
             );'''],
 }
@@ -565,3 +576,16 @@ class database:
             return (res1[0], res2[0])
         except:
             return (0, 0)
+
+    def add_nut(self, user):
+        con = sqlite3.connect(nuts_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO nuts VALUES (?, ?)", [user, 1])
+            total = 1
+        except sqlite3.IntegrityError:
+            cur.execute("UPDATE nuts SET amount=amount+1 WHERE user=:id", {"id": user})
+            total = cur.execute("SELECT amount FROM nuts WHERE user=:id", {"id": user}).fetchone()[0]
+        con.commit()
+        con.close()
+        return total
