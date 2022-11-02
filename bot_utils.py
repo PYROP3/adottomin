@@ -82,6 +82,23 @@ class utils:
         # self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
+    async def _enforce_no_roles(self, msg, roles, e: HandlerException=HandlerIgnoreException):
+        await self._enforce_admin_only(msg)
+        if self.guild is None:
+            self.logger.warning(f"Utils guild link is still not ready")
+            return
+        try:
+            member = await self.guild.fetch_member(msg.author.id)
+        except discord.errors.NotFound:
+            self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
+            return
+        if member is None: 
+            self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
+            return
+        author_roles = member.roles
+        # self.logger.debug(f"Comparing user {author_roles} to {roles}")
+        if set([role.id for role in author_roles]).intersection(roles) != set(): raise e()
+
     def inject_admin(self, admin):
         self.logger.debug(f"Injected admin {admin}")
         self.admin = admin
@@ -252,6 +269,7 @@ class utils:
 
     async def handle_invite_link(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
+        await self._enforce_no_roles(msg, [queen_role_id])
         if invite_prog.search(msg.content) is None:
             return
         await msg.delete()
