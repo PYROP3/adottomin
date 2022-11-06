@@ -293,6 +293,7 @@ user_message_handlers = [
     age_handler.handle_age,
     utils.handle_invite_link,
     utils.handle_dm,
+    utils.handle_dm_cmd,
     utils.handle_chat_dm,
     utils.handle_failed_command
 ]

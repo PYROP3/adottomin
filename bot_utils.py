@@ -256,6 +256,13 @@ class utils:
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
+    async def handle_dm_cmd(self, msg: discord.Message):
+        await self._enforce_dms(msg)
+        await self._enforce_not_admin(msg)
+        if msg.content[0] != '/': return
+        content = f"Slash commands only work on the server! Try again there~"
+        await msg.reply(content=content)
+
     async def handle_failed_command(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         # await self._enforce_not_admin(msg)
