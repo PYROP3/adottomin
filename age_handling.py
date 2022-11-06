@@ -42,6 +42,7 @@ class age_handler:
         self.ignore_prog = re.compile(r"over 18")
 
     async def handle_age(self, msg: discord.Message):
+        if len(msg.content) == 0: return
         leniency = self.sql.get_leniency(msg.author.id)
         if leniency is None or leniency < 0: return
         

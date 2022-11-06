@@ -30,6 +30,9 @@ owner_role_id = 1014556813821214780
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 
+attachments_channel_id = 1002078229168922785
+attachment_save_location = "attachments"
+
 def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
 
@@ -253,19 +256,36 @@ class utils:
     async def handle_dm(self, msg: discord.Message):
         await self._enforce_dms(msg)
         await self._enforce_not_admin(msg)
+        if len(msg.content) == 0: return
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
     async def handle_dm_cmd(self, msg: discord.Message):
         await self._enforce_dms(msg)
         await self._enforce_not_admin(msg)
+        if len(msg.content) == 0: return
         if msg.content[0] != '/': return
         content = f"Slash commands only work on the server! Try again there~"
         await msg.reply(content=content)
 
+    async def handle_attachments(self, msg: discord.Message):
+        await self._enforce_not_dms(msg)
+        # if msg.channel.id != attachments_channel_id: return
+        # self.logger.debug(f"Attachments = {msg.attachments}")
+        # self.logger.debug(f"Embeds = {msg.embeds}")
+        if len(msg.attachments) == 0: return
+        for attachment in msg.attachments:
+            self.logger.debug(f"Attachment type {attachment.content_type}: url = {attachment.url}")
+            file_format = attachment.url.split('.')[-1]
+            attachment_name = f"{msg.author.id}_{msg.channel.id}_{attachment.id}.{file_format}"
+            self.logger.debug(f"Saving attachment as {attachment_name}")
+            await attachment.save(fp=f"{attachment_save_location}/{attachment_name}")
+            self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id)
+
     async def handle_failed_command(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         # await self._enforce_not_admin(msg)
+        if len(msg.content) == 0: return
         content = msg.content.split()[0]
         if content[0] != '/': return
         if self.bot.tree.get_command(content[1:]) is None:
@@ -277,6 +297,7 @@ class utils:
     async def handle_invite_link(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         await self._enforce_no_roles(msg, [queen_role_id])
+        if len(msg.content) == 0: return
         if invite_prog.search(msg.content) is None:
             return
         await msg.delete()
@@ -286,6 +307,7 @@ class utils:
         # await self._enforce_admin_only(msg)
         await self._enforce_has_role(msg, self.chatting_roles_allowlist)
         await self._enforce_dms(msg)
+        if len(msg.content) == 0: return
         if self.chatbot_queue_req is None or not self._is_chatbot_available(): 
             await self._dm_user("Sorry, but the chatting submodule is currently turned off~", msg.author)
             return

@@ -6,6 +6,7 @@ meme_stuff/bingos/*.png
 sql_tests.txt
 trash/*.png
 *.pt
+attachments/*
 
 # Must be recreated
 copypasta_data.py

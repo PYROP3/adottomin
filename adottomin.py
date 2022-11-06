@@ -295,12 +295,14 @@ user_message_handlers = [
     utils.handle_dm,
     utils.handle_dm_cmd,
     utils.handle_chat_dm,
-    utils.handle_failed_command
+    utils.handle_failed_command,
+    utils.handle_attachments
 ]
 
 async def execute_handlers(msg, handlers):
     for handle in handlers:
         try:
+            # logger.debug(f"Running handler {handle.__name__}")
             await handle(msg)
         except bot_utils.HandlerException:
             pass
@@ -310,7 +312,7 @@ async def execute_handlers(msg, handlers):
 
 @bot.event
 async def on_message(msg: discord.Message):
-    if len(msg.content) == 0: return
+    # if len(msg.content) == 0: return
     # logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
     blocklist_match = blocklist_prog.search(msg.content.lower())

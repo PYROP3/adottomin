@@ -31,6 +31,8 @@ nnn_2022_version = 1
 nnn_2022_db_file = _dbfile('nnn_2022', nnn_2022_version)
 nuts_version = 1
 nuts_db_file = _dbfile('nuts', nuts_version)
+attachments_version = 1
+attachments_db_file = _dbfile('attachments', attachments_version)
 
 sql_files = [
     validations_db_file,
@@ -42,7 +44,8 @@ sql_files = [
     aliases_db_file,
     worldmap_db_file,
     nnn_2022_db_file,
-    nuts_db_file
+    nuts_db_file,
+    attachments_db_file
 ]
 
 schemas = {
@@ -136,6 +139,13 @@ schemas = {
                 user int NOT NULL,
                 amount int NOT NULL,
                 PRIMARY KEY (user)
+            );'''],
+    attachments_db_file: ['''
+            CREATE TABLE attachments (
+                user int NOT NULL,
+                channel int,
+                attachment int NOT NULL,
+                created_at TIMESTAMP
             );'''],
 }
 
@@ -589,3 +599,13 @@ class database:
         con.commit()
         con.close()
         return total
+    
+    def create_attachment(self, user, channel, attachment):
+        try:
+            con = sqlite3.connect(attachments_db_file)
+            cur = con.cursor()
+            cur.execute("INSERT INTO users VALUES (?, ?, ?, ?)", [user, channel, attachment, datetime.datetime.now()])
+            con.commit()
+            con.close()
+        except:
+            pass
