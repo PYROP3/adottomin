@@ -604,7 +604,7 @@ class database:
         try:
             con = sqlite3.connect(attachments_db_file)
             cur = con.cursor()
-            cur.execute("INSERT INTO users VALUES (?, ?, ?, ?)", [user, channel, attachment, datetime.datetime.now()])
+            cur.execute("INSERT INTO attachments VALUES (?, ?, ?, ?)", [user, channel, attachment, datetime.datetime.now()])
             con.commit()
             con.close()
         except:

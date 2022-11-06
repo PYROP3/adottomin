@@ -274,8 +274,8 @@ async def _handle_new_alias(before: typing.Optional[discord.Member], after: disc
     logger.info(f"{after} adding new alias {after.display_name}")
     sql.create_alias(after.id, after.display_name)
 
-reaction_blocklist = ["💀"]
-reaction_user_blocklist = [255080118903373834]
+reaction_blocklist = []
+reaction_user_blocklist = []
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
