@@ -286,7 +286,7 @@ class utils:
         if len(msg.content) == 0: return
         if set(msg.content) != set(['0', '1', ' ']): return
         translated = ''.join([chr(self.bin2dec(int(x))) for x in msg.content.split()])
-        await msg.reply(content=f"They meant\n> {translated}")
+        await msg.reply(content=f"{msg.author.mention} meant\n> {translated}")
 
     async def handle_failed_command(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
