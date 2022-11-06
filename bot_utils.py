@@ -282,6 +282,12 @@ class utils:
             await attachment.save(fp=f"{attachment_save_location}/{attachment_name}")
             self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id)
 
+    async def handle_binary(self, msg: discord.Message):
+        if len(msg.content) == 0: return
+        if set(msg.content) != set(['0', '1', ' ']): return
+        translated = ''.join([chr(self.bin2dec(int(x))) for x in msg.content.split()])
+        await msg.reply(content=f"They meant\n> {translated}")
+
     async def handle_failed_command(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         # await self._enforce_not_admin(msg)
@@ -426,3 +432,12 @@ class utils:
 
     def n_em(self, number: int):
         return "".join([f':{self._name_number(num)}:' for num in list(self._iterate_dec(number))[::-1]])
+
+    def bin2dec(self, binary):
+        decimal, i, n = 0, 0, 0
+        while binary != 0:
+            dec = binary % 10
+            decimal = decimal + dec * pow(2, i)
+            binary = binary//10
+            i += 1
+        return decimal  
