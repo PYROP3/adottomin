@@ -30,7 +30,7 @@ owner_role_id = 1014556813821214780
 divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 
-attachments_channel_id = 1002078229168922785
+attachments_channel_ids = [1002078229168922785]
 attachment_save_location = "attachments"
 
 def quote_each_line(msg):
@@ -270,7 +270,7 @@ class utils:
 
     async def handle_attachments(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
-        # if msg.channel.id != attachments_channel_id: return
+        if msg.channel.id not in attachments_channel_ids: return
         # self.logger.debug(f"Attachments = {msg.attachments}")
         # self.logger.debug(f"Embeds = {msg.embeds}")
         if len(msg.attachments) == 0: return
