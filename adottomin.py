@@ -1321,33 +1321,147 @@ async def nut(interaction: discord.Interaction):
 # for category in kinks.kinklist:
 #     kink_cmds.cmd = make_kink_cmd()
 
-@discord.app_commands.guild_only()
-class Kink(discord.app_commands.Group):
-    @discord.app_commands.command(description='Kink management')
-    @discord.app_commands.describe(kink="Which kink to configure", rating="How much you like it")
-    @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Bodies"), rating=kinks.ratings_choices)
-    async def bodies(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
-        log_debug(interaction, f"Got kink in cat Bodies: {kink.value}: {rating.value}")
-        sql.create_or_update_kink(interaction.user.id, kink.value, kinks.kink_splits["Bodies"][0], kinks.ratings[rating.value].value)
-        await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+# TODO https://stackoverflow.com/questions/17929543/how-can-i-dynamically-create-class-methods-for-a-class-in-python
 
-    @discord.app_commands.command(description='Kink management')
-    @discord.app_commands.describe(kink="Which kink to configure", who="Who", rating="How much you like it")
-    @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Clothing"), who=kinks.splits_choices_for_category("Clothing"), rating=kinks.ratings_choices)
-    async def clothing(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], who: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
-        log_debug(interaction, f"Got kink in cat Clothing: {kink.value}/{who.value}: {rating.value}")
-        sql.create_or_update_kink(interaction.user.id, kink.value, who.value, kinks.ratings[rating.value].value)
-        await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+# @discord.app_commands.guild_only()
+# class Kink(discord.app_commands.Group):
+    # @discord.app_commands.command(description='Kink management')
+    # @discord.app_commands.describe(kink="Which kink to configure", rating="How much you like it")
+    # @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Bodies"), rating=kinks.ratings_choices)
+    # async def bodies(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
+    #     log_debug(interaction, f"Got kink in cat Bodies: {kink.value}: {rating.value}")
+    #     sql.create_or_update_kink(interaction.user.id, kink.value, kinks.kink_splits["Bodies"][0], kinks.ratings[rating.value].value)
+    #     await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
 
-    @discord.app_commands.command(description='Kink management')
-    @discord.app_commands.describe(kink="Which kink to configure", rating="How much you like it")
-    @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Groupings"), rating=kinks.ratings_choices)
-    async def groupings(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
-        log_debug(interaction, f"Got kink in cat Groupings: {kink.value}: {rating.value}")
-        sql.create_or_update_kink(interaction.user.id, kink.value, kinks.kink_splits["Groupings"][0], kinks.ratings[rating.value].value)
-        await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+    # @discord.app_commands.command(description='Kink management')
+    # @discord.app_commands.describe(kink="Which kink to configure", who="Who", rating="How much you like it")
+    # @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Clothing"), who=kinks.splits_choices_for_category("Clothing"), rating=kinks.ratings_choices)
+    # async def clothing(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], who: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
+    #     log_debug(interaction, f"Got kink in cat Clothing: {kink.value}/{who.value}: {rating.value}")
+    #     sql.create_or_update_kink(interaction.user.id, kink.value, who.value, kinks.ratings[rating.value].value)
+    #     await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
 
-bot.tree.add_command(Kink())
+    # @discord.app_commands.command(description='Kink management')
+    # @discord.app_commands.describe(kink="Which kink to configure", rating="How much you like it")
+    # @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Groupings"), rating=kinks.ratings_choices)
+    # async def groupings(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
+    #     log_debug(interaction, f"Got kink in cat Groupings: {kink.value}: {rating.value}")
+    #     sql.create_or_update_kink(interaction.user.id, kink.value, kinks.kink_splits["Groupings"][0], kinks.ratings[rating.value].value)
+    #     await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+
+# @discord.app_commands.guild_only()
+# class Kink(discord.app_commands.Group):
+#     @discord.app_commands.command(description='Manage body-related kinks')
+#     async def bodies(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink bodies request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Bodies', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage clothing-related kinks')
+#     async def clothing(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink clothing request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Clothing', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage grouping-related kinks')
+#     async def groupings(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink grouping request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Groupings', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage general kinks')
+#     async def general(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink general request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('General', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage ass-play-related kinks')
+#     async def assplay(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink ass-play request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Ass play', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage restrictive-related kinks')
+#     async def restrictive(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink restrictive request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Restrictive', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage toy-related kinks')
+#     async def toys(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink toys request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Toys', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage domination-related kinks')
+#     async def domination(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink domination request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Domination', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage noncon-related kinks')
+#     async def noncon(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink noncon request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('No consent', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage taboo kinks')
+#     async def taboo(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink taboo request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Taboo', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage surrealism-related kinks')
+#     async def surrealism(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink surrealism request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Surrealism', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage fluid-related kinks')
+#     async def fluids(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink fluids request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Fluids', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage degradation-related kinks')
+#     async def degradation(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink degradation request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Degradation', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage stimulation-related kinks')
+#     async def stimulation(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink stimulation request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Touch & Stimulation', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage misc kinks')
+#     async def misc(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink misc request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Misc. Fetish', interaction, sql), ephemeral=True)
+
+#     @discord.app_commands.command(description='Manage pain-related kinks')
+#     async def pain(self, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink pain request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView('Pain', interaction, sql), ephemeral=True)
+
+# FIXME 
+# Traceback (most recent call last):
+#   File "adottomin.py", line 1459, in <module>
+#     async def _test(self: Kink, interaction: discord.Interaction):
+#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\commands.py", line 2008, in decorator
+#     return Command(
+#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\commands.py", line 677, in __init__
+#     self._params: Dict[str, CommandParameter] = _extract_parameters_from_callback(callback, callback.__globals__)
+#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\commands.py", line 393, in _extract_parameters_from_callback
+#     param = annotation_to_parameter(resolved, parameter)
+#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\transformers.py", line 828, in annotation_to_parameter
+#     (inner, default, validate_default) = get_supported_annotation(annotation)
+#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\transformers.py", line 787, in get_supported_annotation
+#     raise TypeError(f'unsupported type annotation {annotation!r}')
+# TypeError: unsupported type annotation <class 'discord.interactions.Interaction'>
+# @discord.app_commands.guild_only()
+# class Kink(discord.app_commands.Group):
+#     pass
+
+# def safe_name(id: str):
+#     return id.lower().replace('&', '').replace('  ', ' ').replace(' ', '-').replace('.', '')
+
+# for category in kinks.kinklist:
+#     @discord.app_commands.command(name=safe_name(category), description=f'Manage {category.lower()}-related kinks')
+#     async def _test(self: Kink, interaction: discord.Interaction):
+#         log_debug(interaction, f"Got kink modal request from {interaction.user.id}")
+#         await interaction.response.send_message(view=kinks.KinksView(category, interaction), ephemeral=True)
+#     setattr(Kink, category.lower(), classmethod(_test))
+#     logger.debug(f"Added {category} to group class")
+
+bot.tree.add_command(kinks.Kink(sql))
 
 @bot.tree.command(description='Get your kink list')
 async def kinklist(interaction: discord.Interaction):
@@ -1358,19 +1472,24 @@ async def kinklist(interaction: discord.Interaction):
         aux = {rating.name: [] for rating in kinks.ratings}
         del(aux[kinks.ratings.Unknown.name])
         for kink in data:
-            logger.debug(f"Line = {kink}")
+            # logger.debug(f"Line = {kink}")
             kink_name = kink[1]
-            kink_cat = kinks.reverse_category(kink_name)
-            aux[kinks.ratings(kink[3]).name] += [kink_name + ("" if len(kinks.kink_splits[kink_cat]) == 1 else f" ({kink[2]})")]
+            aux[kinks.ratings(kink[4]).name] += ['`' + kink_name + ("" if len(kinks.kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`']
 
         logger.debug(f"Aux = {aux}")
         content = "From what you've told me..."
         for rating in aux:
             if len(aux[rating]) == 0: continue
-            content += f"\nYour {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
+            content += f"\nYour {kinks.rating_emojis[kinks.ratings[rating]]} {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
     else:
         content = f"I couldn't find anything about you, have you tried using `/kink` first?"
 
     await utils.safe_send(interaction, content=content, ephemeral=True)
+
+@bot.tree.command(description='Find explanations for specific kinks')
+async def kinktionary(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} requested kinktionary")
+
+    await interaction.response.send_message(view=kinks.Kinktionary(interaction), ephemeral=True)
 
 bot.run(TOKEN)

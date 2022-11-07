@@ -1,5 +1,9 @@
+import botlogger
+import db
 import discord
 import enum
+
+logger = botlogger.get_logger(__name__)
 
 kinklist = {
     'Bodies': {
@@ -181,7 +185,20 @@ class ratings(enum.Enum):
     Maybe = 4
     No = 5
 
+rating_emojis = {
+    ratings.Unknown: '❓',
+    ratings.Favorite: '💖',
+    ratings.Like: '😊',
+    ratings.Okay: '🙂',
+    ratings.Maybe: '😕',
+    ratings.No: '💀'
+}
+
 ratings_choices = [discord.app_commands.Choice(name=rat.name, value=rat.name) for rat in ratings]
+ratings_options = [discord.components.SelectOption(label=rat.name, emoji=rating_emojis[rat]) for rat in ratings]
+
+def _options_for(kink: str):
+    return [discord.components.SelectOption(label=f"{kink}: {rat.name}") for rat in ratings]
 
 kinklist_choices = [discord.app_commands.Choice(name=kink, value=kink) for category in kinklist for kink in kinklist[category]]
 
@@ -198,3 +215,277 @@ def reverse_category(kink: str):
 def get_explanation(kink: str):
     aux = [kinklist[category][kink] for category in kinklist if kink in kinklist[category]]
     return None if len(aux) == 0 else aux[0]
+
+# WORKS!!!!!!!!
+# class KinkDropdown(discord.ui.Select):
+#     def __init__(self, kink: str, conditional: str, category: str):
+#         self.kink = kink
+#         self.conditional = conditional
+#         self.category = category
+#         name = f"{kink} ({conditional})" if conditional is not None else kink
+#         super().__init__(placeholder=name, min_values=1, max_values=1, options=_options_for(name))
+
+#     async def callback(self, interaction: discord.Interaction):
+#         logger.debug(self.values)
+#         await interaction.response.send_message(f'You chose {self.values[0]}', ephemeral=True)
+
+# class KinksView(discord.ui.View):
+#     def __init__(self, category):
+#         super().__init__()
+
+#         i = 0
+#         for kink in kinklist[category]:
+#             aux = discord.ui.View()
+#             if len(kink_splits[category]) == 1:
+#                 self.add_item(KinkDropdown(kink, None, category))
+#                 i += 1
+#                 if i > 4: break
+#                 continue
+#             for split in kink_splits[category]:
+#                 self.add_item(KinkDropdown(kink, split, category))
+#                 i += 1
+#                 if i > 4: break
+
+async def _silent_reply(interaction: discord.Interaction):
+    try:
+        await interaction.response.send_message()
+    except discord.errors.HTTPException:
+        pass # Silently ignore
+
+class KinkDropdown(discord.ui.Select):
+    def __init__(self, category: str, watcher, selected=None, disabled=False, do_silent_reply=True):
+        self.watcher = watcher
+        self.category = category
+        self.do_silent_reply = do_silent_reply
+        options = [discord.components.SelectOption(label=kink, default=kink==selected) for kink in kinklist[category]]
+        super().__init__(placeholder=f"Please choose a kink", min_values=1, max_values=1, options=options, disabled=disabled)
+
+    def _update_selected(self, selected=None):
+        for opt in self.options:
+            opt.default = opt.label==selected
+        # logger.debug(f"KinkDropdown {self.category} opts now={self.options}")
+
+    async def callback(self, interaction: discord.Interaction):
+        self._update_selected(self.values[0])
+        await self.watcher.on_kink_selected(self.values[0], interaction)
+        if self.do_silent_reply:
+            await _silent_reply(interaction)
+
+class KinkConditionalDropdown(discord.ui.Select):
+    def __init__(self, category: str, watcher, selected=None):
+        self.watcher = watcher
+        self.category = category
+        options = [discord.components.SelectOption(label=split, default=split==selected) for split in kink_splits[category]]
+        super().__init__(placeholder=f"Please choose one", min_values=1, max_values=1, options=options)
+
+    def _update_selected(self, selected=None):
+        for opt in self.options:
+            opt.default = opt.label==selected
+        # logger.debug(f"KinkConditionalDropdown {self.category} opts now={self.options}")
+
+    async def callback(self, interaction: discord.Interaction):
+        self._update_selected(self.values[0])
+        await self.watcher.on_conditional_selected(self.values[0])
+        await _silent_reply(interaction)
+
+class KinkRatingDropdown(discord.ui.Select):
+    def __init__(self, watcher):
+        self.watcher = watcher
+        super().__init__(placeholder=f"How much do you like it?", min_values=1, max_values=1, options=ratings_options, disabled=True)
+
+    def _update_selected(self, selected=None):
+        for opt in self.options:
+            opt.default = opt.label==selected
+        # logger.debug(f"KinkRatingDropdown opts now={self.options}")
+
+    def enable(self):
+        self.disabled = False
+
+    async def callback(self, interaction: discord.Interaction):
+        await self.watcher.on_rating_selected(self.values[0], interaction)
+
+class KinkCategoryDropdown(discord.ui.Select):
+    def __init__(self, watcher, selected=None):
+        self.watcher = watcher
+        options = [discord.components.SelectOption(label=category, default=category==selected) for category in kinklist]
+        super().__init__(placeholder=f"Please choose a category", min_values=1, max_values=1, options=options)
+
+    def _update_selected(self, selected=None):
+        for opt in self.options:
+            opt.default = opt.label==selected
+        # logger.debug(f"KinkCategoryDropdown {self.category} opts now={self.options}")
+
+    async def callback(self, interaction: discord.Interaction):
+        self._update_selected(self.values[0])
+        await self.watcher.on_category_selected(self.values[0])
+        await _silent_reply(interaction)
+
+class KinksView(discord.ui.View):
+    def __init__(self, category: str, interaction: discord.Interaction, database: db.database):
+        super().__init__()
+        self.interaction = interaction
+        self.database = database
+        self._kink = None
+        self._conditional = None
+        self._category = category
+        self._kink_dd = KinkDropdown(category, self)
+        self.add_item(self._kink_dd)
+        self._notified_explanation = False
+        if len(kink_splits[category]) > 1:
+            self._conditional_dd = KinkConditionalDropdown(category, self)
+            self.add_item(self._conditional_dd)
+        else:
+            self._conditional = kink_splits[category][0]
+        self._rating_dd = KinkRatingDropdown(self)
+        self.add_item(self._rating_dd)
+
+    async def update_if_needed(self):
+        if self._kink is None or self._conditional is None: return
+        # logger.debug("Enabling dd")
+        self._rating_dd.enable()
+        prev = self.database.get_kink(self.interaction.user.id, self._kink, self._conditional, self._category)
+        if prev is not None:
+            logger.debug(f"{self.interaction.user.id} had {prev}/{ratings(prev).name} saved for {self._kink}/{self._conditional}/{self._category}")
+        else:
+            logger.debug(f"{self.interaction.user.id} has no saved rating for {self._kink}/{self._conditional}/{self._category}")
+        self._rating_dd._update_selected(ratings(prev).name if prev is not None else None)
+        await self.interaction.edit_original_response(view=self)
+
+    async def on_kink_selected(self, kink, interaction):
+        # logger.debug("on_kink_selected cb")
+        self._kink = kink
+        self.print_dbg()
+        await self.update_if_needed()
+
+    async def on_conditional_selected(self, conditional):
+        # logger.debug("on_conditional_selected cb")
+        self._conditional = conditional
+        self.print_dbg()
+        await self.update_if_needed()
+
+    async def on_rating_selected(self, rating, interaction):
+        logger.info(f"{self.interaction.user.id} selected rating {rating} for {self._category}/{self._kink} ({self._conditional})")
+        self.database.create_or_update_kink(self.interaction.user.id, self._kink, self._conditional, self._category, ratings[rating].value)
+        if not self._notified_explanation:
+            await interaction.response.send_message(content=f"Noted! You may continue adding new kinks with the same menu, and I'll keep track of everything~", ephemeral=True)
+            self._notified_explanation = True
+
+    def print_dbg(self):
+        # logger.debug(f"self._kink = {self._kink}\nself._conditional = {self._conditional}")
+        pass
+
+class Kinktionary(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction):
+        super().__init__()
+        self.interaction = interaction
+        self._kink = None
+        self._kink_dd = None
+        self._category = None
+        self._category_dd = KinkCategoryDropdown(self)
+        self.add_item(self._category_dd)
+
+    async def on_category_selected(self, category):
+        # logger.debug("on_category_selected cb")
+        self._category = category
+        if self._kink_dd is not None:
+            self.remove_item(self._kink_dd)
+        self._kink_dd = KinkDropdown(category, self, do_silent_reply=False)
+        self.add_item(self._kink_dd)
+        await self.interaction.edit_original_response(view=self)
+
+    async def on_kink_selected(self, kink, interaction: discord.Interaction):
+        # logger.debug("on_kink_selected cb")
+        self._kink = kink
+        expl = kinklist[self._category][kink]
+        if expl is not None:
+            content = f"Here's what I found about {kink}:\n> {expl}"
+        else:
+            content = f"I couldn't find any info about {kink} :c"
+        await interaction.response.send_message(content=content, ephemeral=True)
+
+# Commands
+@discord.app_commands.guild_only()
+class Kink(discord.app_commands.Group):
+    def __init__(self, database: db.database):
+        super().__init__()
+        self.database = database
+
+    @discord.app_commands.command(description='Manage body-related kinks')
+    async def bodies(self, interaction: discord.Interaction):
+        logger.debug(f"Got kink bodies request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Bodies', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage clothing-related kinks')
+    async def clothing(self, interaction: discord.Interaction):
+        logger.info(f"Got kink clothing request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Clothing', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage grouping-related kinks')
+    async def groupings(self, interaction: discord.Interaction):
+        logger.info(f"Got kink grouping request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Groupings', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage general kinks')
+    async def general(self, interaction: discord.Interaction):
+        logger.info(f"Got kink general request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('General', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage ass-play-related kinks')
+    async def assplay(self, interaction: discord.Interaction):
+        logger.info(f"Got kink ass-play request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Ass play', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage restrictive-related kinks')
+    async def restrictive(self, interaction: discord.Interaction):
+        logger.info(f"Got kink restrictive request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Restrictive', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage toy-related kinks')
+    async def toys(self, interaction: discord.Interaction):
+        logger.info(f"Got kink toys request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Toys', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage domination-related kinks')
+    async def domination(self, interaction: discord.Interaction):
+        logger.info(f"Got kink domination request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Domination', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage noncon-related kinks')
+    async def noncon(self, interaction: discord.Interaction):
+        logger.info(f"Got kink noncon request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('No consent', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage taboo kinks')
+    async def taboo(self, interaction: discord.Interaction):
+        logger.info(f"Got kink taboo request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Taboo', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage surrealism-related kinks')
+    async def surrealism(self, interaction: discord.Interaction):
+        logger.info(f"Got kink surrealism request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Surrealism', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage fluid-related kinks')
+    async def fluids(self, interaction: discord.Interaction):
+        logger.info(f"Got kink fluids request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Fluids', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage degradation-related kinks')
+    async def degradation(self, interaction: discord.Interaction):
+        logger.info(f"Got kink degradation request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Degradation', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage stimulation-related kinks')
+    async def stimulation(self, interaction: discord.Interaction):
+        logger.info(f"Got kink stimulation request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Touch & Stimulation', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage misc kinks')
+    async def misc(self, interaction: discord.Interaction):
+        logger.info(f"Got kink misc request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Misc. Fetish', interaction, self.database), ephemeral=True)
+
+    @discord.app_commands.command(description='Manage pain-related kinks')
+    async def pain(self, interaction: discord.Interaction):
+        logger.info(f"Got kink pain request from {interaction.user.id}")
+        await interaction.response.send_message(view=KinksView('Pain', interaction, self.database), ephemeral=True)

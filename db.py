@@ -154,9 +154,10 @@ schemas = {
                 user int NOT NULL,
                 kink TEXT NOT NULL,
                 conditional TEXT NOT NULL,
+                category TEXT NOT NULL,
                 rating int NOT NULL,
                 updated_at TIMESTAMP,
-                PRIMARY KEY (user, kink, conditional)
+                PRIMARY KEY (user, kink, conditional, category)
             );'''],
 }
 
@@ -621,14 +622,14 @@ class database:
         except:
             pass
 
-    def create_or_update_kink(self, user, kink, conditional, rating):
+    def create_or_update_kink(self, user, kink, conditional, category, rating):
         con = sqlite3.connect(kinks_db_file)
         cur = con.cursor()
         try:
-            cur.execute("INSERT INTO kinks VALUES (?, ?, ?, ?, ?)", [user, kink, conditional, rating, datetime.datetime.now()])
+            cur.execute("INSERT INTO kinks VALUES (?, ?, ?, ?, ?, ?)", [user, kink, conditional, category, rating, datetime.datetime.now()])
             self.logger.debug(f"Inserted new {kink}/{conditional} for {user}: {rating}")
         except sqlite3.IntegrityError:
-            cur.execute("UPDATE kinks SET rating=:rating, updated_at=:updated_at WHERE user=:id AND kink=:kink AND conditional=:conditional", {"id": user, "kink": kink, "conditional": conditional, "rating": rating, "updated_at": datetime.datetime.now()})
+            cur.execute("UPDATE kinks SET rating=:rating, updated_at=:updated_at WHERE user=:id AND kink=:kink AND conditional=:conditional AND category=:category", {"id": user, "kink": kink, "conditional": conditional, "category": category, "rating": rating, "updated_at": datetime.datetime.now()})
             self.logger.debug(f"Updated {kink}/{conditional} for {user}: {rating}")
         con.commit()
         con.close()
@@ -640,3 +641,11 @@ class database:
         con.commit()
         con.close()
         return res
+
+    def get_kink(self, user, kink, conditional, category):
+        con = sqlite3.connect(kinks_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT rating FROM kinks WHERE user=:user AND kink=:kink AND conditional=:conditional AND category=:category", {'user': user, "kink": kink, "conditional": conditional, "category": category}).fetchone()
+        con.commit()
+        con.close()
+        return None if (res is None or len(res) == 0) else int(res[0])
