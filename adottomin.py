@@ -7,6 +7,7 @@ import os
 import random
 import re
 import traceback
+import types
 import typing
 
 from regex import R
@@ -17,6 +18,7 @@ import bot_utils
 import copypasta_utils
 import db
 import graphlytics
+import kinks
 import memes
 
 from word_blocklist import blocklist
@@ -1300,5 +1302,75 @@ async def nut(interaction: discord.Interaction):
     content = " ".join([random.choice(nut_emojis) for _ in range(total)])
 
     await utils.safe_send(interaction, content=content, send_anyway=True)
+
+# def make_kink_cmd(name, description, category):
+#     @discord.app_commands.command(name=name, description=description)
+#     @discord.app_commands.describe(kink="Which kink to configure")
+#     @discord.app_commands.choices(kink=kinks.kink_choices_in_category(category))
+#     async def _cmd(interaction: discord.Interaction, kink: discord.app_commands.Choice[str]):
+#         log_debug(interaction, f"Got kink in cat {category}: {kink.value}")
+
+#     return _cmd
+
+# @discord.app_commands.guild_only()
+# class Kink(discord.app_commands.Group):
+#     pass
+
+# kink_cmds = Kink()
+
+# for category in kinks.kinklist:
+#     kink_cmds.cmd = make_kink_cmd()
+
+@discord.app_commands.guild_only()
+class Kink(discord.app_commands.Group):
+    @discord.app_commands.command(description='Kink management')
+    @discord.app_commands.describe(kink="Which kink to configure", rating="How much you like it")
+    @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Bodies"), rating=kinks.ratings_choices)
+    async def bodies(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
+        log_debug(interaction, f"Got kink in cat Bodies: {kink.value}: {rating.value}")
+        sql.create_or_update_kink(interaction.user.id, kink.value, kinks.kink_splits["Bodies"][0], kinks.ratings[rating.value].value)
+        await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+
+    @discord.app_commands.command(description='Kink management')
+    @discord.app_commands.describe(kink="Which kink to configure", who="Who", rating="How much you like it")
+    @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Clothing"), who=kinks.splits_choices_for_category("Clothing"), rating=kinks.ratings_choices)
+    async def clothing(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], who: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
+        log_debug(interaction, f"Got kink in cat Clothing: {kink.value}/{who.value}: {rating.value}")
+        sql.create_or_update_kink(interaction.user.id, kink.value, who.value, kinks.ratings[rating.value].value)
+        await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+
+    @discord.app_commands.command(description='Kink management')
+    @discord.app_commands.describe(kink="Which kink to configure", rating="How much you like it")
+    @discord.app_commands.choices(kink=kinks.kink_choices_in_category("Groupings"), rating=kinks.ratings_choices)
+    async def groupings(self, interaction: discord.Interaction, kink: discord.app_commands.Choice[str], rating: discord.app_commands.Choice[str]):
+        log_debug(interaction, f"Got kink in cat Groupings: {kink.value}: {rating.value}")
+        sql.create_or_update_kink(interaction.user.id, kink.value, kinks.kink_splits["Groupings"][0], kinks.ratings[rating.value].value)
+        await utils.safe_send(interaction, content=f"Got it", ephemeral=True)
+
+bot.tree.add_command(Kink())
+
+@bot.tree.command(description='Get your kink list')
+async def kinklist(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} requested kink list")
+
+    data = sql.get_kinks(interaction.user.id)
+    if len(data) > 0:
+        aux = {rating.name: [] for rating in kinks.ratings}
+        del(aux[kinks.ratings.Unknown.name])
+        for kink in data:
+            logger.debug(f"Line = {kink}")
+            kink_name = kink[1]
+            kink_cat = kinks.reverse_category(kink_name)
+            aux[kinks.ratings(kink[3]).name] += [kink_name + ("" if len(kinks.kink_splits[kink_cat]) == 1 else f" ({kink[2]})")]
+
+        logger.debug(f"Aux = {aux}")
+        content = "From what you've told me..."
+        for rating in aux:
+            if len(aux[rating]) == 0: continue
+            content += f"\nYour {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
+    else:
+        content = f"I couldn't find anything about you, have you tried using `/kink` first?"
+
+    await utils.safe_send(interaction, content=content, ephemeral=True)
 
 bot.run(TOKEN)

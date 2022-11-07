@@ -33,6 +33,8 @@ nuts_version = 1
 nuts_db_file = _dbfile('nuts', nuts_version)
 attachments_version = 1
 attachments_db_file = _dbfile('attachments', attachments_version)
+kinks_version = 1
+kinks_db_file = _dbfile('kinks', kinks_version)
 
 sql_files = [
     validations_db_file,
@@ -146,6 +148,15 @@ schemas = {
                 channel int,
                 attachment int NOT NULL,
                 created_at TIMESTAMP
+            );'''],
+    kinks_db_file: ['''
+            CREATE TABLE kinks (
+                user int NOT NULL,
+                kink TEXT NOT NULL,
+                conditional TEXT NOT NULL,
+                rating int NOT NULL,
+                updated_at TIMESTAMP,
+                PRIMARY KEY (user, kink, conditional)
             );'''],
 }
 
@@ -609,3 +620,23 @@ class database:
             con.close()
         except:
             pass
+
+    def create_or_update_kink(self, user, kink, conditional, rating):
+        con = sqlite3.connect(kinks_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO kinks VALUES (?, ?, ?, ?, ?)", [user, kink, conditional, rating, datetime.datetime.now()])
+            self.logger.debug(f"Inserted new {kink}/{conditional} for {user}: {rating}")
+        except sqlite3.IntegrityError:
+            cur.execute("UPDATE kinks SET rating=:rating, updated_at=:updated_at WHERE user=:id AND kink=:kink AND conditional=:conditional", {"id": user, "kink": kink, "conditional": conditional, "rating": rating, "updated_at": datetime.datetime.now()})
+            self.logger.debug(f"Updated {kink}/{conditional} for {user}: {rating}")
+        con.commit()
+        con.close()
+
+    def get_kinks(self, user):
+        con = sqlite3.connect(kinks_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT * FROM kinks WHERE user=:user", {'user': user}).fetchall()
+        con.commit()
+        con.close()
+        return res
