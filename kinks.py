@@ -216,36 +216,6 @@ def get_explanation(kink: str):
     aux = [kinklist[category][kink] for category in kinklist if kink in kinklist[category]]
     return None if len(aux) == 0 else aux[0]
 
-# WORKS!!!!!!!!
-# class KinkDropdown(discord.ui.Select):
-#     def __init__(self, kink: str, conditional: str, category: str):
-#         self.kink = kink
-#         self.conditional = conditional
-#         self.category = category
-#         name = f"{kink} ({conditional})" if conditional is not None else kink
-#         super().__init__(placeholder=name, min_values=1, max_values=1, options=_options_for(name))
-
-#     async def callback(self, interaction: discord.Interaction):
-#         logger.debug(self.values)
-#         await interaction.response.send_message(f'You chose {self.values[0]}', ephemeral=True)
-
-# class KinksView(discord.ui.View):
-#     def __init__(self, category):
-#         super().__init__()
-
-#         i = 0
-#         for kink in kinklist[category]:
-#             aux = discord.ui.View()
-#             if len(kink_splits[category]) == 1:
-#                 self.add_item(KinkDropdown(kink, None, category))
-#                 i += 1
-#                 if i > 4: break
-#                 continue
-#             for split in kink_splits[category]:
-#                 self.add_item(KinkDropdown(kink, split, category))
-#                 i += 1
-#                 if i > 4: break
-
 async def _silent_reply(interaction: discord.Interaction):
     try:
         await interaction.response.send_message()
