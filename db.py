@@ -35,6 +35,8 @@ attachments_version = 1
 attachments_db_file = _dbfile('attachments', attachments_version)
 kinks_version = 1
 kinks_db_file = _dbfile('kinks', kinks_version)
+kinks_visibility_version = 1
+kinks_visibility_db_file = _dbfile('kinks_visibility', kinks_visibility_version)
 
 sql_files = [
     validations_db_file,
@@ -158,6 +160,12 @@ schemas = {
                 rating int NOT NULL,
                 updated_at TIMESTAMP,
                 PRIMARY KEY (user, kink, conditional, category)
+            );'''],
+    kinks_visibility_db_file: ['''
+            CREATE TABLE allowlist (
+                user int NOT NULL,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user)
             );'''],
 }
 
@@ -649,3 +657,24 @@ class database:
         con.commit()
         con.close()
         return None if (res is None or len(res) == 0) else int(res[0])
+
+    def set_kinklist_visibility(self, user, visibilty):
+        con = sqlite3.connect(kinks_visibility_db_file)
+        cur = con.cursor()
+        if visibilty:
+            try:
+                cur.execute("INSERT INTO allowlist VALUES (?, ?)", [user, datetime.datetime.now()])
+            except sqlite3.IntegrityError: # Already publicised
+                pass
+        else:
+            cur.execute("DELETE FROM allowlist WHERE user=:user", {"user": user})
+        con.commit()
+        con.close()
+
+    def get_kinklist_visibility(self, user):
+        con = sqlite3.connect(kinks_visibility_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT * FROM allowlist WHERE user=:user", {"user": user}).fetchone()
+        con.commit()
+        con.close()
+        return res is not None

@@ -1336,10 +1336,20 @@ async def nut(interaction: discord.Interaction):
 bot.tree.add_command(kinks.Kink(sql))
 
 @bot.tree.command(description='Get your kink list')
-async def kinklist(interaction: discord.Interaction):
+@discord.app_commands.describe(user='Whose list to get (gets yours by default)')
+async def kinklist(interaction: discord.Interaction, user: typing.Optional[discord.Member]=None):
     log_info(interaction, f"{interaction.user} requested kink list")
 
-    data = sql.get_kinks(interaction.user.id)
+    user = user or interaction.user
+    is_own = user.id == interaction.user.id
+
+    is_public = sql.get_kinklist_visibility(user.id)
+
+    if not is_own and not is_public:
+        await utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private, you can ask them personally for it~", ephemeral=True)
+        return
+
+    data = sql.get_kinks(user.id)
     if len(data) > 0:
         aux = {rating.name: [] for rating in kinks.ratings}
         del(aux[kinks.ratings.Unknown.name])
@@ -1349,14 +1359,30 @@ async def kinklist(interaction: discord.Interaction):
             aux[kinks.ratings(kink[4]).name] += ['`' + kink_name + ("" if len(kinks.kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`']
 
         logger.debug(f"Aux = {aux}")
-        content = "From what you've told me..."
+        _aux = "you" if is_own else "they"
+        content = f"From what {_aux}'ve told me..."
         for rating in aux:
             if len(aux[rating]) == 0: continue
-            content += f"\nYour {kinks.rating_emojis[kinks.ratings[rating]]} {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
+            _aux = "Your" if is_own else "Their"
+            content += f"\n{_aux} {kinks.rating_emojis[kinks.ratings[rating]]} {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
     else:
-        content = f"I couldn't find anything about you, have you tried using `/kink` first?"
+        content = f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}")
 
-    await utils.safe_send(interaction, content=content, ephemeral=True)
+    await utils.safe_send(interaction, content=content, ephemeral=not (is_own and is_public))
+
+@bot.tree.command(description='Hide or show your kink list')
+@discord.app_commands.choices(visibility=[discord.app_commands.Choice(name=b, value=b) for b in ['public', 'private']])
+async def kinklist_manage(interaction: discord.Interaction, visibility: discord.app_commands.Choice[str]):
+    log_info(interaction, f"{interaction.user} requested kinklist_manage: {visibility.value}")
+
+    sql.set_kinklist_visibility(interaction.user.id, visibility.value == 'public')
+
+    if visibility.value == 'public':
+        content = "Okay, now people will be able to see your kink list!"
+    else:
+        content = "Okay, your kinklist is now private and only you will be able to see it!"
+
+    await interaction.response.send_message(content=content, ephemeral=True)
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):
