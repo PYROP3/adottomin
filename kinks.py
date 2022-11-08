@@ -731,3 +731,35 @@ class Kinklist(discord.app_commands.Group):
             content = "Ok, your list is still just as you left it~"
 
         await self.utils.safe_send(interaction, content=content, ephemeral=True)
+
+    @discord.app_commands.command(description='Calculate your kink compatibility with someone else')
+    @discord.app_commands.describe(user='Whose kinks to compare yours with')
+    async def compatibility(self, interaction: discord.Interaction, user: discord.Member):
+        logger.info(f"Got kink compatibility request from {interaction.user.id}: '{user}'")
+
+        if interaction.user.id == user.id:
+            await self.utils.safe_send(interaction, content=f"Try choosing someone other than yourself~", ephemeral=True)
+            return
+
+        if user.bot:
+            await self.utils.safe_send(interaction, content=f"That user is a bot~", ephemeral=True)
+            return
+
+        if not self.database.get_kinklist_visibility(user.id):
+            await self.utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private~", ephemeral=True)
+            return
+
+        author_kinks = {f"{kink[1]}|{kink_splits[kink[3]].index(kink[2])}|{kink[3]}": kink[4] 
+            for kink in self.database.get_kinks(interaction.user.id, ratings.Unknown.value)}
+        user_kinks = {f"{kink[1]}|{len(kink_splits[kink[3]]) - kink_splits[kink[3]].index(kink[2]) - 1}|{kink[3]}": kink[4] # Math magic to flip conditional if needed
+            for kink in self.database.get_kinks(user.id, ratings.Unknown.value)}
+        
+        score = 0
+        common = set(author_kinks.keys()).intersection(user_kinks.keys())
+        for kink in common:
+            score += 5 - max(author_kinks[kink], user_kinks[kink])
+            logger.debug(f"Analyzing kink {kink} -> {author_kinks[kink]} vs {user_kinks[kink]} -> new score={score}")
+        score /= 4 * len(common)
+        score = int(score * 100)
+
+        await self.utils.safe_send(interaction, content=f"{interaction.user.mention}'s kinklist is {score}% compatible with {user.mention}'s~", send_anyway=True)
