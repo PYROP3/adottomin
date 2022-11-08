@@ -283,7 +283,7 @@ reaction_user_blocklist = []
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
     logger.info(f"Added reaction {reaction}")
     emoji = reaction.emoji if type(reaction.emoji) == str else reaction.emoji.name
-    logger.debug(f"Added emoji = {emoji}")
+    # logger.debug(f"Added emoji = {emoji}")
     if emoji in reaction_blocklist or user.id in reaction_user_blocklist:
         logger.info(f"Reaction blocklisted, removing")
         reaction.remove(user)
@@ -1382,12 +1382,12 @@ async def kinklist_manage(interaction: discord.Interaction, visibility: discord.
     else:
         content = "Okay, your kinklist is now private and only you will be able to see it!"
 
-    await interaction.response.send_message(content=content, ephemeral=True)
+    await utils.safe_send(interaction, content=content, ephemeral=True)
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):
     log_info(interaction, f"{interaction.user} requested kinktionary")
 
-    await interaction.response.send_message(view=kinks.Kinktionary(interaction), ephemeral=True)
+    await utils.safe_send(interaction, view=kinks.Kinktionary(interaction), ephemeral=True)
 
 bot.run(TOKEN)
