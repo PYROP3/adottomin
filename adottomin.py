@@ -123,28 +123,6 @@ admin_id = int(os.getenv('ADMIN_ID'))
 
 pendelton_mode = False
 
-EMBED_COLORS = [
-    discord.Colour.magenta(),
-    discord.Colour.blurple(),
-    discord.Colour.dark_teal(),
-    discord.Colour.blue(),
-    discord.Colour.dark_blue(),
-    discord.Colour.dark_gold(),
-    discord.Colour.dark_green(),
-    discord.Colour.dark_grey(),
-    discord.Colour.dark_magenta(),
-    discord.Colour.dark_orange(),
-    discord.Colour.dark_purple(),
-    discord.Colour.dark_red(),
-    discord.Colour.darker_grey(),
-    discord.Colour.gold(),
-    discord.Colour.green(),
-    discord.Colour.greyple(),
-    discord.Colour.orange(),
-    discord.Colour.purple(),
-    discord.Colour.magenta(),
-]
-
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
@@ -471,7 +449,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 
                 pinEmbed = discord.Embed(
                     description=pin.content if len(pin.content) > 0 else None,
-                    colour=random.choice(EMBED_COLORS)
+                    colour=random.choice(bot_utils.EMBED_COLORS)
                 )
 
                 attachments = pin.attachments
@@ -484,7 +462,7 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 
                 try:
                     creator = await channel.guild.fetch_member(pin.author.id)
-                    icon_url = creator.display_icon.url
+                    icon_url = creator.avatar.url
                 except Exception as e:
                     logger.warning(f"Exception while trying to handle pin {pin.id} thumbnail: {e}\n{traceback.format_exc()}")
                     icon_url = None
@@ -723,7 +701,7 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
     
     embed = discord.Embed(
         title=f"**{word_txt}**",
-        colour=random.choice(EMBED_COLORS)
+        colour=random.choice(bot_utils.EMBED_COLORS)
     )
 
     if meaning_txt is not None and len(meaning_txt) > 0:
@@ -733,7 +711,7 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
         embed.add_field(name="Usage", value=f"_{example_txt}_", inline=False)
     
     # try:
-    #     icon_url = interaction.user.display_icon.url
+    #     icon_url = interaction.user.avatar.url
     # except:
     #     icon_url = None
 
@@ -1303,86 +1281,79 @@ async def nut(interaction: discord.Interaction):
 
     await utils.safe_send(interaction, content=content, send_anyway=True)
 
-# FIXME 
-# Traceback (most recent call last):
-#   File "adottomin.py", line 1459, in <module>
-#     async def _test(self: Kink, interaction: discord.Interaction):
-#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\commands.py", line 2008, in decorator
-#     return Command(
-#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\commands.py", line 677, in __init__
-#     self._params: Dict[str, CommandParameter] = _extract_parameters_from_callback(callback, callback.__globals__)
-#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\commands.py", line 393, in _extract_parameters_from_callback
-#     param = annotation_to_parameter(resolved, parameter)
-#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\transformers.py", line 828, in annotation_to_parameter
-#     (inner, default, validate_default) = get_supported_annotation(annotation)
-#   File "AppData\Local\Programs\Python\Python310\lib\site-packages\discord\app_commands\transformers.py", line 787, in get_supported_annotation
-#     raise TypeError(f'unsupported type annotation {annotation!r}')
-# TypeError: unsupported type annotation <class 'discord.interactions.Interaction'>
-# @discord.app_commands.guild_only()
-# class Kink(discord.app_commands.Group):
-#     pass
+bot.tree.add_command(kinks.Kink(sql, utils))
+bot.tree.add_command(kinks.Kinklist(sql, utils))
 
-# def safe_name(id: str):
-#     return id.lower().replace('&', '').replace('  ', ' ').replace(' ', '-').replace('.', '')
+# @bot.tree.command(description='Get your kink list')
+# @discord.app_commands.describe(user='Whose list to get (gets yours by default)')
+# async def kinklist(interaction: discord.Interaction, user: typing.Optional[discord.Member]=None):
+#     log_info(interaction, f"{interaction.user} requested kink list")
 
-# for category in kinks.kinklist:
-#     @discord.app_commands.command(name=safe_name(category), description=f'Manage {category.lower()}-related kinks')
-#     async def _test(self: Kink, interaction: discord.Interaction):
-#         log_debug(interaction, f"Got kink modal request from {interaction.user.id}")
-#         await interaction.response.send_message(view=kinks.KinksView(category, interaction), ephemeral=True)
-#     setattr(Kink, category.lower(), classmethod(_test))
-#     logger.debug(f"Added {category} to group class")
+#     user = user or interaction.user
+#     is_own = user.id == interaction.user.id
 
-bot.tree.add_command(kinks.Kink(sql))
+#     is_public = sql.get_kinklist_visibility(user.id)
 
-@bot.tree.command(description='Get your kink list')
-@discord.app_commands.describe(user='Whose list to get (gets yours by default)')
-async def kinklist(interaction: discord.Interaction, user: typing.Optional[discord.Member]=None):
-    log_info(interaction, f"{interaction.user} requested kink list")
+#     if not is_own and not is_public:
+#         await utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private, you can ask them personally for it~", ephemeral=True)
+#         return
 
-    user = user or interaction.user
-    is_own = user.id == interaction.user.id
+#     embed = discord.Embed(
+#         colour=random.choice(EMBED_COLORS)
+#     )
+    
+#     embed.set_footer(text=f'Created at: {datetime.datetime.utcnow()}')
+    
+#     try:
+#         icon_url = interaction.user.avatar.url
+#     except Exception as e:
+#         logger.warning(f"Exception while trying to handle icon thumbnail: {e}\n{traceback.format_exc()}")
+#         icon_url = None
 
-    is_public = sql.get_kinklist_visibility(user.id)
+#     embed.set_author(name=f'{interaction.user.mention}\'s kinklist', icon_url=icon_url)
 
-    if not is_own and not is_public:
-        await utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private, you can ask them personally for it~", ephemeral=True)
-        return
+#     data = sql.get_kinks(user.id, kinks.ratings.Unknown.value)
+#     if len(data) == 0:
+#         await utils.safe_send(interaction, content=f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}"), ephemeral=not (is_own and is_public))
+#         return
 
-    data = sql.get_kinks(user.id)
-    if len(data) > 0:
-        aux = {rating.name: [] for rating in kinks.ratings}
-        del(aux[kinks.ratings.Unknown.name])
-        for kink in data:
-            # logger.debug(f"Line = {kink}")
-            kink_name = kink[1]
-            aux[kinks.ratings(kink[4]).name] += ['`' + kink_name + ("" if len(kinks.kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`']
+#     aux = {rating.name: [] for rating in kinks.ratings}
+#     del(aux[kinks.ratings.Unknown.name])
+#     for kink in data:
+#         # logger.debug(f"Line = {kink}")
+#         kink_name = kink[1]
+#         aux[kinks.ratings(kink[4]).name] += ['`' + kink_name + ("" if len(kinks.kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`']
 
-        logger.debug(f"Aux = {aux}")
-        _aux = "you" if is_own else "they"
-        content = f"From what {_aux}'ve told me..."
-        for rating in aux:
-            if len(aux[rating]) == 0: continue
-            _aux = "Your" if is_own else "Their"
-            content += f"\n{_aux} {kinks.rating_emojis[kinks.ratings[rating]]} {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
-    else:
-        content = f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}")
+#     logger.debug(f"Aux = {aux}")
+#     # _aux = "you" if is_own else "they"
+#     # content = f"From what {_aux}'ve told me..."
+#     for rating in aux:
+#         if len(aux[rating]) == 0: continue
+#         # _aux = "Your" if is_own else "Their"
+#         # content += f"\n{_aux} {kinks.rating_emojis[kinks.ratings[rating]]} {utils.plural(rating.lower(), len(aux[rating]))} {'are' if len(aux[rating]) > 1 else 'is'} " + ", ".join(aux[rating])
+#         embed.add_field(name=f"{kinks.rating_emojis[kinks.ratings[rating]]} {utils.plural(rating.lower(), len(aux[rating]))}", value=", ".join(aux[rating]), inline=False)
 
-    await utils.safe_send(interaction, content=content, ephemeral=not (is_own and is_public))
+#         # TODO create image from list
+#         # attachments = pin.attachments
+#         # if len(attachments) >= 1:
+#         #     embed.set_image(url=attachments[0].url)
 
-@bot.tree.command(description='Hide or show your kink list')
-@discord.app_commands.choices(visibility=[discord.app_commands.Choice(name=b, value=b) for b in ['public', 'private']])
-async def kinklist_manage(interaction: discord.Interaction, visibility: discord.app_commands.Choice[str]):
-    log_info(interaction, f"{interaction.user} requested kinklist_manage: {visibility.value}")
+#     await utils.safe_send(interaction, embed=embed, ephemeral=not (is_own and is_public))
+#         # content = f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}")
 
-    sql.set_kinklist_visibility(interaction.user.id, visibility.value == 'public')
+# @bot.tree.command(description='Hide or show your kink list')
+# @discord.app_commands.choices(visibility=[discord.app_commands.Choice(name=b, value=b) for b in ['public', 'private']])
+# async def kinklist_manage(interaction: discord.Interaction, visibility: discord.app_commands.Choice[str]):
+#     log_info(interaction, f"{interaction.user} requested kinklist_manage: {visibility.value}")
 
-    if visibility.value == 'public':
-        content = "Okay, now people will be able to see your kink list!"
-    else:
-        content = "Okay, your kinklist is now private and only you will be able to see it!"
+#     sql.set_kinklist_visibility(interaction.user.id, visibility.value == 'public')
 
-    await utils.safe_send(interaction, content=content, ephemeral=True)
+#     if visibility.value == 'public':
+#         content = "Okay, now people will be able to see your kink list!"
+#     else:
+#         content = "Okay, your kinklist is now private and only you will be able to see it!"
+
+#     await utils.safe_send(interaction, content=content, ephemeral=True)
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):

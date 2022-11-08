@@ -642,13 +642,20 @@ class database:
         con.commit()
         con.close()
 
-    def get_kinks(self, user):
+    def get_kinks(self, user, unknown):
         con = sqlite3.connect(kinks_db_file)
         cur = con.cursor()
-        res = cur.execute("SELECT * FROM kinks WHERE user=:user", {'user': user}).fetchall()
+        res = cur.execute("SELECT * FROM kinks WHERE user=:user AND rating!=:unknown", {'user': user, 'unknown': unknown}).fetchall()
         con.commit()
         con.close()
         return res
+
+    def clear_kinks(self, user):
+        con = sqlite3.connect(kinks_db_file)
+        cur = con.cursor()
+        cur.execute("DELETE FROM kinks WHERE user=:user", {'user': user})
+        con.commit()
+        con.close()
 
     def get_kink(self, user, kink, conditional, category):
         con = sqlite3.connect(kinks_db_file)

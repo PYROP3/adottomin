@@ -25,6 +25,28 @@ AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
 
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 
+EMBED_COLORS = [
+    discord.Colour.magenta(),
+    discord.Colour.blurple(),
+    discord.Colour.dark_teal(),
+    discord.Colour.blue(),
+    discord.Colour.dark_blue(),
+    discord.Colour.dark_gold(),
+    discord.Colour.dark_green(),
+    discord.Colour.dark_grey(),
+    discord.Colour.dark_magenta(),
+    discord.Colour.dark_orange(),
+    discord.Colour.dark_purple(),
+    discord.Colour.dark_red(),
+    discord.Colour.darker_grey(),
+    discord.Colour.gold(),
+    discord.Colour.green(),
+    discord.Colour.greyple(),
+    discord.Colour.orange(),
+    discord.Colour.purple(),
+    discord.Colour.magenta(),
+]
+
 queen_role_id = 1002077481156743259
 owner_role_id = 1014556813821214780
 divine_role_id = 1021892234829906043
