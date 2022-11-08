@@ -700,12 +700,12 @@ class Kinklist(discord.app_commands.Group):
         embed.set_footer(text=f'Created at: {datetime.datetime.utcnow()}')
         
         try:
-            icon_url = interaction.user.avatar.url
+            icon_url = user.avatar.url
         except Exception as e:
             logger.warning(f"Exception while trying to handle icon thumbnail: {e}\n{traceback.format_exc()}")
             icon_url = None
 
-        embed.set_author(name=f'{interaction.user}\'s kinklist', icon_url=icon_url)
+        embed.set_author(name=f'{user}\'s kinklist', icon_url=icon_url)
 
         for rating in aux:
             if len(aux[rating]) == 0: continue
