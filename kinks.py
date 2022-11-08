@@ -390,82 +390,82 @@ class Kink(discord.app_commands.Group):
     @discord.app_commands.command(description='Manage body-related kinks')
     async def bodies(self, interaction: discord.Interaction):
         logger.debug(f"Got kink bodies request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Bodies', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Bodies', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage clothing-related kinks')
     async def clothing(self, interaction: discord.Interaction):
         logger.info(f"Got kink clothing request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Clothing', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Clothing', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage grouping-related kinks')
     async def groupings(self, interaction: discord.Interaction):
         logger.info(f"Got kink grouping request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Groupings', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Groupings', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage general kinks')
     async def general(self, interaction: discord.Interaction):
         logger.info(f"Got kink general request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('General', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('General', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage ass-play-related kinks')
     async def assplay(self, interaction: discord.Interaction):
         logger.info(f"Got kink ass-play request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Ass play', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Ass play', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage restrictive-related kinks')
     async def restrictive(self, interaction: discord.Interaction):
         logger.info(f"Got kink restrictive request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Restrictive', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Restrictive', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage toy-related kinks')
     async def toys(self, interaction: discord.Interaction):
         logger.info(f"Got kink toys request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Toys', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Toys', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage domination-related kinks')
     async def domination(self, interaction: discord.Interaction):
         logger.info(f"Got kink domination request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Domination', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Domination', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage noncon-related kinks')
     async def noncon(self, interaction: discord.Interaction):
         logger.info(f"Got kink noncon request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('No consent', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('No consent', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage taboo kinks')
     async def taboo(self, interaction: discord.Interaction):
         logger.info(f"Got kink taboo request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Taboo', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Taboo', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage surrealism-related kinks')
     async def surrealism(self, interaction: discord.Interaction):
         logger.info(f"Got kink surrealism request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Surrealism', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Surrealism', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage fluid-related kinks')
     async def fluids(self, interaction: discord.Interaction):
         logger.info(f"Got kink fluids request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Fluids', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Fluids', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage degradation-related kinks')
     async def degradation(self, interaction: discord.Interaction):
         logger.info(f"Got kink degradation request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Degradation', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Degradation', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage stimulation-related kinks')
     async def stimulation(self, interaction: discord.Interaction):
         logger.info(f"Got kink stimulation request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Touch & Stimulation', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Touch & Stimulation', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage misc kinks')
     async def misc(self, interaction: discord.Interaction):
         logger.info(f"Got kink misc request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Misc. Fetish', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Misc. Fetish', interaction, self.database), ephemeral=True)
 
     @discord.app_commands.command(description='Manage pain-related kinks')
     async def pain(self, interaction: discord.Interaction):
         logger.info(f"Got kink pain request from {interaction.user.id}")
-        await self.utils.safe_send(view=KinksView('Pain', interaction, self.database), ephemeral=True)
+        await self.utils.safe_send(interaction, view=KinksView('Pain', interaction, self.database), ephemeral=True)
 
 # FIXME 
 # Traceback (most recent call last):
@@ -582,4 +582,4 @@ class Kinklist(discord.app_commands.Group):
         else:
             content = "Ok, your list is still just as you left it~"
 
-        await self.utils.safe_send(content=content, ephemeral=True)
+        await self.utils.safe_send(interaction, content=content, ephemeral=True)
