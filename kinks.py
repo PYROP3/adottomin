@@ -754,8 +754,13 @@ class Kinklist(discord.app_commands.Group):
         user_kinks = {f"{kink[1]}|{len(kink_splits[kink[3]]) - kink_splits[kink[3]].index(kink[2]) - 1}|{kink[3]}": kink[4] # Math magic to flip conditional if needed
             for kink in self.database.get_kinks(user.id, ratings.Unknown.value)}
         
-        score = 0
         common = set(author_kinks.keys()).intersection(user_kinks.keys())
+
+        if len(common) == 0:
+            await self.utils.safe_send(interaction, content=f"You have no kinks in common with {user.mention}...", send_anyway=True)
+            return
+
+        score = 0
         for kink in common:
             score += 5 - max(author_kinks[kink], user_kinks[kink])
             logger.debug(f"Analyzing kink {kink} -> {author_kinks[kink]} vs {user_kinks[kink]} -> new score={score}")
