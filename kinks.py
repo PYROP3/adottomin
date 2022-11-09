@@ -602,7 +602,7 @@ class KinksView(discord.ui.View):
         logger.info(f"{self.interaction.user.id} selected rating {rating} for {self._category}/{self._kink} ({self._conditional})")
         self.database.create_or_update_kink(self.interaction.user.id, self._kink, self._conditional, self._category, ratings[rating].value)
         if not self._notified_explanation:
-            await interaction.response.send_message(content=f"Noted! You may continue adding new kinks with the same menu, and I'll keep track of everything~", ephemeral=True)
+            await interaction.response.send_message(content=f"Noted! You may continue adding new kinks with the same menu, and I'll keep track of everything~\nAnd you can always remove a kink from your list by setting it back to {rating_emojis[ratings.Unknown]}{ratings.Unknown.name}", ephemeral=True)
             self._notified_explanation = True
 
     def print_dbg(self):
