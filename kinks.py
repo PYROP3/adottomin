@@ -2,12 +2,16 @@ import botlogger
 import db
 import discord
 import enum
-import logging
+import re
 import bot_utils
 import typing
 import datetime
 import random
 import traceback
+import requests
+
+from bs4 import BeautifulSoup
+from difflib import SequenceMatcher
 
 logger = botlogger.get_logger(__name__)
 
@@ -426,6 +430,9 @@ kink_splits = {
     'Time-Scale': ['Self', 'Partner']
 }
 
+_all_kinks = [kink for cat in kinklist for kink in kinklist[cat]]
+_rev_kinks = {kink: cat for cat in kinklist for kink in kinklist[cat]}
+
 class ratings(enum.Enum):
     Unknown = 0
     Favorite = 1
@@ -446,8 +453,14 @@ rating_emojis = {
 ratings_choices = [discord.app_commands.Choice(name=rat.name, value=rat.name) for rat in ratings]
 ratings_options = [discord.components.SelectOption(label=rat.name, emoji=rating_emojis[rat]) for rat in ratings]
 
-def _options_for(kink: str):
-    return [discord.components.SelectOption(label=f"{kink}: {rat.name}") for rat in ratings]
+_flist_url_prog = re.compile(r"(https?://)?www.f-list.net/c/(.+)")
+
+_flist_conversion = {
+    'Fave': ratings.Favorite.value,
+    'Yes': ratings.Like.value,
+    'Maybe': ratings.Maybe.value,
+    'No': ratings.No.value
+}
 
 kinklist_choices = [discord.app_commands.Choice(name=kink, value=kink) for category in kinklist for kink in kinklist[category]]
 
@@ -470,6 +483,9 @@ async def _silent_reply(interaction: discord.Interaction):
         await interaction.response.send_message()
     except discord.errors.HTTPException:
         pass # Silently ignore
+
+def _similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
 class KinkDropdown(discord.ui.Select):
     def __init__(self, category: str, watcher, selected=None, disabled=False, do_silent_reply=True):
@@ -688,8 +704,13 @@ class Kinklist(discord.app_commands.Group):
         aux = {rating.name: [] for rating in ratings}
         del(aux[ratings.Unknown.name])
         for kink in data:
-            kink_name = kink[1]
-            aux[ratings(kink[4]).name] += ['`' + kink_name + ("" if len(kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`']
+            rat = ratings(kink[4]).name
+            if len(aux[rat]) > 1 and aux[rat][-1] == '...': continue
+            elem = '`' + kink[1] + ("" if len(kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`'
+            if len(", ".join(aux[rat])) + len(elem) < 1019:
+                aux[rat] += [elem]
+            else:
+                aux[rat] += ['...']
 
         logger.debug(f"Aux = {aux}")
 
@@ -768,3 +789,55 @@ class Kinklist(discord.app_commands.Group):
         score = int(score * 100)
 
         await self.utils.safe_send(interaction, content=f"{interaction.user.mention}'s kinklist is {score}% compatible with {user.mention}'s~", send_anyway=True)
+
+    @discord.app_commands.command(description='Import your f-list (be aware this may overwrite some of your current ratings)')
+    @discord.app_commands.describe(url='Your f-list link (e.g. www.f-list.net/c/xyz)')
+    # @discord.app_commands.choices(confirmation=[discord.app_commands.Choice(name=b, value=b) for b in ['I understand', 'Cancel']])
+    async def import_flist(self, interaction: discord.Interaction, url: str):
+        logger.info(f"Got kink import_flist request from {interaction.user.id}: '{url}'")
+
+        _regexed = _flist_url_prog.search(url)
+        if _regexed is None:
+            await self.utils.safe_send(interaction, content=f"That's not a valid f-list link", ephemeral=True)
+            return
+
+        await self.utils.safe_send(interaction, content=f"Fetching your f-list...", ephemeral=True)
+
+        _username = _regexed.group(2)
+
+        r = requests.get(f"https://www.f-list.net/c/{_username}", cookies={'warning':'1'})
+        if r.status_code != 200:
+            logger.warning(f"Error {r.status_code} for {_username} flist")
+            await interaction.edit_original_response(content=f"I got an error ({r.status_code}) while trying to fetch your f-list... :c")
+            return
+
+        self.database.create_or_update_flist(interaction.user.id, _username)
+
+        await interaction.edit_original_response(content=f"F-list downloaded, parsing...")
+
+        soup = BeautifulSoup(r.text, 'html.parser')
+        rev_comp = {}
+        for flist in _flist_conversion:
+            rat = _flist_conversion[flist]
+            for fave in soup.find(id=f'Character_Fetishlist{flist}').find_all('a'):
+                aux = fave.text.strip()
+                this = max([(kink, _similar(aux.lower(), kink.lower()), rat) for kink in _all_kinks], key=lambda x: x[1])
+                matched = this[0]
+                if (matched not in rev_comp) or (this[1] > rev_comp[matched][1]):
+                    rev_comp[matched] = (aux, this[1], rat)
+        logger.debug(f"Reverse list[{len(rev_comp)}] = {rev_comp}")
+
+        await interaction.edit_original_response(content=f"F-list parsed, filtering matches...")
+
+        matches = [(kink, rev_comp[kink][2]) for kink in rev_comp if rev_comp[kink][1] > 0.95]
+        logger.debug(f"Matches[{len(matches)}] = {matches}")
+
+        await interaction.edit_original_response(content=f"F-list filtered, updating kinks...")
+
+        for kink, rating in matches:
+            cat = _rev_kinks[kink]
+            for split in kink_splits[cat]:
+                # logger.debug(f"Updating -> {interaction.user.id}, [{kink}], [{split}], [{cat}] = {rating}")
+                self.database.create_or_update_kink(interaction.user.id, kink, split, cat, rating)
+
+        await interaction.edit_original_response(content=f"All done! I've imported {len(matches)} kinks from your f-list~")

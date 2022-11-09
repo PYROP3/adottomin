@@ -37,6 +37,8 @@ kinks_version = 1
 kinks_db_file = _dbfile('kinks', kinks_version)
 kinks_visibility_version = 1
 kinks_visibility_db_file = _dbfile('kinks_visibility', kinks_visibility_version)
+kinks_flist_version = 1
+kinks_flist_db_file = _dbfile('kinks_flist', kinks_flist_version)
 
 sql_files = [
     validations_db_file,
@@ -49,7 +51,10 @@ sql_files = [
     worldmap_db_file,
     nnn_2022_db_file,
     nuts_db_file,
-    attachments_db_file
+    attachments_db_file,
+    kinks_db_file,
+    kinks_visibility_db_file,
+    kinks_flist_db_file
 ]
 
 schemas = {
@@ -165,6 +170,13 @@ schemas = {
             CREATE TABLE allowlist (
                 user int NOT NULL,
                 created_at TIMESTAMP,
+                PRIMARY KEY (user)
+            );'''],
+    kinks_flist_db_file: ['''
+            CREATE TABLE flist (
+                user int NOT NULL,
+                flist TEXT NOT NULL,
+                updated_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
 }
@@ -685,3 +697,13 @@ class database:
         con.commit()
         con.close()
         return res is not None
+
+    def create_or_update_flist(self, user, flist):
+        con = sqlite3.connect(kinks_flist_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO flist VALUES (?, ?, ?)", [user, flist, datetime.datetime.now()])
+        except sqlite3.IntegrityError:
+            cur.execute("UPDATE flist SET flist=:rating, updated_at=:updated_at WHERE user=:id", {"id": user, "flist": flist, "updated_at": datetime.datetime.now()})
+        con.commit()
+        con.close()

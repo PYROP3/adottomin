@@ -1290,4 +1290,17 @@ async def kinktionary(interaction: discord.Interaction):
 
     await utils.safe_send(interaction, view=kinks.Kinktionary(interaction), ephemeral=True)
 
+def rec_walk(parent, super_cmd=""):
+    for cmd in parent.walk_commands():
+        if isinstance(cmd, discord.app_commands.Command):
+            print(f"/{super_cmd}{cmd.name}: {cmd.description}")
+            for p in cmd.parameters:
+                print(f"    {p.name}: {p.description}")
+            print("")
+        else:
+            rec_walk(cmd, super_cmd=f"{cmd.name} ")
+
+# rec_walk(bot.tree)
+# exit()
+
 bot.run(TOKEN)

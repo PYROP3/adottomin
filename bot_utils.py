@@ -429,10 +429,9 @@ class utils:
     async def safe_send(self, interaction: discord.Interaction, is_followup: bool=False, send_anyway: bool=False, **kwargs):
         try:
             if is_followup:
-                await interaction.followup.send(**kwargs)
-                return
-
-            await interaction.response.send_message(**kwargs)
+                return await interaction.followup.send(**kwargs)
+                
+            return await interaction.response.send_message(**kwargs)
 
         except discord.errors.NotFound:
             self.logger.warning(f"NotFound error while trying to send message (send_anyway={send_anyway})")
@@ -441,7 +440,7 @@ class utils:
                     self.logger.error(f"Not replying publicly to ephemeral")
                     return
                 kwargs['content'] = f"{interaction.user.mention} used /{interaction.command.name}\n{kwargs['content']}"
-                await interaction.channel.send(**kwargs)
+                return await interaction.channel.send(**kwargs)
 
     def _iterate_dec(self, number:int):
         while number >= 10:
