@@ -39,6 +39,8 @@ kinks_visibility_version = 1
 kinks_visibility_db_file = _dbfile('kinks_visibility', kinks_visibility_version)
 kinks_flist_version = 1
 kinks_flist_db_file = _dbfile('kinks_flist', kinks_flist_version)
+member_analytics_version = 1
+member_analytics_db_file = _dbfile('member_analytics', member_analytics_version)
 
 sql_files = [
     validations_db_file,
@@ -54,7 +56,8 @@ sql_files = [
     attachments_db_file,
     kinks_db_file,
     kinks_visibility_db_file,
-    kinks_flist_db_file
+    kinks_flist_db_file,
+    member_analytics_db_file
 ]
 
 schemas = {
@@ -179,6 +182,18 @@ schemas = {
                 updated_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
+    member_analytics_db_file: ['''
+            CREATE TABLE leavers (
+                user int NOT NULL,
+                age int NOT NULL,
+                created_at TIMESTAMP
+            );''',
+            '''
+            CREATE TABLE joiners (
+                user int NOT NULL,
+                age int NOT NULL,
+                created_at TIMESTAMP
+            );'''],
 }
 
 class database:
@@ -280,16 +295,19 @@ class database:
     def set_age(self, user, age, force=False):
         con = sqlite3.connect(validations_db_file)
         cur = con.cursor()
+        now = datetime.datetime.now()
         try:
-            cur.execute("INSERT INTO age_data VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
+            cur.execute("INSERT INTO age_data VALUES (?, ?, ?)", [user, age, now])
             con.commit()
         except sqlite3.IntegrityError:
             self.logger.warning(f"Duplicated user id {user} in age_data")
             if force:
                 self.logger.debug(f"Updating {user} age in age_data -> {age}")
-                cur.execute("UPDATE age_data SET age=:age, date=:date WHERE user=:id", {"id": user, "age": age, "date": datetime.datetime.now()})
+                cur.execute("UPDATE age_data SET age=:age, date=:date WHERE user=:id", {"id": user, "age": age, "date": now})
                 con.commit()
         con.close()
+
+        self.register_joiner(user, age, force_update=force)
 
     def get_age(self, user):
         try:
@@ -704,6 +722,36 @@ class database:
         try:
             cur.execute("INSERT INTO flist VALUES (?, ?, ?)", [user, flist, datetime.datetime.now()])
         except sqlite3.IntegrityError:
-            cur.execute("UPDATE flist SET flist=:rating, updated_at=:updated_at WHERE user=:id", {"id": user, "flist": flist, "updated_at": datetime.datetime.now()})
+            cur.execute("UPDATE flist SET flist=:flist, updated_at=:updated_at WHERE user=:id", {"id": user, "flist": flist, "updated_at": datetime.datetime.now()})
+        con.commit()
+        con.close()
+
+    def _last_leave(self, user, cur: sqlite3.Cursor):
+        data = cur.execute("SELECT created_at FROM leavers WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
+        return data and datetime.datetime.strptime(data[0], "%Y-%m-%d %H:%M:%S.%f")
+
+    def _last_join(self, user, cur: sqlite3.Cursor):
+        data = cur.execute("SELECT created_at FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
+        return data and datetime.datetime.strptime(data[0], "%Y-%m-%d %H:%M:%S.%f")
+
+    def register_joiner(self, user, age=-1, force_update=False):
+        now = datetime.datetime.now()
+        con = sqlite3.connect(member_analytics_db_file)
+        cur = con.cursor()
+        _lj = self._last_join(user, cur)
+        _ll = self._last_leave(user, cur)
+        if not _lj or (_ll and _ll > _lj):
+            cur.execute("INSERT INTO joiners VALUES (?, ?, ?)", [user, age, now])
+        elif force_update: # If we get an updated age
+            cur.execute("UPDATE joiners SET age=:age WHERE user=:user AND created_at=:created_at", {"user": user, "age": age, "created_at": _lj})
+        con.commit()
+        con.close()
+
+    def register_leaver(self, user):
+        con = sqlite3.connect(member_analytics_db_file)
+        cur = con.cursor()
+        age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
+        age = age and age[0] or self.get_age(user) or -1
+        cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
         con.commit()
         con.close()

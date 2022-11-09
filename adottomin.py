@@ -340,6 +340,8 @@ async def on_member_join(member: discord.Member):
             return
 
         if member.id == bot.user.id: return
+
+        sql.register_joiner(member.id)
         
         if RAID_MODE or is_raid_mode():
             logger.info(f"[{channel}] Raid mode ON: {member}")
@@ -418,6 +420,12 @@ async def on_member_join(member: discord.Member):
         logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")
         await _dm_log_error(f"[{channel}] on_member_join\n{e}\n{traceback.format_exc()}")
         logger.debug(f"[{channel}] Error exit on_member_join")
+
+@bot.event
+async def on_member_remove(member: discord.Member):
+    logger.info(f"{member} exit the guild")
+    
+    sql.register_leaver(member.id)
 
 @bot.event
 async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):

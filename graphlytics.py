@@ -42,32 +42,42 @@ def _get_daily(parsed, date):
 
 def generate_new_user_graph(time_range=None):
     con = sqlite3.connect(db.validations_db_file)
-    cur = con.cursor()
 
     min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
 
     # TODO a lot of this processing can be done with better SQL queries
-    data = cur.execute("SELECT * FROM age_data WHERE date > :date", {"date": min_date}).fetchall()
+    data = con.cursor().execute("SELECT * FROM age_data WHERE date > :date", {"date": min_date}).fetchall()
+    con.close()
+
+    con = sqlite3.connect(db.leavers_db_file)
+
+    leavers_data = con.cursor().execute("SELECT * FROM leavers WHERE created_at > :date", {"date": min_date}).fetchall()
     con.close()
     
     logger = botlogger.get_logger(__name__)
-    logger.debug(f"[GRAPHLYTICS] Got {len(data)} datapoints")
+    logger.debug(f"[GRAPHLYTICS] Got {len(data)}/{len(leavers_data)} datapoints")
 
-    dates = sorted(list(set([datetime.datetime.strptime(entry[2], '%Y-%m-%d %H:%M:%S.%f').date() for entry in data])))
-    parsed = {x: {"tags": [], "adult": [], "minor": [], "unknown": []} for x in dates}
+    dates = sorted(list(
+        set([datetime.datetime.strptime(entry[2], '%Y-%m-%d %H:%M:%S.%f').date() for entry in data])
+        .union([datetime.datetime.strptime(entry[1], '%Y-%m-%d %H:%M:%S.%f').date() for entry in leavers_data])))
+    parsed = {x: {"tags": [], "adult": [], "minor": [], "unknown": [], 'exit': []} for x in dates}
 
     for user, age, date in data:
         parsed[datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').date()][_get_label(age)] += [user] # TODO do we need all users? or just a count?
 
-    split = {'tags': [], 'adult': [], 'minor': [], 'unknown': []}
+    for user, date in leavers_data:
+        parsed[datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').date()]['exit'] += [user] # TODO do we need all users? or just a count?
+
+    split = {'tags': [], 'adult': [], 'minor': [], 'unknown': [], 'exit': []}
 
     for date in dates:
         split['tags'] += [parsed[date]['tags']]
         split['adult'] += [parsed[date]['adult']]
         split['minor'] += [parsed[date]['minor']]
         split['unknown'] += [parsed[date]['unknown']]
+        split['exit'] += [parsed[date]['exit']]
 
-    split = {'tags': [], 'adult': [], 'minor': [], 'unknown': []}
+    split = {'tags': [], 'adult': [], 'minor': [], 'unknown': [], 'exit': []}
 
     start_date = min(dates)
     day_count = (max(dates) - min(dates)).days + 1
@@ -80,12 +90,14 @@ def generate_new_user_graph(time_range=None):
             split['adult'] += [parsed[single_date]['adult']]
             split['minor'] += [parsed[single_date]['minor']]
             split['unknown'] += [parsed[single_date]['unknown']]
+            split['exit'] += [parsed[single_date]['unknown']]
         else:
             logger.debug(f"[GRAPHLYTICS] {i} NOT found {single_date}")
             split['tags'] += [[]]
             split['adult'] += [[]]
             split['minor'] += [[]]
             split['unknown'] += [[]]
+            split['exit'] += [[]]
         i += 1
 
     fig, ax = plt.subplots()
@@ -110,6 +122,8 @@ def generate_new_user_graph(time_range=None):
         bottoms[i] += bar[i]
     bar = [len(x) for x in split['adult']]
     ax.bar(xaxis, bar, width, bottom=bottoms, label="Adults", color="green")
+    bar = [-len(x) for x in split['exit']]
+    ax.bar(xaxis, bar, width, bottom=[0 for _ in xaxis], label="Exit", color="red")
 
     ax.set_ylabel('Users')
     ax.set_title('New users daily')
