@@ -604,6 +604,8 @@ class KinksView(discord.ui.View):
         if not self._notified_explanation:
             await interaction.response.send_message(content=f"Noted! You may continue adding new kinks with the same menu, and I'll keep track of everything~\nAnd you can always remove a kink from your list by setting it back to {rating_emojis[ratings.Unknown]}{ratings.Unknown.name}", ephemeral=True)
             self._notified_explanation = True
+        else:
+            await _silent_reply(interaction)
 
     def print_dbg(self):
         # logger.debug(f"self._kink = {self._kink}\nself._conditional = {self._conditional}")
