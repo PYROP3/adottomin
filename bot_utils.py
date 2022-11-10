@@ -1,6 +1,7 @@
 import country_converter as coco
 import discord
 import inspect
+import json
 import queue
 import random
 import re
@@ -429,12 +430,15 @@ class utils:
     async def safe_send(self, interaction: discord.Interaction, is_followup: bool=False, send_anyway: bool=False, **kwargs):
         try:
             if is_followup:
-                return await interaction.followup.send(**kwargs)
-                
-            return await interaction.response.send_message(**kwargs)
+                res = await interaction.followup.send(**kwargs)
+            else:
+                res = await interaction.response.send_message(**kwargs)
+            self.database.register_command(interaction.user.id, interaction.command.name, interaction.channel_id, args=json.dumps('options' in interaction.data and interaction.data['options'] or {}))
+            return res
 
         except discord.errors.NotFound:
             self.logger.warning(f"NotFound error while trying to send message (send_anyway={send_anyway})")
+            self.database.register_command(interaction.user.id, interaction.command.name, interaction.channel_id, args=json.dumps('options' in interaction.data and interaction.data['options'] or {}), failed=True)
             if send_anyway:
                 if 'ephemeral' in kwargs and kwargs['ephemeral']:
                     self.logger.error(f"Not replying publicly to ephemeral")

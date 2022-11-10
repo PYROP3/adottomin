@@ -41,6 +41,8 @@ kinks_flist_version = 1
 kinks_flist_db_file = _dbfile('kinks_flist', kinks_flist_version)
 member_analytics_version = 1
 member_analytics_db_file = _dbfile('member_analytics', member_analytics_version)
+cmds_analytics_version = 1
+cmds_analytics_db_file = _dbfile('cmds_analytics', cmds_analytics_version)
 
 sql_files = [
     validations_db_file,
@@ -57,7 +59,8 @@ sql_files = [
     kinks_db_file,
     kinks_visibility_db_file,
     kinks_flist_db_file,
-    member_analytics_db_file
+    member_analytics_db_file,
+    cmds_analytics_db_file
 ]
 
 schemas = {
@@ -192,6 +195,15 @@ schemas = {
             CREATE TABLE joiners (
                 user int NOT NULL,
                 age int NOT NULL,
+                created_at TIMESTAMP
+            );'''],
+    cmds_analytics_db_file: ['''
+            CREATE TABLE commands (
+                user INTEGER NOT NULL,
+                channel INTEGER NOT NULL,
+                command TEXT NOT NULL,
+                args TEXT NOT NULL,
+                failed INTEGER NOT NULL,
                 created_at TIMESTAMP
             );'''],
 }
@@ -753,5 +765,13 @@ class database:
         age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
         age = age and age[0] or self.get_age(user) or -1
         cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
+        con.commit()
+        con.close()
+
+    def register_command(self, user, command, channel, args='', failed=False):
+        self.logger.debug(f"Register command user={user}, command={command}, channel={channel}, args={args}, failed={failed}")
+        con = sqlite3.connect(cmds_analytics_db_file)
+        cur = con.cursor()
+        cur.execute("INSERT INTO commands VALUES (?, ?, ?, ?, ?, ?)", [user, channel, command, args, 1 if failed else 0, datetime.datetime.now()])
         con.commit()
         con.close()
