@@ -259,7 +259,7 @@ reaction_user_blocklist = []
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
-    logger.info(f"Added reaction {reaction}")
+    # logger.info(f"Added reaction {reaction}")
     emoji = reaction.emoji if type(reaction.emoji) == str else reaction.emoji.name
     # logger.debug(f"Added emoji = {emoji}")
     if emoji in reaction_blocklist or user.id in reaction_user_blocklist:
