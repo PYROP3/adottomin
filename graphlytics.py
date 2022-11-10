@@ -30,6 +30,33 @@ cmaps = [   'viridis', 'plasma', 'inferno', 'magma', 'cividis',
             'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
             'gist_rainbow', 'rainbow', 'jet', 'turbo', 'nipy_spectral',
             'gist_ncar']
+            
+
+conditionals = {
+    '18-19': 'WHERE age = 1005699733353922611 OR age BETWEEN 18 AND 19',
+    '20-24': 'WHERE age = 1005699809270833202 OR age BETWEEN 20 AND 24',
+    '25-29': 'WHERE age = 1005699867873660979 OR age BETWEEN 25 AND 29',
+    '30+': 'WHERE age = 1005700845159063552 OR age >= 30',
+    'minor': 'WHERE age > 0 AND age < 18',
+    'unknown': 'WHERE age < 1'
+}
+
+colors = {
+    '18-19': 'green',
+    '20-24': 'green',
+    '25-29': 'green',
+    '30+': 'green',
+    'minor': 'red',
+    'unknown': 'darkgrey'
+}
+neg_colors = {
+    '18-19': 'darkgreen',
+    '20-24': 'darkgreen',
+    '25-29': 'darkgreen',
+    '30+': 'darkgreen',
+    'minor': 'darkred',
+    'unknown': 'grey'
+}
 
 def _get_label(age):
     if age > 100: return "tags"
@@ -41,93 +68,79 @@ def _get_daily(parsed, date):
     return len(parsed[date]["tags"]) + len(parsed[date]["adult"]) + len(parsed[date]["minor"]) + len(parsed[date]["unknown"])
 
 def generate_new_user_graph(time_range=None):
-    con = sqlite3.connect(db.validations_db_file)
-
-    min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
-
-    # TODO a lot of this processing can be done with better SQL queries
-    data = con.cursor().execute("SELECT * FROM age_data WHERE date > :date", {"date": min_date}).fetchall()
-    con.close()
+    today = datetime.datetime.today()
+    min_date = datetime.datetime.min if time_range is None else today - datetime.timedelta(days=time_range)
+    min_date_str = datetime.datetime.strftime(min_date, '%Y-%m-%d')
 
     con = sqlite3.connect(db.leavers_db_file)
 
-    leavers_data = con.cursor().execute("SELECT * FROM leavers WHERE created_at > :date", {"date": min_date}).fetchall()
+    cur = con.cursor()
+    joiners_data = {x[1]: x[0] for x in cur.execute(f'''
+        SELECT
+            count(*) as amount, 
+            CASE
+                WHEN age = 1005699733353922611 OR age BETWEEN 18 AND 19 THEN "18-19"
+                WHEN age = 1005699809270833202 OR age BETWEEN 20 AND 24 THEN "20-24"
+                WHEN age = 1005699867873660979 OR age BETWEEN 25 AND 29 THEN "25-29"
+                WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
+                WHEN age > 0 AND age < 18 THEN "minor"
+                ELSE "unknown"
+            END || '-' || date(substr(date, 1, 10)) AS tag
+        FROM joiners 
+        WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
+        GROUP BY tag''').fetchall()}
+    leavers_data = {x[1]: x[0] for x in cur.execute(f'''
+        SELECT
+            count(*) as amount, 
+            CASE
+                WHEN age = 1005699733353922611 OR age BETWEEN 18 AND 19 THEN "18-19"
+                WHEN age = 1005699809270833202 OR age BETWEEN 20 AND 24 THEN "20-24"
+                WHEN age = 1005699867873660979 OR age BETWEEN 25 AND 29 THEN "25-29"
+                WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
+                WHEN age > 0 AND age < 18 THEN "minor"
+                ELSE "unknown"
+            END || '-' || date(substr(date, 1, 10)) AS tag
+        FROM leavers 
+        WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
+        GROUP BY tag''').fetchall()}
     con.close()
     
     logger = botlogger.get_logger(__name__)
-    logger.debug(f"[GRAPHLYTICS] Got {len(data)}/{len(leavers_data)} datapoints")
+    logger.debug(f"[GRAPHLYTICS] Got {len(joiners_data)}/{len(leavers_data)} datapoints (expected max {time_range * len(conditionals)})")
 
-    dates = sorted(list(
-        set([datetime.datetime.strptime(entry[2], '%Y-%m-%d %H:%M:%S.%f').date() for entry in data])
-        .union([datetime.datetime.strptime(entry[1], '%Y-%m-%d %H:%M:%S.%f').date() for entry in leavers_data])))
-    parsed = {x: {"tags": [], "adult": [], "minor": [], "unknown": [], 'exit': []} for x in dates}
-
-    for user, age, date in data:
-        parsed[datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').date()][_get_label(age)] += [user] # TODO do we need all users? or just a count?
-
-    for user, date in leavers_data:
-        parsed[datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').date()]['exit'] += [user] # TODO do we need all users? or just a count?
-
-    split = {'tags': [], 'adult': [], 'minor': [], 'unknown': [], 'exit': []}
-
-    for date in dates:
-        split['tags'] += [parsed[date]['tags']]
-        split['adult'] += [parsed[date]['adult']]
-        split['minor'] += [parsed[date]['minor']]
-        split['unknown'] += [parsed[date]['unknown']]
-        split['exit'] += [parsed[date]['exit']]
-
-    split = {'tags': [], 'adult': [], 'minor': [], 'unknown': [], 'exit': []}
-
-    start_date = min(dates)
-    day_count = (max(dates) - min(dates)).days + 1
+    day_count = (today - min_date).days + 1
     i = 0
-    for single_date in (start_date + datetime.timedelta(n) for n in range(day_count)):
-        logger.debug(f"[GRAPHLYTICS] {i} Single date = {single_date}")
-        if single_date in dates:
-            logger.debug(f"[GRAPHLYTICS] {i} Found {single_date}")
-            split['tags'] += [parsed[single_date]['tags']]
-            split['adult'] += [parsed[single_date]['adult']]
-            split['minor'] += [parsed[single_date]['minor']]
-            split['unknown'] += [parsed[single_date]['unknown']]
-            split['exit'] += [parsed[single_date]['unknown']]
-        else:
-            logger.debug(f"[GRAPHLYTICS] {i} NOT found {single_date}")
-            split['tags'] += [[]]
-            split['adult'] += [[]]
-            split['minor'] += [[]]
-            split['unknown'] += [[]]
-            split['exit'] += [[]]
+    joiners_split = {x: [] for x in conditionals}
+    leavers_split = {x: [] for x in conditionals}
+    for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+        for tag in conditionals:
+            key = f"{tag}-{datetime.datetime.strftime(single_date, '%Y-%m-%d')}"
+            # print(key)
+            joiners_split[tag] += [key in joiners_data and joiners_data[key] or 0]
+            leavers_split[tag] += [key in leavers_data and leavers_data[key] or 0]
         i += 1
 
+    joiners_split = {k: np.array(joiners_split[k]) for k in joiners_split}
+    leavers_split = {k: -1 * np.array(leavers_split[k]) for k in leavers_split}
+
     fig, ax = plt.subplots()
-
-    start_date = min(dates)
-    day_count = (max(dates) - min(dates)).days + 1
-
     width = 0.75
-    xaxis = [str(d) for d in list(start_date + datetime.timedelta(n) for n in range(day_count))]
-    bottoms = [0 for _ in xaxis]
-    bar = [len(x) for x in split['unknown']]
-    ax.bar(xaxis, bar, width, bottom=bottoms, label="Unknown", color="grey")
-    for i in range(len(xaxis)):
-        bottoms[i] += bar[i]
-    bar = [len(x) for x in split['minor']]
-    ax.bar(xaxis, bar, width, bottom=bottoms, label="Minors", color="red")
-    for i in range(len(xaxis)):
-        bottoms[i] += bar[i]
-    bar = [len(x) for x in split['tags']]
-    ax.bar(xaxis, bar, width, bottom=bottoms, label="Tags", color="darkgreen")
-    for i in range(len(xaxis)):
-        bottoms[i] += bar[i]
-    bar = [len(x) for x in split['adult']]
-    ax.bar(xaxis, bar, width, bottom=bottoms, label="Adults", color="green")
-    bar = [-len(x) for x in split['exit']]
-    ax.bar(xaxis, bar, width, bottom=[0 for _ in xaxis], label="Exit", color="red")
+    xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))]
 
+    bottoms = np.zeros(day_count)
+    for key in joiners_split:
+        ax.bar(xaxis, joiners_split[key], width, bottom=bottoms, label=key, color=colors[key])
+        bottoms += joiners_split[key]
+
+    bottoms = np.zeros(day_count)
+    for key in leavers_split:
+        data = np.minimum(leavers_split[key], -1 * joiners_split[key]) if key in ['unknown', 'minor'] else leavers_split[key]
+        ax.bar(xaxis, data, width, bottom=bottoms, label=f"{key} quit", color=neg_colors[key])
+        bottoms += data
     ax.set_ylabel('Users')
-    ax.set_title('New users daily')
+    ax.set_title('Daily users gained/lost')
     plt.xticks(rotation=90)
+    fig.set_size_inches(15, 10)
     ax.legend()
 
     name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
