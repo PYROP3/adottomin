@@ -84,7 +84,7 @@ def generate_new_user_graph(time_range=None):
                 WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
                 WHEN age > 0 AND age < 18 THEN "minor"
                 ELSE "unknown"
-            END || '-' || date(substr(date, 1, 10)) AS tag
+            END || '-' || date(substr(created_at, 1, 10)) AS tag
         FROM joiners 
         WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
         GROUP BY tag''').fetchall()}
@@ -98,7 +98,7 @@ def generate_new_user_graph(time_range=None):
                 WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
                 WHEN age > 0 AND age < 18 THEN "minor"
                 ELSE "unknown"
-            END || '-' || date(substr(date, 1, 10)) AS tag
+            END || '-' || date(substr(created_at, 1, 10)) AS tag
         FROM leavers 
         WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
         GROUP BY tag''').fetchall()}
