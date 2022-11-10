@@ -668,7 +668,7 @@ class Kinklist(discord.app_commands.Group):
         self.database = database
         self.utils = utils
     
-    @discord.app_commands.command(description='Hide or show your kink list')
+    @discord.app_commands.command(description='Hide or show your kink list', nsfw=True)
     @discord.app_commands.choices(visibility=[discord.app_commands.Choice(name=b, value=b) for b in ['public', 'private']])
     async def manage(self, interaction: discord.Interaction, visibility: discord.app_commands.Choice[str]):
         logger.info(f"{interaction.user} requested kinklist manage: {visibility.value}")
@@ -682,7 +682,7 @@ class Kinklist(discord.app_commands.Group):
 
         await self.utils.safe_send(interaction, content=content, ephemeral=True)
 
-    @discord.app_commands.command(description='Get someone\'s kink list')
+    @discord.app_commands.command(description='Get someone\'s kink list', nsfw=True)
     @discord.app_commands.describe(user='Whose list to get (gets yours by default)')
     async def show(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]=None):
         user = user or interaction.user
@@ -753,7 +753,7 @@ class Kinklist(discord.app_commands.Group):
 
         await self.utils.safe_send(interaction, content=content, ephemeral=True)
 
-    @discord.app_commands.command(description='Calculate your kink compatibility with someone else')
+    @discord.app_commands.command(description='Calculate your kink compatibility with someone else', nsfw=True)
     @discord.app_commands.describe(user='Whose kinks to compare yours with')
     async def compatibility(self, interaction: discord.Interaction, user: discord.Member):
         logger.info(f"Got kink compatibility request from {interaction.user.id}: '{user}'")
@@ -790,7 +790,7 @@ class Kinklist(discord.app_commands.Group):
 
         await self.utils.safe_send(interaction, content=f"{interaction.user.mention}'s kinklist is {score}% compatible with {user.mention}'s~", send_anyway=True)
 
-    @discord.app_commands.command(description='Import your f-list (be aware this may overwrite some of your current ratings)')
+    @discord.app_commands.command(description='[BETA] Import your f-list (be aware this may overwrite some of your current ratings)')
     @discord.app_commands.describe(url='Your f-list link (e.g. www.f-list.net/c/xyz)')
     # @discord.app_commands.choices(confirmation=[discord.app_commands.Choice(name=b, value=b) for b in ['I understand', 'Cancel']])
     async def import_flist(self, interaction: discord.Interaction, url: str):
