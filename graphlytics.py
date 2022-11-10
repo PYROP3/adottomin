@@ -133,9 +133,8 @@ def generate_new_user_graph(time_range=None):
 
     bottoms = np.zeros(day_count)
     for key in leavers_split:
-        data = np.minimum(leavers_split[key], -1 * joiners_split[key]) if key in ['unknown', 'minor'] else leavers_split[key]
-        ax.bar(xaxis, data, width, bottom=bottoms, label=f"{key} quit", color=neg_colors[key])
-        bottoms += data
+        ax.bar(xaxis, leavers_split[key], width, bottom=bottoms, label=f"{key} quit", color=neg_colors[key])
+        bottoms += leavers_split[key]
     ax.set_ylabel('Users')
     ax.set_title('Daily users gained/lost')
     plt.xticks(rotation=90)
