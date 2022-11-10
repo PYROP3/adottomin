@@ -72,8 +72,7 @@ def generate_new_user_graph(time_range=None):
     min_date = datetime.datetime.min if time_range is None else today - datetime.timedelta(days=time_range)
     min_date_str = datetime.datetime.strftime(min_date, '%Y-%m-%d')
 
-    con = sqlite3.connect(db.leavers_db_file)
-
+    con = sqlite3.connect(db.member_analytics_db_file)
     cur = con.cursor()
     joiners_data = {x[1]: x[0] for x in cur.execute(f'''
         SELECT
