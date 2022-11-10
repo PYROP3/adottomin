@@ -427,9 +427,13 @@ class utils:
         country = coco.convert(names=country, to='ISO2', not_found='NULL')
         return f':flag_{country.lower()}:' if country != 'NULL' else ''
 
+    async def safe_defer(self, interaction: discord.Interaction, ephemeral: bool=False, **kwargs):
+        await interaction.response.defer(ephemeral=ephemeral, **kwargs)
+        interaction.extras['deferred_as'] = ephemeral
+
     async def safe_send(self, interaction: discord.Interaction, is_followup: bool=False, send_anyway: bool=False, **kwargs):
         try:
-            if is_followup:
+            if is_followup or 'deferred_as' in interaction.extras:
                 res = await interaction.followup.send(**kwargs)
             else:
                 res = await interaction.response.send_message(**kwargs)
@@ -443,7 +447,7 @@ class utils:
                 if 'ephemeral' in kwargs and kwargs['ephemeral']:
                     self.logger.error(f"Not replying publicly to ephemeral")
                     return
-                kwargs['content'] = f"{interaction.user.mention} used /{interaction.command.name}\n{kwargs['content']}"
+                kwargs['content'] = f"{interaction.user.mention} used `/{interaction.command.name}`\n{kwargs['content']}"
                 return await interaction.channel.send(**kwargs)
 
     def _iterate_dec(self, number:int):

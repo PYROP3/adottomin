@@ -511,7 +511,7 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
             await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
 
 async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg=""):
-    await interaction.response.defer()
+    await utils.safe_defer(interaction)
 
     log_info(interaction, f"{interaction.user} requested {meme_code}")
 
@@ -736,7 +736,7 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
         await utils.safe_send(interaction, content=f"People are allowed to be horny here!", ephemeral=True)
         return
 
-    await interaction.response.defer()
+    await utils.safe_defer(interaction)
 
     content = "No horny in main{}!".format(f", {user.mention}" if user is not None else "")
 
@@ -750,7 +750,7 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
 @bot.tree.command(description='Get analytics data for new users')
 @discord.app_commands.describe(range='Max days to fetch')
 async def report(interaction: discord.Interaction, range: typing.Optional[int] = 7):
-    await interaction.response.defer()
+    await utils.safe_defer(interaction)
 
     log_info(interaction, f"{interaction.user} requested report")
     if not await utils.ensure_divine(interaction): return
@@ -850,7 +850,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(description='Check a user\'s reported age')
 @discord.app_commands.describe(user='User to check')
 async def age(interaction: discord.Interaction, user: discord.Member):
-    await interaction.response.defer(ephemeral=True)
+    await utils.safe_defer(interaction, ephemeral=True)
 
     log_info(interaction, f"{interaction.user} requested age for {user}")
     if not await utils.ensure_secretary(interaction): return
@@ -866,7 +866,7 @@ async def age(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(description='Check a user\'s reported age (search by id)')
 @discord.app_commands.describe(user_id='User ID to check')
 async def agealt(interaction: discord.Interaction, user_id: str):
-    await interaction.response.defer(ephemeral=True)
+    await utils.safe_defer(interaction, ephemeral=True)
     
     log_info(interaction, f"{interaction.user} requested age for ID {user_id}")
     if not await utils.ensure_secretary(interaction): return
@@ -1016,7 +1016,7 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(description='Get analytics data for user activity')
 @discord.app_commands.describe(user='Who you want to query', ignore_games='Ignore messages sent in game channels (default is true)', range='How many days from the current date (default is 14)')
 async def activity(interaction: discord.Interaction, user: discord.Member, ignore_games: bool=True, range: int=14):
-    await interaction.response.defer(ephemeral=True)
+    await utils.safe_defer(interaction, ephemeral=True)
 
     log_info(interaction, f"{interaction.user} requested activity for {user}: {ignore_games}, {range}")
     if not await utils.ensure_secretary(interaction): return
@@ -1048,7 +1048,7 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
 @discord.app_commands.describe(which='Bingo sheet to retrieve (will get a random one by default)')
 @discord.app_commands.choices(which=[discord.app_commands.Choice(name=b, value=b) for b in memes.get_bingos()])
 async def bingo(interaction: discord.Interaction, which: typing.Optional[discord.app_commands.Choice[str]]):
-    await interaction.response.defer()
+    await utils.safe_defer(interaction)
 
     if which is not None:
         bingo_name = memes.bingo_filepath(which.value)
@@ -1078,7 +1078,7 @@ async def suicide(interaction: discord.Interaction):
 @discord.app_commands.describe(file='File to connect', query='SQL query')
 @discord.app_commands.choices(file=[discord.app_commands.Choice(name=b, value=b) for b in db.sql_files])
 async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Choice[str], query: str):
-    await interaction.response.defer(ephemeral=True)
+    await utils.safe_defer(interaction, ephemeral=True)
     
     log_info(interaction, f"{interaction.user} requested sql query for {file}")
     if not await utils.ensure_admin(interaction): return
@@ -1109,7 +1109,7 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
 @bot.tree.command(description='Get the daily top 10 rankings')
 @discord.app_commands.describe(date='When to fetch data')
 async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str]):
-    await interaction.response.defer(ephemeral=True)
+    await utils.safe_defer(interaction, ephemeral=True)
     
     _date = date or (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
@@ -1142,7 +1142,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
 @bot.tree.command(description='Pre-block a user before they\'ve even joined')
 @discord.app_commands.describe(user='User ID to block', reason='Reason for block')
 async def autoblock(interaction: discord.Interaction, user: str, reason: str):
-    await interaction.response.defer(ephemeral=True)
+    await utils.safe_defer(interaction, ephemeral=True)
 
     mod = interaction.user
     _author_roles = [role.id for role in interaction.user.roles]
@@ -1201,7 +1201,7 @@ async def locate(interaction: discord.Interaction, country: str):
 # TODO parameterize color scheme (graphlytics.cmaps)
 @bot.tree.command(description='Get a heatmap with the users of the server (contribute with /locate)')
 async def worldmap(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await utils.safe_defer(interaction)
 
     log_info(interaction, f"{interaction.user} requested worldmap")
     if not await utils.ensure_secretary(interaction): return
@@ -1219,7 +1219,7 @@ async def worldmap(interaction: discord.Interaction):
 # TODO parameterize color scheme (graphlytics.cmaps)
 @bot.tree.command(description='How many users contributed to the server heatmap (contribute with /locate)')
 async def worldmapcount(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await utils.safe_defer(interaction)
 
     log_info(interaction, f"{interaction.user} requested worldmapcount")
     
