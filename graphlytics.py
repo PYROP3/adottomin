@@ -86,7 +86,7 @@ def generate_new_user_graph(time_range=None):
                 ELSE "unknown"
             END || '-' || date(substr(created_at, 1, 10)) AS tag
         FROM joiners 
-        WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
+        WHERE date(substr(created_at, 1, 10)) > date('{min_date_str}')
         GROUP BY tag''').fetchall()}
     leavers_data = {x[1]: x[0] for x in cur.execute(f'''
         SELECT
@@ -100,7 +100,7 @@ def generate_new_user_graph(time_range=None):
                 ELSE "unknown"
             END || '-' || date(substr(created_at, 1, 10)) AS tag
         FROM leavers 
-        WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
+        WHERE date(substr(created_at, 1, 10)) > date('{min_date_str}')
         GROUP BY tag''').fetchall()}
     con.close()
     
