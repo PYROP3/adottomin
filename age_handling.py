@@ -101,6 +101,7 @@ class age_handler:
         greeting = self.sql.delete_entry(member.id)
         await self.try_delete_greeting(greeting, channel)
         self.sql.set_age(member.id, age, force=force_update_age)
+        self.sql.register_leaver(member.id)
 
     async def try_delete_greeting(self, greeting, channel):
         if greeting is None: return
