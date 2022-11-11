@@ -769,10 +769,15 @@ class database:
     def register_leaver(self, user):
         con = sqlite3.connect(member_analytics_db_file)
         cur = con.cursor()
-        age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
-        age = age and age[0] or self.get_age(user) or -1
-        cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
-        con.commit()
+        _lj = self._last_join(user, cur)
+        _ll = self._last_leave(user, cur)
+        if _ll < _lj: # If user left and rejoined
+            age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
+            age = age and age[0] or self.get_age(user) or -1
+            cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
+            con.commit()
+        else:
+            self.logger.warning(f"User {user} already left and did not rejoin, not adding to leavers table")
         con.close()
 
     def register_command(self, user, command, channel, args='', failed=False):
