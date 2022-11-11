@@ -692,6 +692,13 @@ class database:
         con.close()
         return res
 
+    def iterate_kinks(self, user, ratings):
+        con = sqlite3.connect(kinks_db_file)
+        cur = con.cursor()
+        for rating in ratings:
+            yield (rating, cur.execute("SELECT kink, conditional, category FROM kinks WHERE user=:user AND rating=:rating", {'user': user, 'rating': rating}).fetchall())
+        con.close()
+
     def clear_kinks(self, user):
         con = sqlite3.connect(kinks_db_file)
         cur = con.cursor()

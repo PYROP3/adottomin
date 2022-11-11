@@ -698,23 +698,36 @@ class Kinklist(discord.app_commands.Group):
             await self.utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private, you can ask them personally for it~", ephemeral=True)
             return
 
-        data = self.database.get_kinks(user.id, ratings.Unknown.value)
-        if len(data) == 0:
+        # data = self.database.get_kinks(user.id, ratings.Unknown.value)
+        # if len(data) == 0:
+        #     await self.utils.safe_send(interaction, content=f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}"), ephemeral=not (is_own and is_public))
+        #     return
+
+        # aux = {rating.name: [] for rating in ratings}
+        # del(aux[ratings.Unknown.name])
+        # for kink in data:
+        #     rat = ratings(kink[4]).name
+        #     if len(aux[rat]) > 1 and aux[rat][-1] == '...': continue
+        #     elem = '`' + kink[1] + ("" if len(kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`'
+        #     if len(", ".join(aux[rat])) + len(elem) < 1019:
+        #         aux[rat] += [elem]
+        #     else:
+        #         aux[rat] += ['...']
+
+        kinks = {}
+        for rat, dataset in self.database.iterate_kinks(user.id, [ratings.Favorite.value, ratings.Like.value, ratings.Okay.value, ratings.Maybe.value, ratings.No.value]):
+            if len(dataset) == 0: continue
+            kinks[rat] = {}
+            for _kink, _conditional, _category in dataset:
+                if _category not in kinks[rat]:
+                    kinks[rat][_category] = {}
+                if _kink not in kinks[rat][_category]:
+                    kinks[rat][_category][_kink] = []
+                kinks[rat][_category][_kink] += [_conditional]
+
+        if len(kinks) == 0:
             await self.utils.safe_send(interaction, content=f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}"), ephemeral=not (is_own and is_public))
             return
-
-        aux = {rating.name: [] for rating in ratings}
-        del(aux[ratings.Unknown.name])
-        for kink in data:
-            rat = ratings(kink[4]).name
-            if len(aux[rat]) > 1 and aux[rat][-1] == '...': continue
-            elem = '`' + kink[1] + ("" if len(kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`'
-            if len(", ".join(aux[rat])) + len(elem) < 1019:
-                aux[rat] += [elem]
-            else:
-                aux[rat] += ['...']
-
-        logger.debug(f"Aux = {aux}")
 
         embed = discord.Embed(
             colour=random.choice(bot_utils.EMBED_COLORS)
@@ -730,9 +743,49 @@ class Kinklist(discord.app_commands.Group):
 
         embed.set_author(name=f'{user}\'s kinklist', icon_url=icon_url)
 
-        for rating in aux:
-            if len(aux[rating]) == 0: continue
-            embed.add_field(name=f"{rating_emojis[ratings[rating]]} {self.utils.plural(rating, len(aux[rating]))}", value=", ".join(aux[rating]), inline=False)
+        # for rating in aux:
+        #     if len(aux[rating]) == 0: continue
+        #     embed.add_field(name=f"{rating_emojis[ratings[rating]]} {self.utils.plural(rating, len(aux[rating]))}", value=", ".join(aux[rating]), inline=False)
+
+        for rating in kinks:
+            if len(kinks[rating]) == 0: continue
+            entries = 0
+            content = ''
+            content_len = 0
+            filled = False
+            for cat in kinks[rating]:
+                if filled: break
+                if len(kinks[rating][cat]) == 0: continue
+                for kink in kinks[rating][cat]:
+                    if filled: break
+                    if len(kinks[rating][cat][kink]) == len(kink_splits[cat]):
+                        elem = f'`{kink}`'
+                        if entries > 0:
+                            elem = f', {elem}'
+                        len_elem = len(elem)
+                        if content_len + len_elem < 1019:
+                            entries += 1
+                            content += elem
+                            content_len += len_elem
+                        else:
+                            content += ', ...'
+                            filled = True
+                        continue
+
+                    for conditional in kinks[rating][cat][kink]:
+                        elem = f'`{kink} ({conditional})`'
+                        if entries > 0:
+                            elem = f', {elem}'
+                        len_elem = len(elem)
+                        if content_len + len_elem < 1019:
+                            entries += 1
+                            content += elem
+                            content_len += len_elem
+                        else:
+                            content += ', ...'
+                            filled = True
+            # logger.debug(f"Adding {rating} field with content={content}")
+            embed.add_field(name=f"{rating_emojis[ratings(rating)]} {self.utils.plural(ratings(rating).name, entries)}", value=content, inline=False)
 
         # TODO create image from list
         # attachments = pin.attachments
