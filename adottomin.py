@@ -826,11 +826,12 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
         return
 
     if friends_role_ids[1] in _user_roles:
-        log_debug(interaction, f"{user} will NOT be promoted to tier 3")
-        await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
-        return
-        # msg = MSG_CONGRATULATIONS_PROMOTION.format(3, user.mention)
-        # new_role_id = friends_role_ids[2]
+        if not await utils.ensure_divine(interaction): return
+        # log_debug(interaction, f"{user} will NOT be promoted to tier 3")
+        # await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
+        # return
+        msg = f"{user.mention} Congraitiualtionon tier3"
+        new_role_id = friends_role_ids[2]
         
     else:
         log_debug(interaction, f"{user} will be promoted to tier 2")
