@@ -771,7 +771,7 @@ class database:
         cur = con.cursor()
         _lj = self._last_join(user, cur)
         _ll = self._last_leave(user, cur)
-        if _ll < _lj: # If user left and rejoined
+        if not _ll or _ll < _lj: # If user never left or already left and rejoined
             age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
             age = age and age[0] or self.get_age(user) or -1
             cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
