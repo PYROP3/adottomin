@@ -760,20 +760,28 @@ class database:
         _lj = self._last_join(user, cur)
         _ll = self._last_leave(user, cur)
         if not _lj or (_ll and _ll > _lj):
+            self.logger.debug(f"[register_joiner] Inserting user {user}/{age}/{force_update}")
             cur.execute("INSERT INTO joiners VALUES (?, ?, ?)", [user, age, now])
         elif force_update: # If we get an updated age
+            self.logger.debug(f"[register_joiner] Updating age for {user}/{age}/{force_update}")
             cur.execute("UPDATE joiners SET age=:age WHERE user=:user AND created_at=:created_at", {"user": user, "age": age, "created_at": _lj})
+        else:
+            self.logger.debug(f"[register_joiner] Ignoring user {user}/{age}/{force_update}")
         con.commit()
         con.close()
 
-    def register_leaver(self, user):
+    def register_leaver(self, user, reported_age=None):
         con = sqlite3.connect(member_analytics_db_file)
         cur = con.cursor()
         _lj = self._last_join(user, cur)
         _ll = self._last_leave(user, cur)
         if not _ll or _ll < _lj: # If user never left or already left and rejoined
-            age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
-            age = age and age[0] or self.get_age(user) or -1
+            if reported_age is None:
+                age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
+                age = age and age[0] or self.get_age(user) or -1
+            else:
+                age = reported_age
+            self.logger.debug(f"Adding {user} to leavers (age={age})")
             cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
             con.commit()
         else:
