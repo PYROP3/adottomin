@@ -147,7 +147,7 @@ class age_handler:
     async def do_ban(self, channel, user, reason=REASON_MINOR, tally=True):
         try:
             await channel.guild.ban(user, reason=reason.capitalize())
-            await channel.send(f"User {user.mention} banned | {reason.capitalize()}")
+            await channel.send(f"{user.mention} was banned cuz {reason}")
             if tally:
                 await self.do_tally()
         except discord.NotFound:
@@ -159,7 +159,7 @@ class age_handler:
     async def do_kick(self, channel, user, reason=REASON_TIMEOUT):
         try:
             await channel.guild.kick(user, reason=reason.capitalize())
-            await channel.send(f"User {user.mention} kicked | {reason.capitalize()}")
+            await channel.send(f"{user.mention} was kicked cuz {reason}")
         except discord.NotFound:
             self.logger.debug(f"User id {user} already left!")
         except:
