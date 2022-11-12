@@ -759,12 +759,12 @@ class database:
         cur = con.cursor()
         _lj = self._last_join(user, cur)
         _ll = self._last_leave(user, cur)
-        if not _lj or (_ll and _ll > _lj):
-            self.logger.debug(f"[register_joiner] Inserting user {user}/{age}/{force_update}")
-            cur.execute("INSERT INTO joiners VALUES (?, ?, ?)", [user, age, now])
-        elif force_update: # If we get an updated age
+        if _lj and force_update: # If we get an updated age
             self.logger.debug(f"[register_joiner] Updating age for {user}/{age}/{force_update}")
             cur.execute("UPDATE joiners SET age=:age WHERE user=:user AND created_at=:created_at", {"user": user, "age": age, "created_at": _lj})
+        elif not _lj or (_ll and _ll > _lj):
+            self.logger.debug(f"[register_joiner] Inserting user {user}/{age}/{force_update}")
+            cur.execute("INSERT INTO joiners VALUES (?, ?, ?)", [user, age, now])
         else:
             self.logger.debug(f"[register_joiner] Ignoring user {user}/{age}/{force_update}")
         con.commit()
