@@ -8,6 +8,12 @@ import bot_utils
 
 logger = botlogger.get_logger(__name__)
 
+async def _silent_reply(interaction: discord.Interaction):
+    try:
+        await interaction.response.send_message()
+    except discord.errors.HTTPException:
+        pass # Silently ignore
+
 class RPSGameBase(discord.ui.View):
     def __init__(self, tag: str, interaction: discord.Interaction, opponent: discord.Member, rules: typing.Dict[enum.Enum, typing.Dict[enum.Enum, str]]):
         super().__init__()
@@ -35,40 +41,44 @@ class RPSGameBase(discord.ui.View):
     def _message_choices(self, winning: enum.Enum, losing: enum.Enum):
         return f"{self._ch(winning)} {self.rules[winning][losing]} {self._ch(losing)}"
 
-    def _message_game_end(self):
+    def _message_game_end(self, winning_choice, losing_choice):
+        _opponent = "I" if self.opponent.bot else self.opponent.mention
+        _winner, _loser = (self.creator.mention, _opponent) if winning_choice == self.choices[self.creator.id] else (_opponent, self.creator.mention)
+        _preamble = "" if self.opponent.bot else f"Hey {_loser}, "
+        return f"{_preamble}{self._message_choices(winning_choice, losing_choice)}, so {_winner} win{'' if _winner == 'I' else 's'}!~"
+
+    async def _handle_game_over(self):
         cr = self.choices[self.creator.id]
         op = self.choices[self.opponent.id]
         if op == cr:
-            return f"Both players chose {self._ch(op)}, so it's a tie!~"
-        _opponent = "I" if self.opponent.bot else self.opponent.mention
+            return f"Both {self.creator.mention} and {self.opponent.mention} chose {self._ch(op)}, so it's a tie!~"
         winning_choice, losing_choice = (cr, op) if op in self.rules[cr] else (op, cr)
-        _winner = self.creator.mention if winning_choice == cr else _opponent
-        return f"{self._message_choices(winning_choice, losing_choice)}, so {_winner} win{'' if _winner == 'I' else 's'}!~"
 
-    async def _handle_game_over(self):
+        _styles = {winning_choice: discord.enums.ButtonStyle.green, losing_choice: discord.enums.ButtonStyle.red}
         for button in self.buttons:
             button.disabled = True
+            button.style = button.choice in _styles and _styles[button.choice] or discord.enums.ButtonStyle.gray
 
-        await self.interaction.edit_original_response(content=self._message_game_end(), view=self)
+        await self.interaction.edit_original_response(content=self._message_game_end(winning_choice, losing_choice), view=self)
 
     async def _on_button_callback(self, choice: enum.Enum, interaction: discord.Interaction):
         if interaction.user.id not in self.choices and self.opponent:
             await interaction.response.send_message(content=f'You\'re not playing, silly~', ephemeral=True)
             return
 
-        if not self.opponent:
+        if not self.opponent and interaction.user.id != self.creator.id:
             self.opponent = interaction.user
 
         if self.choices[interaction.user.id]:
             await interaction.response.send_message(content=f'You already chose an option, silly~', ephemeral=True)
             return
 
-        await interaction.response.send_message(content=f'Got it~', ephemeral=True)
+        await _silent_reply(interaction)
 
         self.choices[interaction.user.id] = choice
 
         # logger.debug(f"[RockPaperScissors] self.choices={self.choices}")
-        if None not in [self.choices[k] for k in self.choices]: # Both chose
+        if len(self.choices) > 1 and None not in [self.choices[k] for k in self.choices]: # Both chose
             await self._handle_game_over()
 
 class RPSButtonBase(discord.ui.Button):
