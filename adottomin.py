@@ -17,6 +17,7 @@ import botlogger
 import bot_utils
 import copypasta_utils
 import db
+import games
 import graphlytics
 import kinks
 import memes
@@ -1292,6 +1293,7 @@ async def nut(interaction: discord.Interaction):
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
+bot.tree.add_command(games.Game(utils, bot))
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):
