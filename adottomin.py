@@ -748,22 +748,6 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
 
     await utils.safe_send(interaction, content=content, file=meme_file, is_followup=True)
 
-@bot.tree.command(description='Get analytics data for new users')
-@discord.app_commands.describe(range='Max days to fetch')
-async def report(interaction: discord.Interaction, range: typing.Optional[int] = 7):
-    await utils.safe_defer(interaction)
-
-    log_info(interaction, f"{interaction.user} requested report")
-    if not await utils.ensure_divine(interaction): return
-
-    report_name = graphlytics.generate_new_user_graph(range)
-    log_debug(interaction, f"report_name={report_name}")
-    report_file = discord.File(report_name, filename=f"user_report.png")
-
-    await utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
-
-    os.remove(report_name)
-
 @bot.tree.command(description='Warn a user for bad behavior, auto bans if there are too many strikes')
 @discord.app_commands.describe(user='User to warn', reason='Why are they being warned')
 async def strike(interaction: discord.Interaction, user: discord.Member, reason: str):
@@ -1294,6 +1278,7 @@ async def nut(interaction: discord.Interaction):
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
+bot.tree.add_command(graphlytics.Analytics(utils))
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):

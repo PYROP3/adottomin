@@ -1,15 +1,22 @@
 import datetime
+import discord
 import country_converter as coco
 import geopandas as gpd
+import os
 import random
 import sqlite3
 import string
+import typing
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import db
 import botlogger
+import bot_utils
+import kinks
+
+logger = botlogger.get_logger(__name__)
 
 string_len = 20
 
@@ -30,7 +37,6 @@ cmaps = [   'viridis', 'plasma', 'inferno', 'magma', 'cividis',
             'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
             'gist_rainbow', 'rainbow', 'jet', 'turbo', 'nipy_spectral',
             'gist_ncar']
-            
 
 conditionals = {
     '18-19': 'WHERE age = 1005699733353922611 OR age BETWEEN 18 AND 19',
@@ -57,103 +63,6 @@ neg_colors = {
     'minor': 'darkred',
     'unknown': 'grey'
 }
-
-def _get_label(age):
-    if age > 100: return "tags"
-    if age > 17: return "adult"
-    if age > 0: return "minor"
-    return "unknown"
-
-def _get_daily(parsed, date):
-    return len(parsed[date]["tags"]) + len(parsed[date]["adult"]) + len(parsed[date]["minor"]) + len(parsed[date]["unknown"])
-
-def generate_new_user_graph(time_range=None):
-    today = datetime.datetime.today()
-    min_date = datetime.datetime.min if time_range is None else today - datetime.timedelta(days=time_range)
-    min_date_str = datetime.datetime.strftime(min_date, '%Y-%m-%d')
-
-    con = sqlite3.connect(db.member_analytics_db_file)
-    cur = con.cursor()
-    joiners_data = {x[1]: x[0] for x in cur.execute(f'''
-        SELECT
-            count(*) as amount, 
-            CASE
-                WHEN age = 1005699733353922611 OR age BETWEEN 18 AND 19 THEN "18-19"
-                WHEN age = 1005699809270833202 OR age BETWEEN 20 AND 24 THEN "20-24"
-                WHEN age = 1005699867873660979 OR age BETWEEN 25 AND 29 THEN "25-29"
-                WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
-                WHEN age > 0 AND age < 18 THEN "minor"
-                ELSE "unknown"
-            END || '-' || date(substr(created_at, 1, 10)) AS tag
-        FROM joiners 
-        WHERE date(substr(created_at, 1, 10)) > date('{min_date_str}')
-        GROUP BY tag''').fetchall()}
-    leavers_data = {x[1]: x[0] for x in cur.execute(f'''
-        SELECT
-            count(*) as amount, 
-            CASE
-                WHEN age = 1005699733353922611 OR age BETWEEN 18 AND 19 THEN "18-19"
-                WHEN age = 1005699809270833202 OR age BETWEEN 20 AND 24 THEN "20-24"
-                WHEN age = 1005699867873660979 OR age BETWEEN 25 AND 29 THEN "25-29"
-                WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
-                WHEN age > 0 AND age < 18 THEN "minor"
-                ELSE "unknown"
-            END || '-' || date(substr(created_at, 1, 10)) AS tag
-        FROM leavers 
-        WHERE date(substr(created_at, 1, 10)) > date('{min_date_str}')
-        GROUP BY tag''').fetchall()}
-    con.close()
-    
-    logger = botlogger.get_logger(__name__)
-    logger.debug(f"[GRAPHLYTICS] Got {len(joiners_data)}/{len(leavers_data)} datapoints (expected max {time_range * len(conditionals)})")
-
-    day_count = (today - min_date).days + 1
-    i = 0
-    joiners_split = {x: [] for x in conditionals}
-    leavers_split = {x: [] for x in conditionals}
-    for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
-        for tag in conditionals:
-            key = f"{tag}-{datetime.datetime.strftime(single_date, '%Y-%m-%d')}"
-            # print(key)
-            joiners_split[tag] += [key in joiners_data and joiners_data[key] or 0]
-            leavers_split[tag] += [key in leavers_data and leavers_data[key] or 0]
-        i += 1
-
-    joiners_split = {k: np.array(joiners_split[k]) for k in joiners_split}
-    leavers_split = {k: -1 * np.array(leavers_split[k]) for k in leavers_split}
-
-    fig, ax = plt.subplots()
-    width = 0.75
-    xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))]
-
-    bottoms = np.zeros(day_count)
-    for key in joiners_split:
-        ax.bar(xaxis, joiners_split[key], width, bottom=bottoms, label=key, color=colors[key])
-        bottoms += joiners_split[key]
-
-    bottoms = np.zeros(day_count)
-    for key in leavers_split:
-        ax.bar(xaxis, leavers_split[key], width, bottom=bottoms, label=f"{key} quit", color=neg_colors[key])
-        bottoms += leavers_split[key]
-    ax.set_ylabel('Users')
-    ax.set_title('Daily users gained/lost')
-    plt.xticks(rotation=90)
-    fig.set_size_inches(15, 10)
-    ax.legend()
-
-    name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
-    plt.savefig(name)
-    return name
-
-def _fib(until):
-    res = [0, 1]
-    while res[-1] < until:
-        res += [res[-1] + res[-2]]
-    if len(res) > 2:
-        del(res[1]) # remove extra copy of 1 (make sure we keep at least 1 - edge case)
-    if res[-1] != until:
-        res += [until] # make sure we have the max value
-    return res
 
 def generate_world_heatmap(cmap: str = 'gist_ncar'):
     if cmap not in cmaps: return None
@@ -221,3 +130,338 @@ def generate_world_heatmap(cmap: str = 'gist_ncar'):
     name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
     plt.savefig(name)
     return name
+
+@discord.app_commands.guild_only()
+class Analytics(discord.app_commands.Group):
+    def __init__(self, utils: bot_utils.utils):
+        super().__init__()
+        self.utils = utils
+        self.generator = AnalyticsGenerator()
+
+    async def _handle_internal(self, interaction: discord.Interaction, ensure: typing.Callable, generator: typing.Callable, *gen_args):
+        await self.utils.safe_defer(interaction)
+
+        if not await ensure(interaction): return
+
+        report_name = generator(*gen_args)
+        logger.debug(f"report_name={report_name}")
+        report_file = discord.File(report_name, filename=f"user_report.png")
+
+        await self.utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
+
+        os.remove(report_name)
+
+    @discord.app_commands.command(description='Get analytics data for new users')
+    @discord.app_commands.describe(range='Max days to fetch')
+    async def joiners_and_leavers(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
+        logger.info(f"{interaction.user} requested joiners_and_leavers")
+        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_new_user_graph, range)
+
+    @discord.app_commands.command(description='Get analytics data for user activity')
+    @discord.app_commands.describe(range='Max days to fetch')
+    async def active_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
+        logger.info(f"{interaction.user} requested active_users")
+        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_active_users_graph, range)
+
+    @discord.app_commands.command(description='Get analytics data for commands activity')
+    @discord.app_commands.describe(range='Max days to fetch')
+    async def command_usage(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
+        logger.info(f"{interaction.user} requested command_usage")
+        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_distinct_commands_graph, range)
+
+    @discord.app_commands.command(description='Get analytics data for command user activity')
+    @discord.app_commands.describe(range='Max days to fetch')
+    async def command_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
+        logger.info(f"{interaction.user} requested command_usage")
+        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_command_users_graph, range)
+
+class AnalyticsGenerator():
+    def _min_date(self, time_range: int):
+        today = datetime.datetime.today()
+        min_date = datetime.datetime.min if time_range is None else today - datetime.timedelta(days=time_range)
+        min_date_str = datetime.datetime.strftime(min_date, '%Y-%m-%d')
+        return today, min_date, min_date_str
+
+    def generate_new_user_graph(self, time_range: int=None):
+        today, min_date, min_date_str = self._min_date(time_range)
+
+        con = sqlite3.connect(db.member_analytics_db_file)
+        cur = con.cursor()
+        joiners_data = {x[1]: x[0] for x in cur.execute(f'''
+            SELECT
+                count(*) as amount, 
+                CASE
+                    WHEN age = 1005699733353922611 OR age BETWEEN 18 AND 19 THEN "18-19"
+                    WHEN age = 1005699809270833202 OR age BETWEEN 20 AND 24 THEN "20-24"
+                    WHEN age = 1005699867873660979 OR age BETWEEN 25 AND 29 THEN "25-29"
+                    WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
+                    WHEN age > 0 AND age < 18 THEN "minor"
+                    ELSE "unknown"
+                END || '-' || date(substr(created_at, 1, 10)) AS tag
+            FROM joiners 
+            WHERE date(substr(created_at, 1, 10)) > date('{min_date_str}')
+            GROUP BY tag''').fetchall()}
+        leavers_data = {x[1]: x[0] for x in cur.execute(f'''
+            SELECT
+                count(*) as amount, 
+                CASE
+                    WHEN age = 1005699733353922611 OR age BETWEEN 18 AND 19 THEN "18-19"
+                    WHEN age = 1005699809270833202 OR age BETWEEN 20 AND 24 THEN "20-24"
+                    WHEN age = 1005699867873660979 OR age BETWEEN 25 AND 29 THEN "25-29"
+                    WHEN age = 1005700845159063552 OR age >= 30 THEN "30+"
+                    WHEN age > 0 AND age < 18 THEN "minor"
+                    ELSE "unknown"
+                END || '-' || date(substr(created_at, 1, 10)) AS tag
+            FROM leavers 
+            WHERE date(substr(created_at, 1, 10)) > date('{min_date_str}')
+            GROUP BY tag''').fetchall()}
+        con.close()
+        
+        logger = botlogger.get_logger(__name__)
+        logger.debug(f"[GRAPHLYTICS] Got {len(joiners_data)}/{len(leavers_data)} datapoints (expected max {time_range * len(conditionals)})")
+
+        day_count = (today - min_date).days + 1 # FIXME this '+ 1' might be causing first value = 0?
+        i = 0
+        joiners_split = {x: [] for x in conditionals}
+        leavers_split = {x: [] for x in conditionals}
+        for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+            for tag in conditionals:
+                key = f"{tag}-{datetime.datetime.strftime(single_date, '%Y-%m-%d')}"
+                # print(key)
+                joiners_split[tag] += [key in joiners_data and joiners_data[key] or 0]
+                leavers_split[tag] += [key in leavers_data and leavers_data[key] or 0]
+            i += 1
+
+        joiners_split = {k: np.array(joiners_split[k][1:]) for k in joiners_split} # FIXME first value is always 0
+        leavers_split = {k: -1 * np.array(leavers_split[k][1:]) for k in leavers_split} # FIXME first value is always 0
+
+        fig, ax = plt.subplots()
+        width = 0.75
+        xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))][1:] # FIXME first value is always 0
+
+        bottoms = np.zeros(day_count - 1) # FIXME first value is always 0
+        for key in joiners_split:
+            ax.bar(xaxis, joiners_split[key], width, bottom=bottoms, label=key, color=colors[key])
+            bottoms += joiners_split[key]
+
+        bottoms = np.zeros(day_count - 1) # FIXME first value is always 0
+        for key in leavers_split:
+            ax.bar(xaxis, leavers_split[key], width, bottom=bottoms, label=f"{key} quit", color=neg_colors[key])
+            bottoms += leavers_split[key]
+        ax.set_ylabel('Users')
+        ax.set_title('Daily users gained/lost')
+        plt.xticks(rotation=90)
+        fig.set_size_inches(15, 10)
+        ax.legend()
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        plt.savefig(name)
+        return name
+
+    def generate_active_users_graph(self, time_range=None):
+        today, min_date, min_date_str = self._min_date(time_range)
+
+        con = sqlite3.connect(db.activity_db_file)
+        cur = con.cursor()
+        raw_activity_data = {line[1]: line[0] for line in cur.execute(f"""
+            SELECT
+                count(distinct user) as "active_members",
+                date(substr(date, 1, 10)) as "created_at"
+            FROM messages 
+            WHERE date(substr(date, 1, 10)) > date('{min_date_str}')
+            GROUP BY 
+                date(substr(date, 1, 10))
+            ORDER BY
+                created_at DESC
+            """).fetchall()}
+        con.close()
+        
+        logger.debug(f"[GRAPHLYTICS] Got {len(raw_activity_data)} datapoints (expected max {time_range})")
+
+        day_count = (today - min_date).days + 1 # FIXME this '+ 1' might be causing first value = 0?
+        activity_data = []
+        for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+            key = datetime.datetime.strftime(single_date, '%Y-%m-%d')
+            activity_data += [key in raw_activity_data and raw_activity_data[key] or 0]
+
+        fig, ax = plt.subplots()
+        xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))][1:] # FIXME first value is always 0
+        activity_data = activity_data[1:] # FIXME first value is always 0
+
+        ax.plot(xaxis, activity_data)
+        ax.set_ylabel('Users')
+        ax.set_title('Daily active users')
+        plt.xticks(rotation=90)
+        fig.set_size_inches(15, 10)
+        ax.legend()
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        plt.savefig(name)
+        return name
+
+    def generate_distinct_commands_graph(self, time_range=None):
+        today, min_date, min_date_str = self._min_date(time_range)
+
+        con = sqlite3.connect(db.cmds_analytics_db_file)
+        cur = con.cursor()
+        raw_data = {x[0]: x[1] for x in cur.execute(f'''
+            SELECT 
+                command || '@' || date(substr(created_at, 1, 10)) as tag,
+                count(*) as "issued_commands"
+            FROM commands 
+            WHERE failed=FALSE AND date(substr(created_at, 1, 10)) > date('{min_date_str}')
+            GROUP BY 
+                date(substr(created_at, 1, 10)),
+                command
+            ORDER BY 
+				date(substr(created_at, 1, 10))''').fetchall()}
+        con.close()
+
+        """
+        raw_data = {
+            'cmd_1@date_1': amount1,
+            'cmd_2@date_1': amount2,
+            'cmd_1@date_2': amount3,
+            'cmd_2@date_3': amount4,
+            ...
+        }
+        """
+        
+        logger = botlogger.get_logger(__name__)
+        logger.debug(f"[GRAPHLYTICS] Got {len(raw_data)} datapoints")
+
+        day_count = (today - min_date).days + 1 # FIXME this '+ 1' might be causing first value = 0?
+        i = 0
+        data_split = {}
+        for tag in raw_data:
+            tag_cmd, tag_date = tag.split('@')
+            if tag_cmd not in data_split:
+                data_split[tag_cmd] = {}
+            data_split[tag_cmd][tag_date] = raw_data[tag]
+        
+        """
+        data_split = {
+            'cmd_1': {
+                'date_1': amount1,
+                'date_2': amount2,
+                ...
+            },
+            'cmd_2': {
+                'date_1': amount3,
+                'date_3': amount4,
+                ...
+            },
+            ...
+        }
+        """
+
+        data_filled = {}
+        for cmd in data_split:
+            data_filled[cmd] = []
+            for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+                date_str = datetime.datetime.strftime(single_date, '%Y-%m-%d')
+                data_filled[cmd] += [date_str in data_split[cmd] and data_split[cmd][date_str] or 0]
+        
+        """
+        data_filled = {
+            'cmd_1': [amount1, amount2, 0, ...],
+            'cmd_2': [amount3, 0, amount4, ...],
+            ...
+        }
+        """
+
+        # Merge kink commands
+        # TODO maybe generate this automatically from the bot's command tree?
+        merge_rules = {
+            'kink': [kinks.safe_name(cat) for cat in kinks.kinklist]
+        }
+        data_cleaned = {}
+        # logger.debug(f"[generate_distinct_commands_graph] Cleaning {data_filled}")
+        # logger.debug(f"[generate_distinct_commands_graph] Merge rules = {merge_rules}")
+        for cmd in data_filled:
+            merged = False
+            for rule in merge_rules:
+                if cmd in merge_rules[rule]:
+                    # logger.debug(f"[generate_distinct_commands_graph] Found {cmd} as mergeable for {rule}")
+                    if rule not in data_cleaned:
+                        data_cleaned[rule] = np.zeros(day_count - 1) # FIXME first value is always 0
+                    data_cleaned[rule] += np.array(data_filled[cmd][1:]) # FIXME first value is always 0
+                    merged = True
+                    break
+            if not merged:
+                # logger.debug(f"[generate_distinct_commands_graph] Could not merge {cmd}")
+                if cmd not in data_cleaned:
+                    data_cleaned[cmd] = np.zeros(day_count - 1) # FIXME first value is always 0
+                data_cleaned[cmd] += np.array(data_filled[cmd][1:]) # FIXME first value is always 0
+
+        fig, ax = plt.subplots()
+        width = 0.75
+        xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))][1:] # FIXME first value is always 0
+
+        bottoms = np.zeros(day_count - 1) # FIXME first value is always 0
+        for cmd in data_cleaned:
+            ax.bar(xaxis, data_cleaned[cmd], width, bottom=bottoms, label=cmd)
+            bottoms += data_cleaned[cmd]
+
+        ax.set_ylabel('Uses')
+        ax.set_title('Daily command usage')
+        plt.xticks(rotation=90)
+        fig.set_size_inches(15, 10)
+
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], title='Line', loc='upper left')
+        # ax.legend()
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        plt.savefig(name)
+        return name
+
+    def generate_command_users_graph(self, time_range=None):
+        today, min_date, min_date_str = self._min_date(time_range)
+
+        con = sqlite3.connect(db.cmds_analytics_db_file)
+        cur = con.cursor()
+        raw_data = {x[0]: x[1] for x in cur.execute(f'''
+            SELECT 
+                date(substr(created_at, 1, 10)) as "created_at",
+                count(distinct user) as "distinct_users"
+            FROM commands 
+            WHERE failed=FALSE AND date(substr(created_at, 1, 10)) > date('{min_date_str}')
+            GROUP BY 
+                date(substr(created_at, 1, 10))
+            ORDER BY
+                created_at DESC''').fetchall()}
+        con.close()
+
+        """
+        raw_data = {
+            'date_1': amount1,
+            'date_1': amount2,
+            'date_2': amount3,
+            'date_3': amount4,
+            ...
+        }
+        """
+        
+        logger.debug(f"[GRAPHLYTICS] Got {len(raw_data)} datapoints (expected max {time_range})")
+
+        day_count = (today - min_date).days + 1 # FIXME this '+ 1' might be causing first value = 0?
+        activity_data = []
+        for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+            key = datetime.datetime.strftime(single_date, '%Y-%m-%d')
+            activity_data += [key in raw_data and raw_data[key] or 0]
+
+        fig, ax = plt.subplots()
+        xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))][1:] # FIXME first value is always 0
+        activity_data = activity_data[1:] # FIXME first value is always 0
+
+        ax.plot(xaxis, activity_data)
+        ax.set_ylabel('Users')
+        ax.set_title('Daily command users')
+        plt.xticks(rotation=90)
+        fig.set_size_inches(15, 10)
+        ax.legend()
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        plt.savefig(name)
+        return name

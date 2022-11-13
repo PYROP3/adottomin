@@ -35,6 +35,8 @@ class RPSGameBase(discord.ui.View):
         for button in self.buttons:
             self.add_item(button)
 
+        # TODO spawn a thread? and wait for game timeout
+
     def _ch(self, choice: enum.Enum):
         return f"{choice.value} {choice.name}"
 
