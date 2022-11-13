@@ -87,6 +87,7 @@ class age_handler:
             await self.kick_or_ban(msg.author, reason=REASON_TIMEOUT)
 
     async def kick_or_ban(self, member, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
+        self.sql.register_leaver(member.id, reported_age=age)
         channel = self.bot.get_channel(self.greeting_channel)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{channel}] {member} Will ban user (force={force_ban})")
@@ -101,7 +102,6 @@ class age_handler:
         greeting = self.sql.delete_entry(member.id)
         await self.try_delete_greeting(greeting, channel)
         self.sql.set_age(member.id, age, force=force_update_age)
-        self.sql.register_leaver(member.id, reported_age=age)
 
     async def try_delete_greeting(self, greeting, channel):
         if greeting is None: return
