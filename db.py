@@ -242,6 +242,7 @@ class database:
                     self.logger.error(f"[__init__] Error creating {db_file}")
         
         self.max_leniency = max_leniency
+        self.age_cache = {}
 
     def raw_sql(self, file, query):
         con = sqlite3.connect(file)
@@ -318,6 +319,10 @@ class database:
         except:
             pass
         con.close()
+
+    def cache_age(self, user, age):
+        self.logger.debug(f"[cache_age] caching age {age} / {user} for kick/ban")
+        self.age_cache[user] = age
 
     def set_age(self, user, age, force=False):
         con = sqlite3.connect(validations_db_file)
@@ -775,33 +780,38 @@ class database:
         _lj = self._last_join(user, cur)
         _ll = self._last_leave(user, cur)
         if _lj and force_update: # If we get an updated age
-            self.logger.debug(f"[register_joiner] Updating age for {user}/{age}/{force_update}")
+            self.logger.debug(f"[register_joiner] UPDATE age for {user}/{age}/{force_update}")
             cur.execute("UPDATE joiners SET age=:age WHERE user=:user AND created_at=:created_at", {"user": user, "age": age, "created_at": _lj})
         elif not _lj or (_ll and _ll > _lj):
-            self.logger.debug(f"[register_joiner] Inserting user {user}/{age}/{force_update}")
+            self.logger.debug(f"[register_joiner] INSERT user {user}/{age}/{force_update}")
             cur.execute("INSERT INTO joiners VALUES (?, ?, ?)", [user, age, now])
         else:
-            self.logger.debug(f"[register_joiner] Ignoring user {user}/{age}/{force_update}")
+            self.logger.debug(f"[register_joiner] IGNORE user {user}/{age}/{force_update}")
         con.commit()
         con.close()
 
-    def register_leaver(self, user, reported_age=None):
+    def register_leaver(self, user):
+        now = datetime.datetime.now()
         con = sqlite3.connect(member_analytics_db_file)
         cur = con.cursor()
         _lj = self._last_join(user, cur)
         _ll = self._last_leave(user, cur)
-        if not _ll or _ll < _lj: # If user never left or already left and rejoined
-            if reported_age is None:
-                age = cur.execute("SELECT age FROM joiners WHERE user = :id ORDER BY date(created_at) DESC LIMIT 1", {"id": user}).fetchone()
-                age = age and age[0] or self.get_age(user) or -1
-            else:
-                age = reported_age
-            self.logger.debug(f"Adding {user} to leavers (age={age})")
-            cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, datetime.datetime.now()])
+        self.logger.debug(f"[register_leaver] cache BEFORE GET {self.age_cache}")
+        cached_age = user in self.age_cache and self.age_cache[user]
+        self.logger.debug(f"[register_leaver] {user}/{cached_age} ll={_ll}, lj={_lj}")
+        if not _ll or _ll < _lj or cached_age: # If user never left or already left and rejoined
+            self.logger.debug(f"[register_leaver] {user}/{cached_age} IF")
+            age = cached_age or self.get_age(user) or -1
+            self.logger.debug(f"[register_leaver] INSERT {user} to leavers (age={age}) @ {now}")
+            cur.execute("INSERT INTO leavers VALUES (?, ?, ?)", [user, age, now])
             con.commit()
         else:
+            self.logger.debug(f"[register_leaver] IGNORE {user}/{cached_age} ELSE")
             self.logger.warning(f"User {user} already left and did not rejoin, not adding to leavers table")
         con.close()
+        self.logger.debug(f"[register_leaver] cache BEFORE DEL {self.age_cache}")
+        if user in self.age_cache: del(self.age_cache[user])
+        self.logger.debug(f"[register_leaver] cache AFTER DEL {self.age_cache}")
 
     def register_command(self, user, command, channel, args='', failed=False):
         self.logger.debug(f"Register command user={user}, command={command}, channel={channel}, args={args}, failed={failed}")

@@ -3,6 +3,7 @@ import re
 
 import botlogger
 import emoter
+import db
 
 em = emoter.Emoter()
 
@@ -23,7 +24,7 @@ AGE_MAX = 60
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql, greeting_channel, tally_channel, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql: db.database, greeting_channel, tally_channel, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
         self.greeting_channel = greeting_channel
@@ -87,7 +88,7 @@ class age_handler:
             await self.kick_or_ban(msg.author, reason=REASON_TIMEOUT)
 
     async def kick_or_ban(self, member, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
-        self.sql.register_leaver(member.id, reported_age=age)
+        self.sql.cache_age(member.id, age)
         channel = self.bot.get_channel(self.greeting_channel)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{channel}] {member} Will ban user (force={force_ban})")

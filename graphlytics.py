@@ -409,7 +409,7 @@ class AnalyticsGenerator():
         fig.set_size_inches(15, 10)
 
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles[::-1], labels[::-1], title='Line', loc='upper left')
+        ax.legend(handles[::-1], labels[::-1], title='Commands', loc='upper left')
         # ax.legend()
 
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
