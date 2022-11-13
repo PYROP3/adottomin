@@ -1,4 +1,5 @@
 import datetime
+import enum
 import os
 import sqlite3
 
@@ -43,6 +44,8 @@ member_analytics_version = 1
 member_analytics_db_file = _dbfile('member_analytics', member_analytics_version)
 cmds_analytics_version = 1
 cmds_analytics_db_file = _dbfile('cmds_analytics', cmds_analytics_version)
+once_alerts_version = 1
+once_alerts_db_file = _dbfile('once_alerts', once_alerts_version)
 
 sql_files = [
     validations_db_file,
@@ -60,8 +63,12 @@ sql_files = [
     kinks_visibility_db_file,
     kinks_flist_db_file,
     member_analytics_db_file,
-    cmds_analytics_db_file
+    cmds_analytics_db_file,
+    once_alerts_db_file
 ]
+
+class once_alerts(enum.Enum):
+    offline_pings=1
 
 schemas = {
     validations_db_file: ['''
@@ -205,6 +212,14 @@ schemas = {
                 args TEXT NOT NULL,
                 failed INTEGER NOT NULL,
                 created_at TIMESTAMP
+            );'''],
+    once_alerts_db_file: ['''
+            CREATE TABLE alerts (
+                user INTEGER NOT NULL,
+                alert TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user, alert, version)
             );'''],
 }
 
@@ -795,3 +810,21 @@ class database:
         cur.execute("INSERT INTO commands VALUES (?, ?, ?, ?, ?, ?)", [user, channel, command, args, 1 if failed else 0, datetime.datetime.now()])
         con.commit()
         con.close()
+    
+    def register_alert(self, user: int, alert: once_alerts):
+        try:
+            con = sqlite3.connect(once_alerts_db_file)
+            cur = con.cursor()
+            cur.execute("INSERT INTO alerts VALUES (?, ?, ?, ?)", [user, alert.name, alert.value, datetime.datetime.now()])
+            con.commit()
+            con.close()
+        except:
+            pass
+    
+    def is_alert_registered(self, user: int, alert: once_alerts):
+        con = sqlite3.connect(once_alerts_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT version FROM alerts WHERE user=:user AND alert=:alert AND version>=:version", {'user': user, "alert": alert.name, "version": alert.value}).fetchone()
+        con.commit()
+        con.close()
+        return not(res is None or len(res) == 0)

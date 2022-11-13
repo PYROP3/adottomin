@@ -217,7 +217,9 @@ class utils:
                 content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you{self._interaction_detail(msg.interaction)} in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
             else:
                 content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
-            content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
+            if not self.database.is_alert_registered(member.id, db.once_alerts.offline_pings):
+                content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
+                self.database.register_alert(member.id, db.once_alerts.offline_pings)
             await self._split_dm(content, member)
 
     def _interaction_detail(self, interaction: typing.Optional[discord.MessageInteraction]):
