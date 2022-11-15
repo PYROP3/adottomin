@@ -275,7 +275,6 @@ user_message_handlers = [
     utils.handle_invite_link,
     utils.handle_dm,
     utils.handle_dm_cmd,
-    utils.handle_chat_dm,
     utils.handle_failed_command,
     utils.handle_attachments,
     utils.handle_binary,
