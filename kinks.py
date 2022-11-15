@@ -47,7 +47,8 @@ kinklist = {
         'Lingerie':'Expresses an interest in the inclusion of lingerie in the sexual context of an RP, or an interest in characters wearing such.',
         'Masks':"The use of masks (surgical, BDSM, gas masks, etc), typically to conceal the wearer's identity, in an RP scene.",
         'Stockings':'Expresses an interest in the inclusion of stockings in the sexual context of an RP, or an interest in characters wearing such.',
-        'Uniform / costume':'Expresses an interest in the inclusion of uniforms or costumes in the sexual context of an RP, or an interest in characters wearing such.'
+        'Uniform / costume':'Expresses an interest in the inclusion of uniforms or costumes in the sexual context of an RP, or an interest in characters wearing such.',
+        'Skirts':'Expresses an interest in the inclusion of skirts in the sexual context of an RP, or an interest in characters wearing such.'
     },
     'Pairings':{
         'as Male':None,
