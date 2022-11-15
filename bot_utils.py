@@ -56,6 +56,8 @@ secretary_role_id = 1002385294152179743
 attachments_channel_ids = [1002078229168922785]
 attachment_save_location = "attachments"
 
+puppeteer_prog = re.compile(r"<@([0-9]+)>")
+
 def quote_each_line(msg):
     return "\n".join(f"> {line}" for line in msg.split('\n'))
 
@@ -198,7 +200,7 @@ class utils:
             # self.logger.debug(f"[_dm_user] [{msg}]")
             return await dm_chan.send(content=msg)
         except discord.Forbidden as e:
-            self.logger.info(f"Forbidden from sending message to user {user.id}")
+            self.logger.info(f"Forbidden from sending message to user {user.id}: {e}\n{traceback.format_exc()}")
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
@@ -284,6 +286,18 @@ class utils:
         if len(msg.content) == 0: return
         content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
+
+    async def handle_puppeteering(self, msg: discord.Message):
+        await self._enforce_dms(msg)
+        await self._enforce_admin_only(msg)
+        if len(msg.content) == 0: return
+        target_id = puppeteer_prog.search(msg.content)
+        if target_id is None: return
+        target = await self.bot.fetch_user(int(target_id.group(1)))
+        _crop = len(target_id.group(0)) + 1
+        content = msg.content[_crop:]
+        self.logger.info(f"Puppeteering message to {target_id.group(1)}/{target}: \"{content}\"")
+        await self._split_dm(content, target)
 
     async def handle_dm_cmd(self, msg: discord.Message):
         await self._enforce_dms(msg)

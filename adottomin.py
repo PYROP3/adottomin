@@ -278,7 +278,8 @@ user_message_handlers = [
     utils.handle_chat_dm,
     utils.handle_failed_command,
     utils.handle_attachments,
-    utils.handle_binary
+    utils.handle_binary,
+    utils.handle_puppeteering
 ]
 
 async def execute_handlers(msg, handlers):
