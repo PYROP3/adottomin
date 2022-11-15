@@ -293,6 +293,7 @@ class AnalyticsGenerator():
         ax.set_title('Daily active users')
         plt.xticks(rotation=90)
         fig.set_size_inches(15, 10)
+        ax.set_ylim(ymin=0)
         ax.legend()
 
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
