@@ -488,6 +488,173 @@ async def _silent_reply(interaction: discord.Interaction):
 def _similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
+class KinklistScrollableView(discord.ui.View):
+    def __init__(self, database: db.database, utils: bot_utils.utils, interaction: discord.Interaction, user: discord.Member):
+        super().__init__()
+        self.database = database
+        self.utils = utils
+        self.interaction = interaction
+        self.user = user
+        self.selected_categories = ["All"]
+        self.selected_ratings = ["All"]
+        self.position = 0 # TODO use buttons to scroll position
+
+        self.add_item(KinklistCategoryDropdown(self))
+        self.add_item(KinklistRatingDropdown(self))
+
+        # Query all data and keep it prepared
+        self.userdata = {}
+        for rat, dataset in self.database.iterate_kinks(self.user.id, [ratings.Favorite.value, ratings.Like.value, ratings.Okay.value, ratings.Maybe.value, ratings.No.value]):
+            if len(dataset) == 0: continue
+            self.userdata[rat] = {}
+            for _kink, _conditional, _category in dataset:
+                if _category not in self.userdata[rat]:
+                    self.userdata[rat][_category] = {}
+                if _kink not in self.userdata[rat][_category]:
+                    self.userdata[rat][_category][_kink] = []
+                self.userdata[rat][_category][_kink] += [_conditional]
+        # logger.debug(f"[__init__] userdata = {self.userdata}")
+
+    async def on_category_updates(self, selected_categories: typing.List[str], interaction: discord.Interaction):
+        self.selected_categories = selected_categories
+        await self.edit_original()
+        await _silent_reply(interaction)
+
+    async def on_rating_updates(self, selected_ratings: typing.List[str], interaction: discord.Interaction):
+        self.selected_ratings = selected_ratings
+        await self.edit_original()
+        await _silent_reply(interaction)
+
+    async def edit_original(self):
+        embed = self.render_kinks()
+        await self.interaction.edit_original_response(embed=embed, view=self)
+
+    async def validate_interaction(self, interaction: discord.Interaction):
+        valid = self.interaction.user.id == interaction.user.id
+        if not valid:
+            await self.utils.safe_send(interaction, content="This interaction is not yours, silly~")
+        return valid
+
+    def render_kinks(self):
+        embed = discord.Embed(
+            colour=random.choice(bot_utils.EMBED_COLORS)
+        )
+        
+        embed.set_footer(text=f'Created at: {datetime.datetime.utcnow()}')
+
+        logger.debug(f"[render_kinks] selected_ratings = {self.selected_ratings}")
+        logger.debug(f"[render_kinks] selected_categories = {self.selected_categories}")
+        
+        try:
+            icon_url = self.interaction.user.avatar.url
+        except Exception as e:
+            logger.warning(f"Exception while trying to handle icon thumbnail: {e}\n{traceback.format_exc()}")
+            icon_url = None
+
+        embed.set_author(name=f'{self.interaction.user}\'s kinklist', icon_url=icon_url)
+
+        hit = False
+        for rating in self.userdata:
+            if len(self.userdata[rating]) == 0: continue
+            if (rating not in self.selected_ratings) and ("All" not in self.selected_ratings): 
+                # logger.debug(f"[render_kinks] skip rating {rating}")
+                continue
+            entries = 0
+            content = ''
+            content_len = 0
+            filled = False
+            for cat in self.userdata[rating]:
+                if filled: break
+                if len(self.userdata[rating][cat]) == 0: continue
+                if (cat not in self.selected_categories) and ("All" not in self.selected_categories): 
+                    # logger.debug(f"[render_kinks] skip cat {cat}")
+                    continue
+                for kink in self.userdata[rating][cat]:
+                    if filled: break
+                    if len(self.userdata[rating][cat][kink]) == len(kink_splits[cat]):
+                        elem = f'`{kink}`'
+                        if entries > 0:
+                            elem = f', {elem}'
+                        len_elem = len(elem)
+                        if content_len + len_elem < 1019:
+                            entries += 1
+                            content += elem
+                            content_len += len_elem
+                        else:
+                            content += ', ...'
+                            filled = True
+                        continue
+
+                    for conditional in self.userdata[rating][cat][kink]:
+                        elem = f'`{kink} ({conditional})`'
+                        if entries > 0:
+                            elem = f', {elem}'
+                        len_elem = len(elem)
+                        if content_len + len_elem < 1019:
+                            entries += 1
+                            content += elem
+                            content_len += len_elem
+                        else:
+                            content += ', ...'
+                            filled = True
+            if len(content) > 0: # Prevent errors from empty fields (discord.errors.HTTPException: 400 Bad Request (error code: 50035): Invalid Form Body - In embeds.0.fields.3.value: This field is required) 
+                embed.add_field(name=f"{rating_emojis[ratings(rating)]} {self.utils.plural(ratings(rating).name, entries)}", value=content, inline=False)
+                hit = True
+
+        if not hit:
+            embed.add_field(name=f"No data?", value="I couldn't find any data matching those, chief... Choose something else and try again~", inline=False)
+
+        return embed
+
+class KinklistCategoryDropdown(discord.ui.Select):
+    def __init__(self, watcher: KinklistScrollableView):
+        self.watcher = watcher
+        self.selected = []
+        self.selected_all = True # TODO fix ALL
+        options = [discord.components.SelectOption(label=cat, default=True) for cat in kinklist]
+        logger.debug(f"There are {len(options)} options")
+        super().__init__(placeholder=f"Filter by category", min_values=1, max_values=len(options), options=options, disabled=False)
+
+    def _update_selected(self):
+        if "All" in self.values:
+            if self.selected_all: # All was already previously selected, remove it
+                self.values.remove("All")
+                self.selected_all = False
+            else: # All was just selected, remove all but it
+                self.values = ["All"]
+                self.selected_all = True
+        for opt in self.options:
+            opt.default = opt.label in self.values
+
+    async def callback(self, interaction: discord.Interaction):
+        if not await self.watcher.validate_interaction(interaction): return
+        self._update_selected()
+        await self.watcher.on_category_updates(self.values, interaction)
+
+class KinklistRatingDropdown(discord.ui.Select):
+    def __init__(self, watcher: KinklistScrollableView):
+        self.watcher = watcher
+        # self.selected_all = True
+        options = [discord.components.SelectOption(label="All", default=True)] + [discord.components.SelectOption(label=rat.name, emoji=rating_emojis[rat]) for rat in ratings if rat != ratings.Unknown]
+        super().__init__(placeholder=f"Filter by interest", min_values=1, max_values=len(options), options=options, disabled=False)
+
+    def _update_selected(self):
+        # if "All" in self.values:
+            # if self.selected_all: # All was already previously selected, remove it
+            #     self.values.remove("All")
+            #     self.selected_all = False
+            # else: # All was just selected, remove all but it
+                # self.values = ["All"] # AttributeError: can't set attribute 'values'
+                # self.selected_all = True
+        for opt in self.options:
+            opt.default = opt.label in self.values
+
+    async def callback(self, interaction: discord.Interaction):
+        if not await self.watcher.validate_interaction(interaction): return
+        self._update_selected()
+        aux = ["All"] if "All" in self.values else [ratings[v].value for v in self.values]
+        await self.watcher.on_rating_updates(aux, interaction)
+
 class KinkDropdown(discord.ui.Select):
     def __init__(self, category: str, watcher, selected=None, disabled=False, do_silent_reply=True):
         self.watcher = watcher
@@ -684,6 +851,27 @@ class Kinklist(discord.app_commands.Group):
             content = "Okay, your kinklist is now private and only you will be able to see it!"
 
         await self.utils.safe_send(interaction, content=content, ephemeral=True)
+    
+    @discord.app_commands.command(description='[Beta] Get someone\'s kink list', nsfw=True)
+    @discord.app_commands.describe(user='Whose list to get (gets yours by default)', public='Whether to let everyone see it or only you (if the list is not yours, it will be hidden anyway)')
+    async def showbeta(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]=None, public: typing.Optional[bool]=False):
+        user = user or interaction.user
+        logger.info(f"{interaction.user} requested kink list: {user}")
+
+        is_own = user.id == interaction.user.id
+
+        is_public = self.database.get_kinklist_visibility(user.id)
+
+        if not is_own and not is_public:
+            await self.utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private, you can ask them personally for it~", ephemeral=True)
+            return
+
+        if self.database.count_kinks(user.id, ratings.Unknown.value) == 0:
+            await self.utils.safe_send(interaction, content=f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}"), ephemeral=not (is_own and is_public and public))
+            return
+
+        view = KinklistScrollableView(self.database, self.utils, interaction, user)
+        await self.utils.safe_send(interaction, view=view, embed=view.render_kinks(), ephemeral=not (is_own and is_public and public))
 
     @discord.app_commands.command(description='Get someone\'s kink list', nsfw=True)
     @discord.app_commands.describe(user='Whose list to get (gets yours by default)')
@@ -698,22 +886,6 @@ class Kinklist(discord.app_commands.Group):
         if not is_own and not is_public:
             await self.utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private, you can ask them personally for it~", ephemeral=True)
             return
-
-        # data = self.database.get_kinks(user.id, ratings.Unknown.value)
-        # if len(data) == 0:
-        #     await self.utils.safe_send(interaction, content=f"I couldn't find anything about " + ("you" if is_own else f"{user.mention}"), ephemeral=not (is_own and is_public))
-        #     return
-
-        # aux = {rating.name: [] for rating in ratings}
-        # del(aux[ratings.Unknown.name])
-        # for kink in data:
-        #     rat = ratings(kink[4]).name
-        #     if len(aux[rat]) > 1 and aux[rat][-1] == '...': continue
-        #     elem = '`' + kink[1] + ("" if len(kink_splits[kink[3]]) == 1 else f" ({kink[2]})") + '`'
-        #     if len(", ".join(aux[rat])) + len(elem) < 1019:
-        #         aux[rat] += [elem]
-        #     else:
-        #         aux[rat] += ['...']
 
         kinks = {}
         for rat, dataset in self.database.iterate_kinks(user.id, [ratings.Favorite.value, ratings.Like.value, ratings.Okay.value, ratings.Maybe.value, ratings.No.value]):

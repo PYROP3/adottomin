@@ -712,6 +712,14 @@ class database:
         con.close()
         return res
 
+    def count_kinks(self, user, unknown):
+        con = sqlite3.connect(kinks_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT count(*) FROM kinks WHERE user=:user AND rating!=:unknown", {'user': user, 'unknown': unknown}).fetchone()
+        con.commit()
+        con.close()
+        return int(res[0])
+
     def iterate_kinks(self, user, ratings):
         con = sqlite3.connect(kinks_db_file)
         cur = con.cursor()
