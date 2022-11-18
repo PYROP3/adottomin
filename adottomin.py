@@ -246,7 +246,7 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
 
 async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
     if before is not None and after.display_name == before.display_name:
-        logger.debug(f"{after} did not change alias")
+        # logger.debug(f"{after} did not change alias")
         return
     old_aliases = utils.get_unique_aliases(after)
     if after.display_name in old_aliases: 
