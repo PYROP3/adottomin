@@ -328,8 +328,8 @@ async def on_message(msg: discord.Message):
         except Exception as e:
             logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
-    else:
-        logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
+    # else:
+    #     logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
 
 @bot.event
 async def on_member_join(member: discord.Member):
