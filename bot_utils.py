@@ -444,8 +444,13 @@ class utils:
         return f':flag_{country.lower()}:' if country != 'NULL' else ''
 
     async def safe_defer(self, interaction: discord.Interaction, ephemeral: bool=False, **kwargs):
-        await interaction.response.defer(ephemeral=ephemeral, **kwargs)
-        interaction.extras['deferred_as'] = ephemeral
+        try:
+            await interaction.response.defer(ephemeral=ephemeral, **kwargs)
+            interaction.extras['deferred_as'] = ephemeral
+            return True
+        except discord.errors.NotFound:
+            self.logger.warning(f"NotFound error while trying to defer interaction (ephemeral={ephemeral})")
+            return False
 
     async def safe_send(self, interaction: discord.Interaction, is_followup: bool=False, send_anyway: bool=False, **kwargs):
         try:
