@@ -54,6 +54,7 @@ divine_role_id = 1021892234829906043
 secretary_role_id = 1002385294152179743
 
 attachments_channel_ids = [1002078229168922785]
+# attachments_channel_ids = [471017843459358733]
 attachment_save_location = "attachments"
 
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
@@ -318,8 +319,14 @@ class utils:
             file_format = attachment.url.split('.')[-1]
             attachment_name = f"{msg.author.id}_{msg.channel.id}_{attachment.id}.{file_format}"
             self.logger.debug(f"Saving attachment as {attachment_name}")
-            await attachment.save(fp=f"{attachment_save_location}/{attachment_name}")
-            self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id)
+            filename = f"{attachment_save_location}/{attachment_name}"
+            await attachment.save(fp=filename)
+            subp = subprocess.run(["md5sum", filename], capture_output=True)
+            hash = 0
+            if subp.returncode != 0:
+                # hash = int(subp.stdout.decode('UTF-8').split()[0], 16)
+                hash = subp.stdout.decode('UTF-8').split()[0]
+            self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id, file_format, hash)
 
     async def handle_binary(self, msg: discord.Message):
         if len(msg.content) == 0: return

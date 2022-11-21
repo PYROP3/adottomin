@@ -32,7 +32,7 @@ nnn_2022_version = 1
 nnn_2022_db_file = _dbfile('nnn_2022', nnn_2022_version)
 nuts_version = 1
 nuts_db_file = _dbfile('nuts', nuts_version)
-attachments_version = 1
+attachments_version = 2
 attachments_db_file = _dbfile('attachments', attachments_version)
 kinks_version = 1
 kinks_db_file = _dbfile('kinks', kinks_version)
@@ -167,6 +167,8 @@ schemas = {
                 user int NOT NULL,
                 channel int,
                 attachment int NOT NULL,
+                format TEXT NOT NULL,
+                hash TEXT NOT NULL,
                 created_at TIMESTAMP
             );'''],
     kinks_db_file: ['''
@@ -682,11 +684,11 @@ class database:
         con.close()
         return total
     
-    def create_attachment(self, user, channel, attachment):
+    def create_attachment(self, user, channel, attachment, format, hash):
         try:
             con = sqlite3.connect(attachments_db_file)
             cur = con.cursor()
-            cur.execute("INSERT INTO attachments VALUES (?, ?, ?, ?)", [user, channel, attachment, datetime.datetime.now()])
+            cur.execute("INSERT INTO attachments VALUES (?, ?, ?, ?, ?, ?)", [user, channel, attachment, format, hash, datetime.datetime.now()])
             con.commit()
             con.close()
         except:
