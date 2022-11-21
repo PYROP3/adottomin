@@ -323,10 +323,7 @@ class utils:
             filename = f"{attachment_save_location}/{attachment_name}"
             await attachment.save(fp=filename)
             subp = subprocess.run(["md5sum", filename], capture_output=True)
-            hash = 0
-            if subp.returncode != 0:
-                # hash = int(subp.stdout.decode('UTF-8').split()[0], 16)
-                hash = subp.stdout.decode('UTF-8').split()[0]
+            hash = subp.stdout.decode('UTF-8').split()[0]
             hashes.add(hash)
             self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id, file_format, hash)
         if self.database.check_attachments_dejavu(hashes) > 0: # at least one image has already been seen before
