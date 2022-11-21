@@ -326,9 +326,9 @@ class utils:
             hash = subp.stdout.decode('UTF-8').split()[0]
             hashes.add(hash)
             self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id, file_format, hash)
-        if self.database.check_attachments_dejavu(hashes) > 0: # at least one image has already been seen before
-            self.logger.debug(f"Adding reaction since I've already seen at least 1 repeat")
-            await msg.add_reaction('👀')
+        # if self.database.check_attachments_dejavu(hashes) > 0: # at least one image has already been seen before
+        #     self.logger.debug(f"Adding reaction since I've already seen at least 1 repeat")
+        #     await msg.add_reaction('👀')
         
     async def handle_binary(self, msg: discord.Message):
         if len(msg.content) == 0: return
