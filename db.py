@@ -693,6 +693,17 @@ class database:
             con.close()
         except:
             pass
+    
+    def check_attachments_dejavu(self, hashes):
+        try:
+            con = sqlite3.connect(attachments_db_file)
+            cur = con.cursor()
+            data = cur.execute("SELECT COUNT(*) FROM attachments WHERE " + " OR ".join([f'hash="{h}"' for h in hashes])).fetchone()
+            con.commit()
+            con.close()
+            return int(data[0])
+        except:
+            return 0
 
     def create_or_update_kink(self, user, kink, conditional, category, rating):
         con = sqlite3.connect(kinks_db_file)

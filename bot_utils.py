@@ -314,6 +314,7 @@ class utils:
         # self.logger.debug(f"Attachments = {msg.attachments}")
         # self.logger.debug(f"Embeds = {msg.embeds}")
         if len(msg.attachments) == 0: return
+        hashes = set()
         for attachment in msg.attachments:
             self.logger.debug(f"Attachment type {attachment.content_type}: url = {attachment.url}")
             file_format = attachment.url.split('.')[-1]
@@ -326,8 +327,12 @@ class utils:
             if subp.returncode != 0:
                 # hash = int(subp.stdout.decode('UTF-8').split()[0], 16)
                 hash = subp.stdout.decode('UTF-8').split()[0]
+            hashes.add(hash)
             self.database.create_attachment(msg.author.id, msg.channel.id, attachment.id, file_format, hash)
-
+        if self.database.check_attachments_dejavu(hashes) > 0: # at least one image has already been seen before
+            self.logger.debug(f"Adding reaction since I've already seen at least 1 repeat")
+            await msg.add_reaction('👀')
+        
     async def handle_binary(self, msg: discord.Message):
         if len(msg.content) == 0: return
         if set(msg.content) != set(['0', '1', ' ']): return
