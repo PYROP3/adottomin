@@ -18,13 +18,14 @@ MSG_TRY_AGAIN = "Try again, {}"
 MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
 MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
+MSG_AGE_IN_DMS = f"{'{}'} told me their age in DMs and they're chill! :sunglasses:"
 
 AGE_MAX = 60
 
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql: db.database, greeting_channel, tally_channel, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql: db.database, greeting_channel: discord.TextChannel, tally_channel: discord.TextChannel, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
         self.greeting_channel = greeting_channel
@@ -74,6 +75,8 @@ class age_handler:
                     # embed = discord.Embed()
                     # embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
                     await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
+                    if msg.channel.is_private():
+                        await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention))
                     return
 
         if leniency > 0:
@@ -89,39 +92,37 @@ class age_handler:
 
     async def kick_or_ban(self, member, age=-1, force_ban=False, force_update_age=False, reason=REASON_MINOR):
         self.sql.cache_age(member.id, age)
-        channel = self.bot.get_channel(self.greeting_channel)
         if force_ban or self.sql.is_kicked(member.id):
-            self.logger.debug(f"[{channel}] {member} Will ban user (force={force_ban})")
-            await self.do_ban(channel, member, reason=reason)
+            self.logger.debug(f"[{self.greeting_channel}] {member} Will ban user (force={force_ban})")
+            await self.do_ban(member, reason=reason)
             self.sql.remove_kick(member.id)
 
         else:
-            self.logger.debug(f"[{channel}] {member} User was NOT previously kicked")
-            await self.do_kick(channel, member, reason=reason)
+            self.logger.debug(f"[{self.greeting_channel}] {member} User was NOT previously kicked")
+            await self.do_kick(member, reason=reason)
             self.sql.create_kick(member.id)
 
         greeting = self.sql.delete_entry(member.id)
-        await self.try_delete_greeting(greeting, channel)
+        await self.try_delete_greeting(greeting)
         self.sql.set_age(member.id, age, force=force_update_age)
 
-    async def try_delete_greeting(self, greeting, channel):
+    async def try_delete_greeting(self, greeting):
         if greeting is None: return
 
         if not DELETE_GREETINGS:
-            self.logger.debug(f"[{channel}] Will NOT delete greeting {greeting}")
+            self.logger.debug(f"[{self.greeting_channel}] Will NOT delete greeting {greeting}")
             return
 
         try:
-            channel = self.bot.get_channel(self.greeting_channel)
-            greeting_msg = await channel.fetch_message(greeting)
+            greeting_msg = await self.greeting_channel.fetch_message(greeting)
             await greeting_msg.delete()
 
         except discord.NotFound:
-            self.logger.debug(f"[{channel}] Greeting {greeting} already deleted")
+            self.logger.debug(f"[{self.greeting_channel}] Greeting {greeting} already deleted")
 
         except Exception as e:
-            self.logger.warning(f"[{channel}] failed to delete greeting {greeting}")
-            self.logger.debug(f"[{channel}] {e}")
+            self.logger.warning(f"[{self.greeting_channel}] failed to delete greeting {greeting}")
+            self.logger.debug(f"[{self.greeting_channel}] {e}")
 
     def is_valid_age(self, msg: str):
         return self.age_prog.search(msg) is not None
@@ -141,14 +142,14 @@ class age_handler:
     async def do_tally(self):
         if self.tally_channel is None: return
         try:
-            await self.bot.get_channel(self.tally_channel).send(f"x")
+            await self.tally_channel.send(f"x")
         except Exception as e:
             self.logger.error(f"Failed to tally! {e}")
 
-    async def do_ban(self, channel, user, reason=REASON_MINOR, tally=True):
+    async def do_ban(self, user, reason=REASON_MINOR, tally=True):
         try:
-            await channel.guild.ban(user, reason=reason.capitalize())
-            await channel.send(f"{user.mention} was banned cuz {reason}")
+            await self.greeting_channel.guild.ban(user, reason=reason.capitalize())
+            await self.greeting_channel.send(f"{user.mention} was banned cuz {reason}")
             if tally:
                 await self.do_tally()
         except discord.NotFound:
@@ -157,10 +158,10 @@ class age_handler:
             self.logger.error(f"Failed to ban user id {user}!")
             # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
 
-    async def do_kick(self, channel, user, reason=REASON_TIMEOUT):
+    async def do_kick(self, user, reason=REASON_TIMEOUT):
         try:
-            await channel.guild.kick(user, reason=reason.capitalize())
-            await channel.send(f"{user.mention} was kicked cuz {reason}")
+            await self.greeting_channel.guild.kick(user, reason=reason.capitalize())
+            await self.greeting_channel.send(f"{user.mention} was kicked cuz {reason}")
         except discord.NotFound:
             self.logger.debug(f"User id {user} already left!")
         except:

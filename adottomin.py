@@ -154,7 +154,7 @@ logger.info(f"Role IDs = {role_ids}")
 logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT)
-age_handler = age_handling.age_handler(bot, sql, channel_ids[0], tally_channel, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+age_handler = age_handling.age_handler(bot, sql, bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel), _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
 
 def is_raid_mode():
@@ -773,8 +773,7 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
         if len(reason) > 0:
             msg += f" Reason: {reason}"
         await utils.safe_send(interaction, content=msg)
-        channel = bot.get_channel(channel_ids[0])
-        await age_handler.do_ban(channel, user, reason=age_handling.REASON_WARNINGS, tally=False)
+        await age_handler.do_ban(user, reason=age_handling.REASON_WARNINGS, tally=False)
 
 @bot.tree.command(description='Check the user\'s previous strikes')
 @discord.app_commands.describe(user='User to check', all='Get all strikes (only gets active strikes by default)')
