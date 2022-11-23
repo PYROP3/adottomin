@@ -95,6 +95,7 @@ friends_role_ids = [
     1002676963485417592 # Tier 3
 ]
 nsfw_role_id = 1010670864758493215
+jail_role_id = 1044792796114075698
 
 game_channel_ids = [
     1006949968826863636,
@@ -1274,6 +1275,28 @@ async def nut(interaction: discord.Interaction):
     content = " ".join([random.choice(nut_emojis) for _ in range(total)])
 
     await utils.safe_send(interaction, content=content, send_anyway=True)
+
+@bot.tree.command(description='Send someone to horny jail')
+@discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
+async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
+    duration = 5
+    log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
+    if not await utils.ensure_secretary(interaction): return
+
+    if duration < 1: 
+        await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
+        return
+    
+    jail_role = interaction.guild.get_role(jail_role_id)
+    await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
+    await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} minutes~", send_anyway=True)
+
+    await asyncio.sleep(duration * 60)
+    
+    try:
+        await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
+    except Exception as e:
+        log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
