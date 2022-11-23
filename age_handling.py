@@ -25,11 +25,9 @@ AGE_MAX = 60
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql: db.database, greeting_channel: discord.TextChannel, tally_channel: discord.TextChannel, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql: db.database, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
-        self.greeting_channel = greeting_channel
-        self.tally_channel = tally_channel
         self.valid_role_ids = valid_role_ids
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
 
@@ -42,6 +40,10 @@ class age_handler:
         self.minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
         self.ignore_prog = re.compile(r"over 18")
+
+    def inject(self, greeting_channel: discord.TextChannel, tally_channel: discord.TextChannel):
+        self.greeting_channel = greeting_channel
+        self.tally_channel = tally_channel
 
     async def handle_age(self, msg: discord.Message):
         if len(msg.content) == 0: return
@@ -75,7 +77,8 @@ class age_handler:
                     # embed = discord.Embed()
                     # embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
                     await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
-                    if msg.channel.is_private():
+                    if isinstance(msg.channel, discord.DMChannel):
+                        self.logger.debug(f"Message sent in DMchannel")
                         await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention))
                     return
 

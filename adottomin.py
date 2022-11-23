@@ -154,7 +154,7 @@ logger.info(f"Role IDs = {role_ids}")
 logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT)
-age_handler = age_handling.age_handler(bot, sql, bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel), _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+age_handler = age_handling.age_handler(bot, sql, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
 
 def is_raid_mode():
@@ -199,6 +199,7 @@ async def on_ready():
     utils.inject_admin(bot.get_user(admin_id))
     guild = await bot.fetch_guild(GUILD_ID)
     utils.inject_guild(guild)
+    age_handler.inject(bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel))
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
