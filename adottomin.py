@@ -75,6 +75,7 @@ _ids = os.getenv('AGE_ROLE_IDS') or ""
 _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
+log_channel = int(os.getenv('LOG_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
@@ -155,8 +156,8 @@ logger.info(f"Role IDs = {role_ids}")
 logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT)
-age_handler = age_handling.age_handler(bot, sql, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
+age_handler = age_handling.age_handler(bot, sql, utils, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -200,7 +201,7 @@ async def on_ready():
     utils.inject_admin(bot.get_user(admin_id))
     guild = await bot.fetch_guild(GUILD_ID)
     utils.inject_guild(guild)
-    age_handler.inject(bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel))
+    age_handler.inject(bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel), bot.get_channel(log_channel))
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
@@ -1294,6 +1295,7 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
     await asyncio.sleep(duration * 60)
     
     try:
+        log_debug(interaction, f"Unjailing {user} after {duration} minutes")
         await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
     except Exception as e:
         log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")

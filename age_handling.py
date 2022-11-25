@@ -1,6 +1,8 @@
+import datetime
 import discord
 import re
 
+import bot_utils
 import botlogger
 import emoter
 import db
@@ -25,9 +27,10 @@ AGE_MAX = 60
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql: db.database, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql: db.database, utils: bot_utils.utils, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
+        self.utils = utils
         self.valid_role_ids = valid_role_ids
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
 
@@ -41,9 +44,22 @@ class age_handler:
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
         self.ignore_prog = re.compile(r"over 18")
 
-    def inject(self, greeting_channel: discord.TextChannel, tally_channel: discord.TextChannel):
+    def inject(self, greeting_channel: discord.TextChannel, tally_channel: discord.TextChannel, log_channel: discord.TextChannel):
         self.greeting_channel = greeting_channel
         self.tally_channel = tally_channel
+        self.log_channel = log_channel
+
+    async def generate_log_embed(self, isBan: bool, user: discord.Member, reason: str):
+        embed = discord.Embed(
+            colour=discord.Colour.red() if isBan else discord.Colour.yellow(),
+            timestamp=datetime.datetime.utcnow()
+        )
+        embed.add_field(name="User", value=user.mention, inline=True)
+        embed.add_field(name="Moderator", value=self.bot.user.mention, inline=True)
+        embed.add_field(name="Reason", value=reason, inline=True)
+        embed.set_footer(text=f'ID: {user.id}')
+        embed.set_author(name=f"{'Ban' if isBan else 'Kick'} | {user.name}", icon_url=user.avatar and user.avatar.url)
+        return embed
 
     async def handle_age(self, msg: discord.Message):
         if len(msg.content) == 0: return
@@ -97,13 +113,15 @@ class age_handler:
         self.sql.cache_age(member.id, age)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{self.greeting_channel}] {member} Will ban user (force={force_ban})")
-            await self.do_ban(member, reason=reason)
+            # await self.do_ban(member, reason=reason)
             self.sql.remove_kick(member.id)
+            await self.log_channel.send(embed=await self.generate_log_embed(True, member, f"{reason} ({age})"))
 
         else:
             self.logger.debug(f"[{self.greeting_channel}] {member} User was NOT previously kicked")
-            await self.do_kick(member, reason=reason)
+            # await self.do_kick(member, reason=reason)
             self.sql.create_kick(member.id)
+            await self.log_channel.send(embed=await self.generate_log_embed(False, member, reason))
 
         greeting = self.sql.delete_entry(member.id)
         await self.try_delete_greeting(greeting)

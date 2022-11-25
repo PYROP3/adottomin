@@ -7,6 +7,7 @@ import random
 import re
 import string
 import subprocess
+import time
 import traceback
 import typing
 
@@ -505,3 +506,6 @@ class utils:
             binary = binary//10
             i += 1
         return decimal  
+    
+    def timestamp(self, when: datetime=datetime.now()):
+        return f"<t:{int(time.mktime(when.timetuple()))}>"
