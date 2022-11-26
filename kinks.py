@@ -904,10 +904,11 @@ class Kinklist(discord.app_commands.Group):
             return
 
         embed = discord.Embed(
-            colour=random.choice(bot_utils.EMBED_COLORS)
+            colour=random.choice(bot_utils.EMBED_COLORS),
+            timestamp=datetime.datetime.now()
         )
         
-        embed.set_footer(text=f'Created at: {datetime.datetime.utcnow()}')
+        embed.set_footer(text=f'ID: {user.id()}')
         
         try:
             icon_url = user.avatar.url
