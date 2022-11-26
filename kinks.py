@@ -908,7 +908,7 @@ class Kinklist(discord.app_commands.Group):
             timestamp=datetime.datetime.now()
         )
         
-        embed.set_footer(text=f'ID: {user.id()}')
+        embed.set_footer(text=f'ID: {user.id}')
         
         try:
             icon_url = user.avatar.url
