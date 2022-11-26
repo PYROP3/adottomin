@@ -537,10 +537,11 @@ class KinklistScrollableView(discord.ui.View):
 
     def render_kinks(self):
         embed = discord.Embed(
-            colour=random.choice(bot_utils.EMBED_COLORS)
+            colour=random.choice(bot_utils.EMBED_COLORS),
+            timestamp=datetime.datetime.utcnow()
         )
         
-        embed.set_footer(text=f'Created at: {datetime.datetime.utcnow()}')
+        embed.set_footer(text=f'ID: {self.interaction.user.id}')
 
         logger.debug(f"[render_kinks] selected_ratings = {self.selected_ratings}")
         logger.debug(f"[render_kinks] selected_categories = {self.selected_categories}")
