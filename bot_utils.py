@@ -85,9 +85,15 @@ class utils:
         self._recreate_queues()
 
     async def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
+        if self.admin is None: 
+            self.logger.warning(f"Utils admin link is still not ready")
+            raise e()
         if msg.author.id != self.admin.id: raise e()
 
     async def _enforce_not_admin(self, msg, e: HandlerException=HandlerIgnoreException):
+        if self.admin is None: 
+            self.logger.warning(f"Utils admin link is still not ready")
+            raise e()
         if msg.author.id == self.admin.id: raise e()
 
     async def _enforce_dms(self, msg, e: HandlerException=HandlerIgnoreException):
