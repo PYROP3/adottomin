@@ -9,6 +9,7 @@ import re
 import traceback
 import types
 import typing
+import urllib.parse
 
 from regex import R
 
@@ -1299,6 +1300,17 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
         await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
     except Exception as e:
         log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")
+
+@bot.tree.command(description='When people can\'t be bothered to google stuff for themselves')
+@discord.app_commands.describe(user='Who to ping', query='What they asked for') #, duration='How long to jail them for, in minutes (default is 5)')
+async def lmgtfy(interaction: discord.Interaction, user: discord.Member, query: str): #, duration: typing.Optional[int]=5):
+    log_info(interaction, f"{interaction.user} is pinging {user} for query {query}")
+
+    safe_query = "https://letmegooglethat.com/?q=" + urllib.parse.quote_plus(query)
+    content = f"Here you go {user.mention}~\n{safe_query}"
+
+    # logger.debug(f"Content = '{content}'")
+    await utils.safe_send(interaction, content=content, send_anyway=True)
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
