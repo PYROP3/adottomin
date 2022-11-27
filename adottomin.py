@@ -462,7 +462,8 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 
                 pinEmbed = discord.Embed(
                     description=pin.content if len(pin.content) > 0 else None,
-                    colour=random.choice(bot_utils.EMBED_COLORS)
+                    colour=random.choice(bot_utils.EMBED_COLORS),
+                    timestamp=datetime.datetime.now()
                 )
 
                 attachments = pin.attachments
@@ -714,7 +715,8 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
     
     embed = discord.Embed(
         title=f"**{word_txt}**",
-        colour=random.choice(bot_utils.EMBED_COLORS)
+        colour=random.choice(bot_utils.EMBED_COLORS),
+        timestamp=datetime.datetime.now()
     )
 
     if meaning_txt is not None and len(meaning_txt) > 0:

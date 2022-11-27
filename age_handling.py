@@ -52,7 +52,7 @@ class age_handler:
     async def generate_log_embed(self, isBan: bool, user: discord.Member, reason: str):
         embed = discord.Embed(
             colour=discord.Colour.red() if isBan else discord.Colour.yellow(),
-            timestamp=datetime.datetime.utcnow()
+            timestamp=datetime.datetime.now()
         )
         embed.add_field(name="User", value=user.mention, inline=True)
         embed.add_field(name="Moderator", value=self.bot.user.mention, inline=True)
