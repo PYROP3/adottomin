@@ -1034,6 +1034,7 @@ class Kinklist(discord.app_commands.Group):
 
         if len(data) == 0:
             await self.utils.safe_send(interaction, content=f"I couldn't find any similarities between your lists...", is_followup=True, send_anyway=True)
+            return
 
         mat = np.zeros((5,5))
         for i, j, n in data:
