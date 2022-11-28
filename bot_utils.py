@@ -489,7 +489,10 @@ class utils:
                 if 'ephemeral' in kwargs and kwargs['ephemeral']:
                     self.logger.error(f"Not replying publicly to ephemeral")
                     return
-                kwargs['content'] = f"{interaction.user.mention} used `/{interaction.command.name}`\n{kwargs['content']}"
+                if 'content' in kwargs:
+                    kwargs['content'] = f"{interaction.user.mention} used `/{interaction.command.name}`\n{kwargs['content']}"
+                else:
+                    kwargs['content'] = f"{interaction.user.mention} used `/{interaction.command.name}`"
                 return await interaction.channel.send(**kwargs)
 
     def _iterate_dec(self, number:int):
