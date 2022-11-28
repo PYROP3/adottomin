@@ -1010,23 +1010,26 @@ class Kinklist(discord.app_commands.Group):
         
         con = sqlite3.connect(db.kinks_db_file)
         cur = con.cursor()
-        data = cur.execute("""
-        SELECT rating1, rating2, COUNT(*) FROM (
-            SELECT 
-                k2.kink||";"||k2.conditional||";"||k2.category AS tag, 
-                k1.rating AS rating1, 
-                k2.rating AS rating2, 
-            FROM kinks k1 
-            INNER JOIN kinks k2 
-            ON 
-                k1.kink == k2.kink AND 
-                k1.conditional == k2.conditional AND 
-                k1.category == k2.category 
-            WHERE 
-                k1.user = :user1 AND 
-                k2.user = :user2
-        ) GROUP BY rating1, rating2;
-        """, {"user1": interaction.user.id, "user2": user.id}).fetchall()
+        try:
+            data = cur.execute("""
+            SELECT rating1, rating2, COUNT(*) FROM (
+                SELECT 
+                    k2.kink||";"||k2.conditional||";"||k2.category AS tag, 
+                    k1.rating AS rating1, 
+                    k2.rating AS rating2, 
+                FROM kinks k1 
+                INNER JOIN kinks k2 
+                ON 
+                    k1.kink == k2.kink AND 
+                    k1.conditional == k2.conditional AND 
+                    k1.category == k2.category 
+                WHERE 
+                    k1.user = :user1 AND 
+                    k2.user = :user2
+            ) GROUP BY rating1, rating2;
+            """, {"user1": interaction.user.id, "user2": user.id}).fetchall()
+        except sqlite3.OperationalError:
+            data = []
         con.close()
 
         if len(data) == 0:
