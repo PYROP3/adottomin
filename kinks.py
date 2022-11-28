@@ -1016,7 +1016,7 @@ class Kinklist(discord.app_commands.Group):
                 SELECT 
                     k2.kink||";"||k2.conditional||";"||k2.category AS tag, 
                     k1.rating AS rating1, 
-                    k2.rating AS rating2, 
+                    k2.rating AS rating2
                 FROM kinks k1 
                 INNER JOIN kinks k2 
                 ON 
