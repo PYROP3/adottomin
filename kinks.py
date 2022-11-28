@@ -7,8 +7,14 @@ import bot_utils
 import typing
 import datetime
 import random
+import sqlite3
 import traceback
 import requests
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sn
+import string
+import os
 
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
@@ -982,6 +988,74 @@ class Kinklist(discord.app_commands.Group):
             content = "Ok, your list is still just as you left it~"
 
         await self.utils.safe_send(interaction, content=content, ephemeral=True)
+
+    @discord.app_commands.command(description='Calculate your kink compatibility matrix with someone else', nsfw=True)
+    @discord.app_commands.describe(user='Whose kinks to compare yours with')
+    async def matrix(self, interaction: discord.Interaction, user: discord.Member):
+        logger.info(f"Got kink compatibility matrix request from {interaction.user.id}: '{user}'")
+
+        if interaction.user.id == user.id:
+            await self.utils.safe_send(interaction, content=f"Try choosing someone other than yourself~", ephemeral=True)
+            return
+
+        if user.bot:
+            await self.utils.safe_send(interaction, content=f"That user is a bot~", ephemeral=True)
+            return
+
+        if not self.database.get_kinklist_visibility(user.id):
+            await self.utils.safe_send(interaction, content=f"{user.mention}'s kinklist is currently private~", ephemeral=True)
+            return
+
+        await self.utils.safe_defer(interaction)
+        
+        con = sqlite3.connect(db.kinks_db_file)
+        cur = con.cursor()
+        data = cur.execute("""
+        SELECT rating1, rating2, COUNT(*) FROM (
+            SELECT 
+                k2.kink||";"||k2.conditional||";"||k2.category AS tag, 
+                k1.rating AS rating1, 
+                k2.rating AS rating2, 
+            FROM kinks k1 
+            INNER JOIN kinks k2 
+            ON 
+                k1.kink == k2.kink AND 
+                k1.conditional == k2.conditional AND 
+                k1.category == k2.category 
+            WHERE 
+                k1.user = :user1 AND 
+                k2.user = :user2
+        ) GROUP BY rating1, rating2;
+        """, {"user1": interaction.user.id, "user2": user.id}).fetchall()
+        con.close()
+
+        if len(data) == 0:
+            await self.utils.safe_send(interaction, content=f"I couldn't find any similarities between your lists...", is_followup=True, send_anyway=True)
+
+        mat = np.zeros((5,5))
+        for i, j, n in data:
+            mat[i-1][j-1] = n
+
+        plt.figure(figsize = (10,8))
+        labels = ['💖', '😊', '🙂', '😕', '💀']
+        fig = sn.heatmap(mat, annot=True, vmin=0, cmap=sn.color_palette("plasma", as_cmap=True), xticklabels=labels, yticklabels=labels)
+        for tick in fig.get_xticklabels():
+            tick.set_fontname("Segoe UI Emoji")
+            tick.set_fontsize(30)
+        for tick in fig.get_yticklabels():
+            tick.set_fontname("Segoe UI Emoji")
+            tick.set_fontsize(30)
+            tick.set_rotation(0)
+        fig.invert_yaxis()
+        sn.set(font_scale=2)
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=30)) + ".png"
+        plt.savefig(name)
+        report_file = discord.File(name, filename=f"user_matrix.png")
+
+        await self.utils.safe_send(interaction, file=report_file, is_followup=True, send_anyway=True)
+
+        os.remove(name)
 
     @discord.app_commands.command(description='Calculate your kink compatibility with someone else', nsfw=True)
     @discord.app_commands.describe(user='Whose kinks to compare yours with')
