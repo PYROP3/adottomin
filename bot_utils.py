@@ -208,7 +208,7 @@ class utils:
             # self.logger.debug(f"[_dm_user] [{msg}]")
             return await dm_chan.send(content=msg)
         except discord.Forbidden as e:
-            self.logger.info(f"Forbidden from sending message to user {user.id}: {e}\n{traceback.format_exc()}")
+            self.logger.info(f"Forbidden from sending message to user {user.id}: {e}")
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
 
@@ -292,7 +292,7 @@ class utils:
         await self._enforce_dms(msg)
         await self._enforce_not_admin(msg)
         if len(msg.content) == 0: return
-        content = f"{msg.author.mention} ({msg.author}) messaged me:\n{quote_each_line(msg.content)}\n"
+        content = f"{msg.author.mention} ({msg.author.id}) messaged me:\n{quote_each_line(msg.content)}\n"
         await self._split_dm(content, self.admin)
 
     async def handle_puppeteering(self, msg: discord.Message):

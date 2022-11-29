@@ -1051,7 +1051,7 @@ class Kinklist(discord.app_commands.Group):
             tick.set_fontsize(30)
             tick.set_rotation(0)
         fig.invert_yaxis()
-        fig.set_title(f'Kink similarities between {interaction.user} and {user}')
+        fig.set_title(f'Kink similarities between {interaction.user}\nand {user}')
         sn.set(font_scale=2)
 
         name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=30)) + ".png"
