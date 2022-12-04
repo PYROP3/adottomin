@@ -1098,8 +1098,8 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Get the daily top 10 rankings')
-@discord.app_commands.describe(date='When to fetch data')
-async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str]):
+@discord.app_commands.describe(date='When to fetch data', phone='Format the output for copy/paste on a phone')
+async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], phone: typing.Optional[bool] = False):
     if not await utils.safe_defer(interaction, ephemeral=True): return
     
     _date = date or (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
@@ -1123,7 +1123,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         msg = "Your query returned None"
     else:
         msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
-        msg += "\n".join(" | ".join([utils.to_podium(idx + 1), "\\" + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
+        msg += "\n".join(" | ".join([utils.to_podium(idx + 1), ("" if phone else "\\") + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
         msg += "\n"
         if len(msg) > 2000:
             aux = "\nTRUNC"
