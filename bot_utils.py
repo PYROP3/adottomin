@@ -14,7 +14,7 @@ import typing
 import botlogger
 import db
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from discord.ext import commands
 try:
     from ipcqueue import sysvmq
@@ -514,7 +514,58 @@ class utils:
             decimal = decimal + dec * pow(2, i)
             binary = binary//10
             i += 1
-        return decimal  
+        return decimal
+
+    def db2datetime(self, when: str):
+        return datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")
+
+    def db2timestamp(self, when: str):
+        return self.timestamp(self.db2datetime(when))
     
     def timestamp(self, when: datetime=datetime.now()):
         return f"<t:{int(time.mktime(when.timetuple()))}>"
+
+    def pretty_time_delta(self, td: timedelta):
+        return str(td).split(".")[0]
+    #     seconds = td.seconds
+    #     sign_string = '-' if seconds < 0 else ''
+    #     seconds = abs(int(seconds))
+    #     print(f"pretty_time_delta {seconds}")
+    #     days, seconds = divmod(seconds, 86400)
+    #     hours, seconds = divmod(seconds, 3600)
+    #     minutes, seconds = divmod(seconds, 60)
+    #     if days > 0:
+    #         return '%s%dd%dh%dm%ds' % (sign_string, days, hours, minutes, seconds)
+    #     elif hours > 0:
+    #         return '%s%dh%dm%ds' % (sign_string, hours, minutes, seconds)
+    #     elif minutes > 0:
+    #         return '%s%dm%ds' % (sign_string, minutes, seconds)
+    #     else:
+    #         return '%s%ds' % (sign_string, seconds)
+
+    async def core_joinhistory(self, interaction: discord.Interaction, userid: int, sql: db.database, username: str=None):
+        username = username or userid
+        data = sql.get_join_history(userid)
+        if len(data) == 0:
+            await self.safe_send(interaction, content=f"I could not find any data about {username} (they may have joined before the glorious revolution)", send_anyway=True)
+            return
+
+        content = f"Here's what I know about {username}...\n"
+
+        created_at, last_action = data[0]
+        last_datetime = self.db2datetime(created_at)
+        content += "+ Joined" if last_action == 'join' else "- Left"
+        content += f" @ {self.timestamp(last_datetime)}"
+
+        if len(data) > 1:
+            for created_at, action in data[1:]:
+                this_datetime = self.db2datetime(created_at)
+                content += " (" + ("in" if last_action == 'join' else "out") + f" for {self.pretty_time_delta(this_datetime - last_datetime)})\n"
+                content += "+ Joined" if action == 'join' else "- Left"
+                content += f" @ {self.timestamp(this_datetime)}"
+                last_datetime = this_datetime
+                last_action = action
+
+        content += " (" + ("in" if last_action == 'join' else "out") + f" for {self.pretty_time_delta(datetime.now() - last_datetime)} so far)\n"
+
+        await self.safe_send(interaction, content=content, send_anyway=True)

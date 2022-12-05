@@ -859,3 +859,10 @@ class database:
         con.commit()
         con.close()
         return not(res is None or len(res) == 0)
+
+    def get_join_history(self, user: int):
+        con = sqlite3.connect(member_analytics_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT * FROM (SELECT created_at, \"join\" as act FROM joiners WHERE user=:user UNION SELECT created_at, \"leave\" as act FROM leavers WHERE user=:user) ORDER BY created_at", {'user': user}).fetchall()
+        con.close()
+        return res or []
