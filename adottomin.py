@@ -6,6 +6,7 @@ import logging
 import os
 import random
 import re
+import string
 import traceback
 import types
 import typing
@@ -113,7 +114,7 @@ game_channel_ids = [
     1006961483869077664
 ]
 
-pin_archive_channel_id = 1029200990798368868
+pin_archive_channel_id = 1029186520260812800 #1029200990798368868
 pin_archive_blocklist_ids = [
     1006965262244925650,
     1005356623650377740,
@@ -467,8 +468,18 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 )
 
                 attachments = pin.attachments
+                pinAttachmentFile = None
                 if len(attachments) >= 1:
-                    pinEmbed.set_image(url=attachments[0].url)
+                    try:
+                        icon_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
+                        logger.debug(f"icon_name=trash/{icon_name}")
+
+                        await attachments[0].save(fp="trash/" + icon_name)
+
+                        pinAttachmentFile = discord.File("trash/" + icon_name, filename=icon_name)
+                        pinEmbed.set_image(url=f"attachment://{icon_name}")
+                    except Exception as e:
+                        logger.error(f"Error while trying to save pin attachment: {e}\n{traceback.format_exc()}")
 
                 pinEmbed.add_field(name="Jump", value=pin.jump_url, inline=False)
                 
@@ -482,9 +493,12 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                     icon_url = None
 
                 pinEmbed.set_author(name=f'Sent by {pin.author}', icon_url=icon_url)
-                archived = await pin_channel.send(embed=pinEmbed)
+                archived = await pin_channel.send(file=pinAttachmentFile, embed=pinEmbed)
 
                 sql.register_pin(pin.id, archived.id)
+
+                if pinAttachmentFile:
+                    os.remove("trash/" + icon_name)
             except Exception as e:
                 logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
             # updated = True
