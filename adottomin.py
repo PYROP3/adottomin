@@ -1290,9 +1290,15 @@ async def nut(interaction: discord.Interaction):
     # content = f"{utils.n_em(total)} :chestnut: :peanuts: :coconut:"
     random.seed(interaction.user.id)
     nut_emojis = [":chestnut:", ":peanuts:", ":coconut:"]
-    content = " ".join([random.choice(nut_emojis) for _ in range(total)])
+    nuts = [random.choice(nut_emojis) for _ in range(total)]
+    content = " ".join(nuts)
 
-    await utils.safe_send(interaction, content=content, send_anyway=True)
+    if len(content) < 2000:
+        await utils.safe_send(interaction, content=content, send_anyway=True)
+    else:
+        nut_counts = [(n, nuts.count(n)) for n in nut_emojis]
+        content = "\n".join([f"{nut} x {utils.n_em(amount)}" for (nut, amount) in nut_counts])
+        await utils.safe_send(interaction, content=content, send_anyway=True)
 
 @bot.tree.command(description='Send someone to horny jail')
 @discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
