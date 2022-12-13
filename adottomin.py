@@ -621,7 +621,9 @@ async def randomcitizen(interaction: discord.Interaction):
 async def fortune(interaction: discord.Interaction):
     fortune = memes.generate_fortune()
     random.seed(hash(memes.prepared_content(str(interaction.user.id))))
-    numbers = [f'`{random.choice(range(100)):02}`' for _ in range(6)]
+    total_nums = list(range(100))
+    random.shuffle(total_nums)
+    numbers = [f'`{total_nums[i]:02}`' for i in range(6)]
     msg = f"> {fortune}\nYour lucky numbers today: {', '.join(numbers)}"
     await utils.safe_send(interaction, content=msg, send_anyway=True)
 
