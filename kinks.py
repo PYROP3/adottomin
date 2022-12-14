@@ -21,7 +21,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 logger = botlogger.get_logger(__name__)
-emoji_font = Path('/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf')
+emoji_font = Path('./fonts/noto_color_emoji/NotoColorEmoji-Regular.ttf')
 
 kinklist = {
     'Body Part':{
