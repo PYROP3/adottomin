@@ -18,8 +18,10 @@ import os
 
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
+from pathlib import Path
 
 logger = botlogger.get_logger(__name__)
+emoji_font = Path('/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf')
 
 kinklist = {
     'Body Part':{
@@ -1044,10 +1046,12 @@ class Kinklist(discord.app_commands.Group):
         labels = ['💖', '😊', '🙂', '😕', '💀']
         fig = sn.heatmap(mat, annot=True, vmin=0, cmap=sn.color_palette("plasma", as_cmap=True), xticklabels=labels, yticklabels=labels)
         for tick in fig.get_xticklabels():
-            tick.set_fontname("Segoe UI Emoji")
+            # tick.set_fontname("Segoe UI Emoji")
+            tick.set_fontproperties(emoji_font)
             tick.set_fontsize(30)
         for tick in fig.get_yticklabels():
-            tick.set_fontname("Segoe UI Emoji")
+            # tick.set_fontname("Segoe UI Emoji")
+            tick.set_fontproperties(emoji_font)
             tick.set_fontsize(30)
             tick.set_rotation(0)
         fig.invert_yaxis()

@@ -1193,6 +1193,7 @@ async def locate(interaction: discord.Interaction, country: str):
 
     if validated_country is None:
         await utils.safe_send(interaction, content=f"I don't know that country... Can you try again, please?", ephemeral=True)
+        return
 
     updated = sql.insert_worldmap(interaction.user.id, validated_country)
 
