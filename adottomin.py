@@ -1359,6 +1359,25 @@ async def joinhistoryalt(interaction: discord.Interaction, user: str):
     
     await utils.core_joinhistory(interaction, userid, sql, utils.to_mention(userid))
 
+@bot.tree.command(description='Find a user\'s ID from their username')
+@discord.app_commands.describe(user='Username to search')
+async def searchid(interaction: discord.Interaction, user: str):
+    log_info(interaction, f"{interaction.user} is searching for {user}'s ID")
+    # if not await utils.ensure_secretary(interaction): return
+    if "#" in user:
+        user = user[:user.index("#")]
+
+    data = sql.find_id_from_alias(user)
+    if not data or len(data) == 0:
+        content = f"I couldn't find anyone with that username, please try again with a different name"
+    elif len(data) == 1:
+        content = f"I found 1 user with that name: {data[0][0]} (<@{data[0][0]}>)"
+    else:
+        content = f"I found a few users with that name:\n"
+        content += "\n".join([f"{line[0]} <@{line[0]}>: {line[1]}" for line in data])
+    
+    await utils.safe_send(interaction, content=content, ephemeral=True)
+
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))

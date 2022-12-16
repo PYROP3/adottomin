@@ -591,6 +591,18 @@ class database:
         except:
             return None
 
+    def find_id_from_alias(self, alias):
+        try:
+            con = sqlite3.connect(aliases_db_file)
+            cur = con.cursor()
+            res = cur.execute('SELECT user, group_concat("`" || aliases.alias || "`") FROM aliases WHERE alias LIKE "%" || :name || "%" GROUP BY user ORDER BY user', {'name': alias}).fetchall()
+            con.commit()
+            con.close()
+            return res
+        except Exception as e:
+            print(e)
+            return None
+
     def insert_worldmap(self, user, location):
         con = sqlite3.connect(worldmap_db_file)
         cur = con.cursor()
