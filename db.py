@@ -357,7 +357,7 @@ class database:
     def create_warning(self, user, moderator, reason="", time_range=None):
         con = sqlite3.connect(warnings_db_file)
         cur = con.cursor()
-        cur.execute("INSERT INTO warnings VALUES (?, ?, ?)", [user, reason, moderator, datetime.datetime.now()])
+        cur.execute("INSERT INTO warnings VALUES (?, ?, ?, ?)", [user, reason, moderator, datetime.datetime.now()])
         con.commit()
         min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
         data = cur.execute("SELECT * FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
