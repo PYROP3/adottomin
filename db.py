@@ -46,6 +46,8 @@ cmds_analytics_version = 1
 cmds_analytics_db_file = _dbfile('cmds_analytics', cmds_analytics_version)
 once_alerts_version = 1
 once_alerts_db_file = _dbfile('once_alerts', once_alerts_version)
+noship_version = 1
+noship_db_file = _dbfile('noship', noship_version)
 
 sql_files = [
     validations_db_file,
@@ -64,7 +66,8 @@ sql_files = [
     kinks_flist_db_file,
     member_analytics_db_file,
     cmds_analytics_db_file,
-    once_alerts_db_file
+    once_alerts_db_file,
+    noship_db_file
 ]
 
 class once_alerts(enum.Enum):
@@ -222,6 +225,12 @@ schemas = {
                 version INTEGER NOT NULL,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user, alert, version)
+            );'''],
+    noship_db_file: ['''
+            CREATE TABLE noship (
+                user int NOT NULL,
+                date TIMESTAMP,
+                PRIMARY KEY (user)
             );'''],
 }
 
@@ -878,3 +887,30 @@ class database:
         res = cur.execute("SELECT * FROM (SELECT created_at, \"join\" as act FROM joiners WHERE user=:user UNION SELECT created_at, \"leave\" as act FROM leavers WHERE user=:user) ORDER BY created_at", {'user': user}).fetchall()
         con.close()
         return res or []
+
+    def add_noship(self, user):
+        con = sqlite3.connect(noship_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO noship VALUES (?, ?)", [user, datetime.datetime.now()])
+            con.commit()
+        except:
+            pass
+        con.close()
+
+    def rm_noship(self, user):
+        con = sqlite3.connect(noship_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("DELETE FROM noship WHERE user=:user", {'user': user})
+            con.commit()
+        except:
+            pass
+        con.close()
+
+    def is_noship(self, user):
+        con = sqlite3.connect(noship_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT * FROM noship WHERE user=:user", {'user': user}).fetchall()
+        con.close()
+        return len(res) > 0

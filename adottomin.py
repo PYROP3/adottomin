@@ -639,6 +639,10 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
         await utils.safe_send(interaction, content=f"I'm not shipping myself with you, {interaction.user.mention}~")
         return
 
+    if (sql.is_noship(user.id)):
+        await utils.safe_send(interaction, content=f"{user} requested not to be shipped~", ephemeral=True)
+        return
+
     smaller = min(int(user.id), int(interaction.user.id))
     bigger = max(int(user.id), int(interaction.user.id))
     pct, nice = memes.percent_from(f"ship/{smaller}/{bigger}")
@@ -670,6 +674,14 @@ async def shipus(interaction: discord.Interaction, user1: discord.Member, user2:
 
     if (user1.id == bot.user.id or user2.id == bot.user.id):
         await utils.safe_send(interaction, content=f"I'm not shipping myself with you, {interaction.user.mention}~")
+        return
+
+    if (sql.is_noship(user1.id)):
+        await utils.safe_send(interaction, content=f"{user1} requested not to be shipped~", ephemeral=True)
+        return
+
+    if (sql.is_noship(user2.id)):
+        await utils.safe_send(interaction, content=f"{user2} requested not to be shipped~", ephemeral=True)
         return
 
     ids = sorted([int(user1.id), int(user2.id), int(interaction.user.id)])
@@ -1358,6 +1370,22 @@ async def joinhistoryalt(interaction: discord.Interaction, user: str):
         return
     
     await utils.core_joinhistory(interaction, userid, sql, utils.to_mention(userid))
+
+@bot.tree.command(description='Ask me not to ship you with others')
+async def noship(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is requesting noship")
+
+    sql.add_noship(interaction.user.id)
+    
+    await utils.safe_send(interaction, content=f"Okay, I won't ship you with other people! If you change your mind, you can undo it with `/yesship`", ephemeral=True)
+
+@bot.tree.command(description='Allow me to ship you with others')
+async def yesship(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is requesting yesship")
+
+    sql.rm_noship(interaction.user.id)
+    
+    await utils.safe_send(interaction, content=f"Okay, I will ship you with other people! If you change your mind, you can undo it with `/noship`", ephemeral=True)
 
 @bot.tree.command(description='Find a user\'s ID from their username')
 @discord.app_commands.describe(user='Username to search')
