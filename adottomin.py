@@ -526,7 +526,17 @@ async def gatekeep(interaction: discord.Interaction, enable: discord.app_command
 
         t1 = interaction.guild.get_role(friends_role_ids[0])
         newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
-        newperms.update(send_messages=False, send_messages_in_threads=False, create_public_threads=False, use_application_commands=False)
+        newperms.update(
+            send_messages=False, 
+            send_messages_in_threads=False, 
+            create_public_threads=False,
+            embed_links=False,
+            attach_files=False,
+            add_reactions=False,
+            use_external_emojis=False,
+            use_external_stickers=False,
+            use_application_commands=False
+        )
         
         # log_debug(interaction, f"t1={t1.id} ({t1})")
         # log_debug(interaction, f"old_perms={t1.permissions}")
@@ -541,7 +551,17 @@ async def gatekeep(interaction: discord.Interaction, enable: discord.app_command
 
         t1 = interaction.guild.get_role(friends_role_ids[0])
         newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
-        newperms.update(send_messages=True, send_messages_in_threads=True, create_public_threads=True, use_application_commands=True)
+        newperms.update(
+            send_messages=True, 
+            send_messages_in_threads=True, 
+            create_public_threads=True,
+            embed_links=True,
+            attach_files=True,
+            add_reactions=True,
+            use_external_emojis=True,
+            use_external_stickers=True,
+            use_application_commands=True
+        )
         # log_debug(interaction, f"t1={t1.id} ({t1})")
         # log_debug(interaction, f"old_perms={t1.permissions}")
         # log_debug(interaction, f"newperms={newperms}")
