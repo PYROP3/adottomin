@@ -514,21 +514,24 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
 async def raidmode(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
     if not await utils.ensure_divine(interaction): return
+    await utils.safe_defer(interaction)
 
     if enable.value == "on":
         if set_raid_mode():
             log_info(interaction, f"{interaction.user} enabled raidmode")
-            await utils.safe_send(interaction, content=MSG_RAID_MODE_ON.format(interaction.user.mention), send_anyway=True)
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_ON.format(interaction.user.mention), is_followup=True, send_anyway=True)
         else:
             log_debug(interaction, f"{interaction.user} enabled raidmode (already enabled)")
-            await utils.safe_send(interaction, content=MSG_RAID_MODE_ON_ALREADY, ephemeral=True)
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_ON_ALREADY, is_followup=True, send_anyway=True)
     else:
         if unset_raid_mode():
             log_info(interaction, f"{interaction.user} disabled raidmode")
-            await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF.format(interaction.user.mention), send_anyway=True)
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF.format(interaction.user.mention), is_followup=True, send_anyway=True)
         else:
             log_debug(interaction, f"{interaction.user} disabled raidmode (already disabled)")
-            await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF_ALREADY, ephemeral=True)
+            await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF_ALREADY, is_followup=True, send_anyway=True)
+
+    log_debug(interaction, f"raidmode state => {is_raid_mode()}")
 
 async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg=""):
     if not await utils.safe_defer(interaction): return
