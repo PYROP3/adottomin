@@ -525,9 +525,14 @@ async def gatekeep(interaction: discord.Interaction, enable: discord.app_command
         log_info(interaction, f"{interaction.user} enabled gatekeep")
 
         t1 = interaction.guild.get_role(friends_role_ids[0])
-        t1.permissions.update(**gatekeep_perms)
+        newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
+        newperms.update(send_messages=False, send_messages_in_threads=False, create_public_threads=False, use_application_commands=False)
+        
+        # log_debug(interaction, f"t1={t1.id} ({t1})")
+        # log_debug(interaction, f"old_perms={t1.permissions}")
+        # log_debug(interaction, f"newperms={newperms}")
         try:
-            await t1.edit(permissions=t1.permissions)
+            await t1.edit(permissions=newperms)
             await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_ON.format(interaction.user.mention), is_followup=True, send_anyway=True)
         except discord.errors.Forbidden:
             await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
@@ -535,9 +540,13 @@ async def gatekeep(interaction: discord.Interaction, enable: discord.app_command
         log_info(interaction, f"{interaction.user} disabled gatekeep")
 
         t1 = interaction.guild.get_role(friends_role_ids[0])
-        t1.permissions.update(**{k: not gatekeep_perms[k] for k in gatekeep_perms})
+        newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
+        newperms.update(send_messages=True, send_messages_in_threads=True, create_public_threads=True, use_application_commands=True)
+        # log_debug(interaction, f"t1={t1.id} ({t1})")
+        # log_debug(interaction, f"old_perms={t1.permissions}")
+        # log_debug(interaction, f"newperms={newperms}")
         try:
-            await t1.edit(permissions=t1.permissions)
+            await t1.edit(permissions=newperms)
             await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_OFF.format(interaction.user.mention), is_followup=True, send_anyway=True)
         except discord.errors.Forbidden:
             await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
