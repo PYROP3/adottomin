@@ -56,6 +56,8 @@ assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Rem
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 MSG_RAID_MODE_ON = "{} just turned raid mode **ON**, brace for impact!"
 MSG_RAID_MODE_OFF = "{} just turned raid mode **OFF**, we live to see another day!"
+MSG_GATEKEEP_MODE_ON = "{} just turned gatekeep mode **ON**, finally some peace and quiet~"
+MSG_GATEKEEP_MODE_OFF = "{} just turned gatekeep mode **OFF**, now be nice or i'll silence y'all again~"
 MSG_RAID_MODE_ON_ALREADY = "Raid mode is already on"
 MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
 MSG_CANT_DO_IT = "I can't do that to that user~ :3"
@@ -81,6 +83,23 @@ log_channel = int(os.getenv('LOG_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
+queen_role_id = int(os.getenv('QUEEN_ROLE_ID'))
+owner_role_id = int(os.getenv('OWNER_ROLE_ID'))
+divine_role_id = int(os.getenv('DIVINE_ROLE_ID'))
+secretary_role_id = int(os.getenv('SECRETARY_ROLE_ID'))
+nsfw_role_id = int(os.getenv('NSFW_ROLE_ID'))
+jail_role_id = int(os.getenv('JAIL_ROLE_ID'))
+friends_role_ids = [int(role) for role in os.getenv('FRIENDS_ROLE_IDS').split('.')]
+
+game_channel_ids = [int(role) for role in os.getenv('GAME_CHANNEL_IDS').split('.')]
+
+pin_archive_channel_id = int(os.getenv('PIN_ARCHIVE_CHANNEL_ID'))
+pin_archive_blocklist_ids = [int(role) for role in os.getenv('PIN_ARCHIVE_BLOCKLIST_IDS').split('.')]
+
+admin_id = int(os.getenv('ADMIN_ID'))
+
+pendelton_mode = False
+
 usernames_blocked = [
     "pendelton",
     "pennington"
@@ -88,45 +107,7 @@ usernames_blocked = [
 
 blocklist_prog = re.compile("|".join(blocklist), flags=re.IGNORECASE)
 
-queen_role_id = 1002077481156743259
-owner_role_id = 1014556813821214780
-divine_role_id = 1021892234829906043
-secretary_role_id = 1002385294152179743
-friends_role_ids = [
-    1002382914526400703, # Tier 1
-    1002676012573794394, # Tier 2
-    1002676963485417592 # Tier 3
-]
-nsfw_role_id = 1010670864758493215
-jail_role_id = 1044792796114075698
-
-game_channel_ids = [
-    1006949968826863636,
-    1006947536671617094,
-    1006947561401241609,
-    1006947572646162452,
-    1006955372621336636,
-    1006955386332532827,
-    1012234333207146496,
-    1012236248703836281,
-    1006961455297470535,
-    1006961469214163056,
-    1006961483869077664
-]
-
-pin_archive_channel_id = 1029200990798368868
-pin_archive_blocklist_ids = [
-    1006965262244925650,
-    1005356623650377740,
-    1005363538560307211,
-    1004948805956948128,
-    1003626066113466389,
-    1009950736567771177
-]
-
-admin_id = int(os.getenv('ADMIN_ID'))
-
-pendelton_mode = False
+gatekeep_perms = {'send_messages': False}
 
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -532,6 +513,34 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
             await utils.safe_send(interaction, content=MSG_RAID_MODE_OFF_ALREADY, is_followup=True, send_anyway=True)
 
     log_debug(interaction, f"raidmode state => {is_raid_mode()}")
+
+@bot.tree.command(description='Turn gatekeep mode on or off (prevent t1 from using chats)')
+@discord.app_commands.describe(enable='Whether to turn gatekeep mode on or off')
+@discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
+async def gatekeep(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
+    if not await utils.ensure_divine(interaction): return
+    await utils.safe_defer(interaction)
+
+    if enable.value == "on":
+        log_info(interaction, f"{interaction.user} enabled gatekeep")
+
+        t1 = interaction.guild.get_role(friends_role_ids[0])
+        t1.permissions.update(**gatekeep_perms)
+        try:
+            await t1.edit(permissions=t1.permissions)
+            await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_ON.format(interaction.user.mention), is_followup=True, send_anyway=True)
+        except discord.errors.Forbidden:
+            await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
+    else:
+        log_info(interaction, f"{interaction.user} disabled gatekeep")
+
+        t1 = interaction.guild.get_role(friends_role_ids[0])
+        t1.permissions.update(**{k: not gatekeep_perms[k] for k in gatekeep_perms})
+        try:
+            await t1.edit(permissions=t1.permissions)
+            await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_OFF.format(interaction.user.mention), is_followup=True, send_anyway=True)
+        except discord.errors.Forbidden:
+            await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
 
 async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg=""):
     if not await utils.safe_defer(interaction): return
