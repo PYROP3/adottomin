@@ -109,6 +109,8 @@ blocklist_prog = re.compile("|".join(blocklist), flags=re.IGNORECASE)
 
 gatekeep_perms = {'send_messages': False}
 
+ignore_prefixes = ('$')
+
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
@@ -309,6 +311,8 @@ async def on_message(msg: discord.Message):
     await execute_handlers(msg, user_message_handlers)
         
     if not msg.author.bot:
+        if msg.content.startswith(ignore_prefixes):
+            return
         try:
             sql.register_message(msg.author.id, msg.id, msg.channel.id)
         except Exception as e:
