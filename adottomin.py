@@ -264,7 +264,6 @@ user_message_handlers = [
     utils.handle_dm,
     utils.handle_dm_cmd,
     utils.handle_failed_command,
-    utils.handle_attachments,
     utils.handle_binary,
     utils.handle_puppeteering
 ]
