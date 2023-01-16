@@ -17,6 +17,7 @@ REASON_WARNINGS = "you've been warned"
 
 MSG_GREETING = f"{em.e('NekoHi', 'wave')} Hello {'{}'}! May I ask your age, pls?"
 MSG_TRY_AGAIN = "Try again, {}"
+MSG_TRY_AGAIN_JOKE = "First time I heard that one... You're a riot, {}!"
 MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
 MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
@@ -80,7 +81,12 @@ class age_handler:
 
             elif self.is_valid_age(data):
                 age = self.get_age(data)
-                if age > AGE_MAX:
+                if age in [69, 420, 666]:
+                    self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
+
+                    await msg.channel.send(MSG_TRY_AGAIN_JOKE.format(msg.author.mention))
+
+                elif age > AGE_MAX:
                     self.logger.debug(f"[{msg.channel}] {msg.author} said a questionable age ({age}), ignoring")
 
                     await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
