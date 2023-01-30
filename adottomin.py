@@ -1,14 +1,14 @@
 import asyncio
 import datetime
 import sqlite3
+from dateutil import tz
 import discord
-import logging
 import os
 import random
 import re
 import string
 import traceback
-import types
+import time
 import typing
 import urllib.parse
 
@@ -1449,6 +1449,66 @@ async def searchid(interaction: discord.Interaction, user: str):
         content += "\n".join([f"{line[0]} <@{line[0]}>: {line[1]}" for line in data])
     
     await utils.safe_send(interaction, content=content, ephemeral=True)
+
+@bot.tree.command(description='Get a discord timestamp that changes automatically')
+@discord.app_commands.describe(
+    timezone='Your timezone (like EST, GMT, UTC, BST..., defaults to UTC)', 
+    style='How you want your timestamp formatted',
+    hour='24-hour of timestamp (0-23, defaults to right now)',
+    minute='minute of timestamp (0-59, defaults to right now)',
+    second='second of timestamp (0-59, defaults to right now)',
+    year='year of timestamp (defaults to right now)',
+    month='month of timestamp (1-12, defaults to right now)',
+    day='day of timestamp (1-31, defaults to right now)')
+@discord.app_commands.choices(
+    style=[discord.app_commands.Choice(name=n, value=v) for n, v in [
+        ("Default (November 28, 2018 9:01 AM)", ""),
+        ("Short Time (9:01 AM)", ":t"),
+        ("Long Time (9:01:00 AM)", ":T"),
+        ("Short Date (11/28/2018)", ":d"),
+        ("Long Date (November 28, 2018)", ":D"),
+        ("Short Date/Time (November 28, 2018 9:01 AM)", ":f"),
+        ("Long Date/Time (Wednesday, November 28, 2018 9:01 AM)", ":F"),
+        ("Relative Time (3 years ago)", ":R")]])
+async def timestamp(
+    interaction: discord.Interaction, 
+    timezone: typing.Optional[str]="UTC", 
+    hour: typing.Optional[int]=None, 
+    minute: typing.Optional[int]=None, 
+    second: typing.Optional[int]=None, 
+    year: typing.Optional[int]=None, 
+    month: typing.Optional[int]=None, 
+    day: typing.Optional[int]=None, 
+    style: typing.Optional[discord.app_commands.Choice[str]]=""):
+    try:
+        t = datetime.datetime.now(tz=tz.gettz(timezone))
+    except:
+        await utils.safe_send(interaction, content=f"That doesn't look like a valid timezone~", ephemeral=True)
+        return
+
+    try:
+        if hour is not None:
+            t.hour = hour
+        if minute is not None:
+            t.minute = minute
+        if second is not None:
+            t.second = second
+        if year is not None:
+            t.year = year
+        if month is not None:
+            t.month = month
+        if day is not None:
+            t.day = day
+    except:
+        await utils.safe_send(interaction, content=f"That doesn't look like a valid time, pls check your values~", ephemeral=True)
+        return
+
+    if type(style) != str:
+        style = style.value
+
+    ts = f"<t:{int(time.mktime(t.timetuple()))}{style}>"
+
+    await utils.safe_send(interaction, content=f"Here's your timestamp~\n```{ts}```And here's how it's going to look like: {ts}", ephemeral=True)
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
