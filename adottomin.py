@@ -1525,7 +1525,7 @@ async def advertise(interaction: discord.Interaction):
     
     await ad_handler.create_advertisement(interaction)
 
-@bot.tree.command(description='Check when a user left and joined the guild (search by ID)')
+@bot.tree.command(description='Remove an unwanted advertisement (e.g. spam)')
 @discord.app_commands.describe(message='Message to remove (must be an ad)')
 async def removeadvertisement(interaction: discord.Interaction, message: str):
     log_info(interaction, f"{interaction.user} is deleting ad {message} history alt")
