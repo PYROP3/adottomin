@@ -1525,6 +1525,31 @@ async def advertise(interaction: discord.Interaction):
     
     await ad_handler.create_advertisement(interaction)
 
+@bot.tree.command(description='Check when a user left and joined the guild (search by ID)')
+@discord.app_commands.describe(message='Message to remove (must be an ad)')
+async def removeadvertisement(interaction: discord.Interaction, message: str):
+    log_info(interaction, f"{interaction.user} is deleting ad {message} history alt")
+    if not await utils.ensure_secretary(interaction): return
+
+    try:
+        messageid = int(message)
+    except:
+        await utils.safe_send(interaction, content=f"Are you sure that's a valid ID?", ephemeral=True)
+        return
+
+    ad_info = sql.is_advertisement(messageid)
+    if not ad_info:
+        await utils.safe_send(interaction, content=f"That doesn't seem to be an ad...", ephemeral=True)
+        return
+
+    user = int(ad_info[0])
+    success = await ad_handler.try_remove_advertisement(user)
+
+    if success:
+        await utils.safe_send(interaction, content=f"Ad zapped out of existence!", ephemeral=True)
+    else:
+        await utils.safe_send(interaction, content=f"Something went wrong... are you sure the message is still there?", ephemeral=True)
+
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))

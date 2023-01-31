@@ -936,6 +936,14 @@ class database:
         con.commit()
         con.close()
     
+    def is_advertisement(self, message: int):
+        con = sqlite3.connect(advertisements_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT user, created_at FROM ads WHERE message_id=:message", {'message': message}).fetchone()
+        con.commit()
+        con.close()
+        return res
+    
     def get_existing_advertisement(self, user: int):
         con = sqlite3.connect(advertisements_db_file)
         cur = con.cursor()
