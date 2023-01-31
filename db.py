@@ -48,6 +48,8 @@ once_alerts_version = 1
 once_alerts_db_file = _dbfile('once_alerts', once_alerts_version)
 noship_version = 1
 noship_db_file = _dbfile('noship', noship_version)
+advertisements_version = 1
+advertisements_db_file = _dbfile('advertisements', advertisements_version)
 
 sql_files = [
     validations_db_file,
@@ -230,6 +232,13 @@ schemas = {
             CREATE TABLE noship (
                 user int NOT NULL,
                 date TIMESTAMP,
+                PRIMARY KEY (user)
+            );'''],
+    advertisements_db_file: ['''
+            CREATE TABLE ads (
+                user int NOT NULL,
+                message_id int NOT NULL,
+                created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
 }
@@ -914,3 +923,30 @@ class database:
         res = cur.execute("SELECT * FROM noship WHERE user=:user", {'user': user}).fetchall()
         con.close()
         return len(res) > 0
+    
+    def create_advertisement(self, user: int, message_id: int):
+        con = sqlite3.connect(advertisements_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO ads VALUES (?, ?, ?)", [user, message_id, datetime.datetime.now()])
+            con.commit()
+        except:
+            cur.execute("UPDATE ads SET message_id=:message_id, created_at=:created_at WHERE user=:user", {'user': user, "message_id": message_id, "created_at": datetime.datetime.now()})
+            con.commit()
+        con.commit()
+        con.close()
+    
+    def get_existing_advertisement(self, user: int):
+        con = sqlite3.connect(advertisements_db_file)
+        cur = con.cursor()
+        res = cur.execute("SELECT message_id, created_at FROM ads WHERE user=:user", {'user': user}).fetchone()
+        con.commit()
+        con.close()
+        return res
+
+    def remove_advertisement(self, user: int):
+        con = sqlite3.connect(advertisements_db_file)
+        cur = con.cursor()
+        cur.execute("DELETE FROM ads WHERE user=:user", {'user': user})
+        con.commit()
+        con.close()

@@ -14,6 +14,7 @@ import urllib.parse
 
 from regex import R
 
+import advertisements
 import age_handling
 import botlogger
 import bot_utils
@@ -80,6 +81,7 @@ _role_ids = [int(id) for id in _ids.split('.') if id != ""]
 role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 log_channel = int(os.getenv('LOG_CHANNEL_ID'))
+ad_channel = int(os.getenv('AD_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
@@ -110,6 +112,8 @@ blocklist_prog = re.compile("|".join(blocklist), flags=re.IGNORECASE)
 gatekeep_perms = {'send_messages': False}
 
 ignore_prefixes = ('$')
+
+advertisement_slowmode = datetime.timedelta(seconds=30)
 
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -143,6 +147,7 @@ logger.info(f"Tallly channel IDs = {tally_channel}")
 sql = db.database(LENIENCY_COUNT)
 utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
 age_handler = age_handling.age_handler(bot, sql, utils, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -187,6 +192,7 @@ async def on_ready():
     guild = await bot.fetch_guild(GUILD_ID)
     utils.inject_guild(guild)
     age_handler.inject(bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel), bot.get_channel(log_channel))
+    ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
@@ -414,6 +420,9 @@ async def on_member_join(member: discord.Member):
 @bot.event
 async def on_member_remove(member: discord.Member):
     logger.info(f"{member} exit the guild")
+
+    # Remove advertisement (if it exists)
+    await ad_handler.try_remove_advertisement(member.id)
     
     sql.register_leaver(member.id)
 
@@ -1509,6 +1518,12 @@ async def timestamp(
     ts = f"<t:{int(time.mktime(t.timetuple()))}{style}>"
 
     await utils.safe_send(interaction, content=f"Here's your timestamp~\n```{ts}```And here's how it's going to look like: {ts}", ephemeral=True)
+
+@bot.tree.command(description='Advertise your commissions')
+async def advertise(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is requesting to create an AD")
+    
+    await ad_handler.create_advertisement(interaction)
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))

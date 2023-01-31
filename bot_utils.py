@@ -519,11 +519,11 @@ class utils:
     def db2datetime(self, when: str):
         return datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")
 
-    def db2timestamp(self, when: str):
-        return self.timestamp(self.db2datetime(when))
+    def db2timestamp(self, when: str, style: str=""):
+        return self.timestamp(self.db2datetime(when), style=style)
     
-    def timestamp(self, when: datetime=datetime.now()):
-        return f"<t:{int(time.mktime(when.timetuple()))}>"
+    def timestamp(self, when: datetime=datetime.now(), style: str=""):
+        return f"<t:{int(time.mktime(when.timetuple()))}{style}>"
 
     def pretty_time_delta(self, td: timedelta):
         return str(td).split(".")[0]
