@@ -218,7 +218,7 @@ class utils:
     async def handle_offline_mentions(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         for member in msg.mentions:
-            will_send = not self._is_self_mention(msg, member) and member.status in VALID_NOTIFY_STATUS and not self.database.is_in_offline_ping_blocklist(member.id)
+            will_send = not self._is_self_mention(msg, member) and member.status in VALID_NOTIFY_STATUS and self.database.is_in_offline_ping_allowlist(member.id)
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if not will_send: continue
             fmt_msg_chain = await self._format_msg_chain(member, msg)
@@ -349,7 +349,7 @@ class utils:
         await msg.reply(content=f"{msg.author.mention} meant\n> {translated}")
 
     async def handle_failed_command(self, msg: discord.Message):
-        await self._enforce_not_dms(msg)
+        # await self._enforce_not_dms(msg)
         # await self._enforce_not_admin(msg)
         if len(msg.content) == 0: return
         content = msg.content.split()[0]
@@ -357,7 +357,10 @@ class utils:
         if self.bot.tree.get_command(content[1:]) is None:
             self.logger.debug(f"{content[1:]} not in command list")
             return
-        reply = f"lol boomer"
+        if msg.channel.type == discord.ChannelType.private:
+            reply = f"Commands only work in the server~"
+        else:
+            reply = f"lol boomer"
         await msg.reply(content=reply)
 
     async def handle_invite_link(self, msg: discord.Message):

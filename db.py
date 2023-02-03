@@ -14,7 +14,7 @@ validations_version = 1
 validations_db_file = _dbfile('validations', validations_version)
 warnings_version = 2
 warnings_db_file = _dbfile('warnings', warnings_version)
-offline_ping_blocklist_version = 1
+offline_ping_blocklist_version = 2
 offline_ping_blocklist_db_file = _dbfile('offline_ping_blocklist', offline_ping_blocklist_version)
 activity_version = 2
 activity_db_file = _dbfile('activity', activity_version)
@@ -103,7 +103,7 @@ schemas = {
                 date TIMESTAMP
             );'''],
     offline_ping_blocklist_db_file: ['''
-            CREATE TABLE blocklist (
+            CREATE TABLE allowlist (
                 user int NOT NULL,
                 PRIMARY KEY (user)
             );'''],
@@ -390,31 +390,31 @@ class database:
         con.close()
         return data
 
-    def add_to_offline_ping_blocklist(self, user):
+    def add_to_offline_ping_allowlist(self, user):
         con = sqlite3.connect(offline_ping_blocklist_db_file)
         cur = con.cursor()
         try:
-            cur.execute("INSERT INTO blocklist VALUES (?)", [user])
+            cur.execute("INSERT INTO allowlist VALUES (?)", [user])
             con.commit()
         except sqlite3.IntegrityError:
-            self.logger.warning(f"Duplicated user id {user} in blocklist")
+            self.logger.warning(f"Duplicated user id {user} in allowlist")
         con.close()
 
-    def remove_from_offline_ping_blocklist(self, user):
+    def remove_from_offline_ping_allowlist(self, user):
         con = sqlite3.connect(offline_ping_blocklist_db_file)
         cur = con.cursor()
         try:
-            cur.execute("DELETE FROM blocklist WHERE user=:id", {"id": user})
+            cur.execute("DELETE FROM allowlist WHERE user=:id", {"id": user})
             con.commit()
         except:
             pass
         con.close()
 
-    def is_in_offline_ping_blocklist(self, user):
+    def is_in_offline_ping_allowlist(self, user):
         try:
             con = sqlite3.connect(offline_ping_blocklist_db_file)
             cur = con.cursor()
-            res = cur.execute("SELECT user FROM blocklist WHERE user = :id", {"id": user}).fetchone()
+            res = cur.execute("SELECT user FROM allowlist WHERE user = :id", {"id": user}).fetchone()
             con.commit()
             con.close()
             return res is not None

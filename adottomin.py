@@ -987,12 +987,12 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
 async def offlinepings(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
     log_info(interaction, f"{interaction.user} requested offlinepings: {enable.value}")
 
-    if enable.value == "on":
-        sql.remove_from_offline_ping_blocklist(interaction.user.id)
-        await utils.safe_send(interaction, content="Okay, I'll let you know if you're pinged~", ephemeral=True)
-    else:
-        sql.add_to_offline_ping_blocklist(interaction.user.id)
+    if enable.value == "off":
+        sql.remove_from_offline_ping_allowlist(interaction.user.id)
         await utils.safe_send(interaction, content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
+    else:
+        sql.add_to_offline_ping_allowlist(interaction.user.id)
+        await utils.safe_send(interaction, content="Okay, I'll let you know if you're pinged~", ephemeral=True)
 
 @bot.tree.command(description='Start simping for someone!')
 @discord.app_commands.describe(user='Who you wanna simp for')
