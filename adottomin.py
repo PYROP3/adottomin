@@ -20,6 +20,7 @@ import botlogger
 import bot_utils
 import copypasta_utils
 import db
+import emojionly
 import games
 import graphlytics
 import kinks
@@ -82,6 +83,7 @@ role_ids = _role_ids if len(_role_ids) else []
 tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
 log_channel = int(os.getenv('LOG_CHANNEL_ID'))
 ad_channel = int(os.getenv('AD_CHANNEL_ID'))
+emojionly_channel = int(os.getenv('EMOJI_CHANNEL_ID'))
 chats_home = os.getenv('CHATS_HOME')
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
@@ -148,6 +150,7 @@ sql = db.database(LENIENCY_COUNT)
 utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
 age_handler = age_handling.age_handler(bot, sql, utils, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
+emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -271,7 +274,8 @@ user_message_handlers = [
     utils.handle_dm_cmd,
     utils.handle_failed_command,
     utils.handle_binary,
-    utils.handle_puppeteering
+    utils.handle_puppeteering,
+    emojionly_handler.handle_emoji_chat
 ]
 
 async def execute_handlers(msg, handlers):
