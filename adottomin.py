@@ -101,6 +101,8 @@ pin_archive_channel_id = int(os.getenv('PIN_ARCHIVE_CHANNEL_ID'))
 pin_archive_blocklist_ids = [int(role) for role in os.getenv('PIN_ARCHIVE_BLOCKLIST_IDS').split('.')]
 
 admin_id = int(os.getenv('ADMIN_ID'))
+_aux = int(os.getenv('POI_USER_IDS'))
+poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
 pendelton_mode = False
 
@@ -192,6 +194,7 @@ def _get_message_for_age(ctx: discord.Interaction, age_data, mention):
 async def on_ready():
     logger.info(f"{bot.user} has connected to Discord")
     utils.inject_admin(bot.get_user(admin_id))
+    utils.inject_pois([bot.get_user(id) for id in poi_user_ids])
     guild = await bot.fetch_guild(GUILD_ID)
     utils.inject_guild(guild)
     age_handler.inject(bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel), bot.get_channel(log_channel))
@@ -240,6 +243,7 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     await after.remove_roles(*[nsfw_role], reason="Not verified", atomic=False)
     notif = after.guild.get_channel(channel_ids[0])
     await notif.send(content=f"Straight for the NSFW and didn't even tell me your age, {after.mention}?~")
+    await utils.send_poi_dms(f"{after.mention} just got told off for going straight for NSFW~")
 
 async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
     if before is not None and after.display_name == before.display_name:

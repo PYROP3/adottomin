@@ -78,6 +78,7 @@ class utils:
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.chatting_servicename = chatting_servicename
         self.admin = None
+        self.pois = []
         self.guild = None
 
         self.logger = botlogger.get_logger(__name__)
@@ -138,6 +139,10 @@ class utils:
     def inject_admin(self, admin):
         self.logger.debug(f"Injected admin {admin}")
         self.admin = admin
+
+    def inject_pois(self, pois):
+        self.logger.debug(f"Injected {len(pois)} pois")
+        self.pois = pois
 
     def inject_guild(self, guild: discord.Guild):
         self.logger.debug(f"Injected guild {guild}")
@@ -399,6 +404,13 @@ class utils:
                 except sysvmq.QueueError:
                     self.logger.warning(f"Queue error, recreating...")
                     self._recreate_queues()
+
+    async def send_poi_dms(self, content):
+        for user in self.pois:
+            try:
+                await self._split_dm(content, user)
+            except Exception as e:
+                self.logger.warning(f"Error while trying to send DM to POI {user}: {e}\n{traceback.format_exc()}")
 
     async def _split_dm(self, content, user):
         msg = await self._dm_user(content[:2000], user)
