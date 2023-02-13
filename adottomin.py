@@ -101,7 +101,7 @@ pin_archive_channel_id = int(os.getenv('PIN_ARCHIVE_CHANNEL_ID'))
 pin_archive_blocklist_ids = [int(role) for role in os.getenv('PIN_ARCHIVE_BLOCKLIST_IDS').split('.')]
 
 admin_id = int(os.getenv('ADMIN_ID'))
-_aux = int(os.getenv('POI_USER_IDS'))
+_aux = os.getenv('POI_USER_IDS')
 poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
 pendelton_mode = False
