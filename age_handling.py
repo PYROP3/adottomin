@@ -43,7 +43,7 @@ class age_handler:
         self.age_prog = re.compile(r"(18|19|[2-9][0-9]+)") # 18, 19 or 20+
         self.minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
-        self.ignore_prog = re.compile(r"over 18")
+        self.ignore_prog = re.compile(r"(over 18)|(18\+)")
 
     def inject(self, greeting_channel: discord.TextChannel, tally_channel: discord.TextChannel, log_channel: discord.TextChannel):
         self.greeting_channel = greeting_channel
