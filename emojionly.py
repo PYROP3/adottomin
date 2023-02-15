@@ -7,7 +7,7 @@ import db
 
 from discord.ext import commands
 
-emoji_prog = re.compile(r"^((<a?:[^:]+:[0-9]+>)|(:[^: ]+:)|([ ]))+$")
+emoji_prog = re.compile(r"^((<a?:[^:]+:[0-9]+>)|(:[^: ]+:)|([ \n]))+$")
 
 class emojionly_handler:
     def __init__(self, bot: commands.Bot, database: db.database, emojichat_id: int):
