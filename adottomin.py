@@ -84,6 +84,7 @@ divine_role_id = p.pint('DIVINE_ROLE_ID')
 secretary_role_id = p.pint('SECRETARY_ROLE_ID')
 nsfw_role_id = p.pint('NSFW_ROLE_ID')
 jail_role_id = p.pint('JAIL_ROLE_ID')
+minor_role_id = p.pint('MINOR_ROLE_ID', required=False)
 friends_role_ids = p.plist('FRIENDS_ROLE_IDS')
 
 game_channel_ids = p.plist('GAME_CHANNEL_IDS')
@@ -275,22 +276,6 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     else:
         logger.debug(f"{member} changed VC state but both after and before are None")
 
-@bot.event
-async def on_member_update(before: discord.Member, after: discord.Member):
-    # logger.info(f"{after} has updated profile")
-
-    try:
-        await _handle_nsfw_added(before, after)
-    except Exception as e:
-        logger.error(f"Error during on_member_update::_handle_nsfw_added: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"on_member_update::_handle_nsfw_added\n{e}\n{traceback.format_exc()}")
-
-    try:
-        await _handle_new_alias(before, after)
-    except Exception as e:
-        logger.error(f"Error during on_member_update::_handle_new_alias: {e}\n{traceback.format_exc()}")
-        await _dm_log_error(f"on_member_update::_handle_new_alias\n{e}\n{traceback.format_exc()}")
-
     # logger.debug(f"Finished on_member_update")
 
 async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
@@ -310,6 +295,21 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     await notif.send(content=f"Straight for the NSFW and didn't even tell me your age, {after.mention}?~")
     await utils.send_poi_dms(f"{after.mention} just got told off for going straight for NSFW~")
 
+async def _handle_minor_role_added(before: discord.Member, after: discord.Member):
+    if not minor_role_id: return
+    if (minor_role_id in utils.role_ids(before)) or (minor_role_id not in utils.role_ids(after)): return
+    minor_role = discord.utils.get(after.guild.roles, id=minor_role_id)
+    notif = after.guild.get_channel(channel_ids[0])
+    if not utils.just_joined(before.id): 
+        logger.info(f"{after} added minor role and is a previous user")
+        await notif.send(content=f"Careful there {after.mention}, remember to refuse if anyone offers you candy~")
+        await after.remove_roles(*[minor_role], reason="Age bait role", atomic=False)
+        return
+    
+    logger.info(f"{after} added minor role but is still being verified")
+    await notif.send(content=f"{after.mention} caught the bait~")
+    await age_handler.kick_or_ban(after, notif, reason="Chose minor age role", force_ban=True)
+
 async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
     if before is not None and after.display_name == before.display_name:
         # logger.debug(f"{after} did not change alias")
@@ -320,6 +320,23 @@ async def _handle_new_alias(before: typing.Optional[discord.Member], after: disc
         return
     logger.info(f"{after} adding new alias {after.display_name}")
     sql.create_alias(after.id, after.display_name)
+
+member_update_handlers = [
+    _handle_nsfw_added,
+    _handle_minor_role_added,
+    _handle_new_alias,
+]
+
+@bot.event
+async def on_member_update(before: discord.Member, after: discord.Member):
+    # logger.info(f"{after} has updated profile")
+
+    for handler in member_update_handlers:
+        try:
+            await handler(before, after)
+        except Exception as e:
+            logger.error(f"Error during on_member_update: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"on_member_update\n{e}\n{traceback.format_exc()}")
 
 reaction_blocklist = []
 reaction_user_blocklist = []
