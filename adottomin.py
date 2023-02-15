@@ -25,6 +25,7 @@ import games
 import graphlytics
 import kinks
 import memes
+import propervider as p
 
 from word_blocklist import blocklist
 
@@ -33,10 +34,7 @@ from dotenv import load_dotenv
 from os.path import exists
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-if TOKEN is None:
-    print("DISCORD_TOKEN env var not set! Exiting")
-    exit(1)
+TOKEN = p.pstr('DISCORD_TOKEN')
 
 RAID_MODE_CTRL = "raid.txt"
 RAID_MODE = False
@@ -68,39 +66,32 @@ MSG_CONGRATULATIONS_PROMOTION = "Congratulations on your promotion to tier {}, {
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
 
-GUILD_ID = os.getenv('GUILD_ID')
-if GUILD_ID is None:
-    print("GUILD_ID env var not set! Exiting")
-    exit(1)
+GUILD_ID = p.pstr('GUILD_ID')
 GUILD_OBJ = discord.Object(id=GUILD_ID)
 
-_ids = os.getenv('CHANNEL_IDS') or ""
-_channel_ids = [int(id) for id in _ids.split('.') if id != ""]
-channel_ids = _channel_ids if len(_channel_ids) else None
-_ids = os.getenv('AGE_ROLE_IDS') or ""
-_role_ids = [int(id) for id in _ids.split('.') if id != ""]
-role_ids = _role_ids if len(_role_ids) else []
-tally_channel = int(os.getenv('TALLY_CHANNEL_ID'))
-log_channel = int(os.getenv('LOG_CHANNEL_ID'))
-ad_channel = int(os.getenv('AD_CHANNEL_ID'))
-emojionly_channel = int(os.getenv('EMOJI_CHANNEL_ID'))
+channel_ids = p.plist('CHANNEL_IDS')
+role_ids = p.plist('AGE_ROLE_IDS')
+tally_channel = p.pint('TALLY_CHANNEL_ID')
+log_channel = p.pint('LOG_CHANNEL_ID')
+ad_channel = p.pint('AD_CHANNEL_ID')
+emojionly_channel = p.pint('EMOJI_CHANNEL_ID')
 chats_home = os.getenv('CHATS_HOME')
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
-queen_role_id = int(os.getenv('QUEEN_ROLE_ID'))
-owner_role_id = int(os.getenv('OWNER_ROLE_ID'))
-divine_role_id = int(os.getenv('DIVINE_ROLE_ID'))
-secretary_role_id = int(os.getenv('SECRETARY_ROLE_ID'))
-nsfw_role_id = int(os.getenv('NSFW_ROLE_ID'))
-jail_role_id = int(os.getenv('JAIL_ROLE_ID'))
-friends_role_ids = [int(role) for role in os.getenv('FRIENDS_ROLE_IDS').split('.')]
+queen_role_id = p.pint('QUEEN_ROLE_ID')
+owner_role_id = p.pint('OWNER_ROLE_ID')
+divine_role_id = p.pint('DIVINE_ROLE_ID')
+secretary_role_id = p.pint('SECRETARY_ROLE_ID')
+nsfw_role_id = p.pint('NSFW_ROLE_ID')
+jail_role_id = p.pint('JAIL_ROLE_ID')
+friends_role_ids = p.plist('FRIENDS_ROLE_IDS')
 
-game_channel_ids = [int(role) for role in os.getenv('GAME_CHANNEL_IDS').split('.')]
+game_channel_ids = p.plist('GAME_CHANNEL_IDS')
 
-pin_archive_channel_id = int(os.getenv('PIN_ARCHIVE_CHANNEL_ID'))
-pin_archive_blocklist_ids = [int(role) for role in os.getenv('PIN_ARCHIVE_BLOCKLIST_IDS').split('.')]
+pin_archive_channel_id = p.pint('PIN_ARCHIVE_CHANNEL_ID')
+pin_archive_blocklist_ids = p.plist('PIN_ARCHIVE_BLOCKLIST_IDS')
 
-admin_id = int(os.getenv('ADMIN_ID'))
+admin_id = p.pint('ADMIN_ID')
 _aux = os.getenv('POI_USER_IDS')
 poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
@@ -150,7 +141,7 @@ logger.info(f"Tallly channel IDs = {tally_channel}")
 
 sql = db.database(LENIENCY_COUNT)
 utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
-age_handler = age_handling.age_handler(bot, sql, utils, _role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+age_handler = age_handling.age_handler(bot, sql, utils, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 
