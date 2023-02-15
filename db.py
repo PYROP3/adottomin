@@ -18,6 +18,8 @@ offline_ping_blocklist_version = 2
 offline_ping_blocklist_db_file = _dbfile('offline_ping_blocklist', offline_ping_blocklist_version)
 activity_version = 2
 activity_db_file = _dbfile('activity', activity_version)
+vc_activity_version = 1
+vc_activity_db_file = _dbfile('vc_activity', vc_activity_version)
 autoblocklist_version = 1
 autoblocklist_db_file = _dbfile('autoblocklist', autoblocklist_version)
 pins_archive_version = 2
@@ -240,6 +242,24 @@ schemas = {
                 message_id int NOT NULL,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
+            );'''],
+    vc_activity_db_file: ['''
+            CREATE TABLE joins_and_leaves (
+                user int NOT NULL,
+                action TEXT NOT NULL,
+                channel int,
+                activity TEXT,
+                created_at TIMESTAMP
+            );''',
+            '''
+            CREATE TABLE sessions (
+                user int NOT NULL,
+                day TIMESTAMP,
+                channel int,
+                activity TEXT,
+                duration int NOT NULL,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user, day, channel, activity)
             );'''],
 }
 
@@ -958,3 +978,111 @@ class database:
         cur.execute("DELETE FROM ads WHERE user=:user", {'user': user})
         con.commit()
         con.close()
+
+    def register_join_vc(self, user: int, channel: int, activity: str):
+        con = sqlite3.connect(vc_activity_db_file)
+        cur = con.cursor()
+        cur.execute("INSERT INTO joins_and_leaves VALUES (?, ?, ?, ?, ?)", [user, "join", channel, activity, datetime.datetime.now()])
+        con.commit()
+        con.close()
+
+    def register_leave_vc(self, user: int, channel: int, activity: str):
+        con = sqlite3.connect(vc_activity_db_file)
+        cur = con.cursor()
+        now = datetime.datetime.now()
+        cur.execute("INSERT INTO joins_and_leaves VALUES (?, ?, ?, ?, ?)", [user, "leave", channel, activity, now])
+
+        self._calculate_sessions(cur, user, now)
+
+        con.commit()
+        con.close()
+
+    def get_dailytopvc(self, date, limit: int = 3):
+        try:
+            con = sqlite3.connect(vc_activity_db_file)
+            cur = con.cursor()
+            res = cur.execute('SELECT user, SUM(duration) as total_duration FROM sessions WHERE date(substr(day, 1, 10)) = :day GROUP BY user ORDER BY total_duration DESC LIMIT :l', {"day": date, "l": limit}).fetchall()
+            con.commit()
+            con.close()
+            return res 
+        except Exception as e:
+            self.logger.error(f"get_dailytopvc error: {e}")
+            return None
+
+    # Used before fetching daily user data, in case some user is still in a vc session from the previous day
+    def force_calculate_sessions(self):
+        con = sqlite3.connect(vc_activity_db_file)
+        cur = con.cursor()
+        open_sessions = cur.execute("""SELECT user, channel, activity, created_at FROM(
+                SELECT                           
+                    DISTINCT user,             -- Only unique rows
+                    channel,
+                    activity,
+                    LAST_VALUE(action) OVER (    -- The last value of the status column
+                        PARTITION BY user      -- Taking into account rows with the same value in the object column
+                        ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
+                        RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING    -- Take all rows in the partition
+                    ) as last_action,
+                    LAST_VALUE(created_at) OVER (    -- The last value of the status column
+                        PARTITION BY user      -- Taking into account rows with the same value in the object column
+                        ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
+                        RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING    -- Take all rows in the partition
+                    ) as created_at
+                FROM
+                    joins_and_leaves
+            ) WHERE last_action = 'join'""").fetchall()
+
+        now = datetime.datetime.now()
+        for user, channel, activity, join_datetimestr in open_sessions:
+            join_datetime = self.db2datetime(join_datetimestr)
+            self._calculate_sessions(cur, user, now, join_datetime=join_datetime, channel=channel, activity=activity)
+            # Force a refresh (all pending users "leave and rejoin") so that next time, the last_value for "join" is not yet accounted for the sessions (consistency)
+            cur.execute("INSERT INTO joins_and_leaves VALUES (?, ?, ?, ?)", [user, "leave", channel, activity, now])
+            cur.execute("INSERT INTO joins_and_leaves VALUES (?, ?, ?, ?)", [user, "join", channel, activity, now])
+
+        con.commit()
+        con.close()
+
+    def _calculate_sessions(self, cur: sqlite3.Cursor, user: int, now: datetime.datetime, join_datetime: datetime.datetime=None, channel: int=None, activity: str=None):
+        if not join_datetime:
+            # Get when user joined
+            res = cur.execute("SELECT created_at, channel, activity FROM joins_and_leaves WHERE user=:user AND action='join' ORDER BY created_at DESC", {'user': user}).fetchone()
+            if not res: # Otherwise, bot was probably offline and there's nothing we can do about it
+                self.logger.warning(f"_calculate_sessions: search returned null")
+                return
+
+            join_datetime = self.db2datetime(res[0])
+            channel = int(res[1])
+            activity = res[2]
+
+        if now.date() == join_datetime.date(): # Easy case, user joined and left on the same day
+            self.logger.debug(f"_calculate_sessions: user joined and left on the same day")
+            self._insert_vc_session(cur, user, join_datetime.date(), now - join_datetime, channel, activity)
+            return
+
+        days = (now.date() - join_datetime.date()).days
+        if days > 1: # Extreme edge case, should not happen but we're accounting for it anyway
+            full_days = days - 1
+            self.logger.debug(f"_calculate_sessions: edge case: adding {full_days} full days")
+            for d in range(full_days):
+                self._insert_vc_session(cur, user, join_datetime.date() + datetime.timedelta(days=d+1), datetime.timedelta(days=1), channel, activity)
+        
+        self.logger.debug(f"_calculate_sessions: handle separate join and leave days")
+        # Now we can handle the join day, and today
+        # Join day is from join_datetime until midnight
+        next_day = join_datetime + datetime.timedelta(days=1)
+        self._insert_vc_session(cur, user, join_datetime.date(), datetime.datetime.combine(next_day, datetime.time.min) - join_datetime, channel, activity)
+
+        # Today is from last midnight to right now
+        self._insert_vc_session(cur, user, now.date(), now - datetime.datetime.combine(now, datetime.time.min), channel, activity)
+
+    def _insert_vc_session(self, cur: sqlite3.Cursor, user: int, date: datetime.date, duration: datetime.timedelta, channel: int, activity: str):
+        _duration = int(duration.total_seconds())
+        self.logger.debug(f"_insert_vc_session: adding duration {_duration} for {user} in VC {channel}/{activity} (date={date})")
+        try:
+            cur.execute("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)", [user, date, channel, activity, _duration, datetime.datetime.now()])
+        except sqlite3.IntegrityError:
+            cur.execute("UPDATE sessions SET duration=duration+:duration, created_at=:created_at WHERE user=:user AND day=:day AND channel=:channel AND activity=:activity", {'duration': _duration, 'created_at': datetime.datetime.now(), 'user': user, 'day': date, 'channel': channel, 'activity': activity})
+
+    def db2datetime(self, when: str):
+        return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")

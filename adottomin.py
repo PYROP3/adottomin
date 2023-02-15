@@ -210,6 +210,80 @@ async def on_ready():
 
     logger.info(f"Finished on_ready setup")
 
+
+@bot.event
+async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+    def _validate_channel(vc: discord.VoiceState):
+        # Do not track users in AFK channels, or users deafened (since they are not actively participating)
+        return (not vc.afk) and (not vc.deaf) and (not vc.self_deaf)
+
+    def _activity(vc: discord.VoiceState):
+        if vc.self_video:
+            return 'video'
+        if vc.self_stream:
+            return 'stream'
+        return 'voice'
+
+    if after.channel and not before.channel: # User joined a voice channel
+        logger.debug(f"{member} just joined VC {after.channel}")
+        if not _validate_channel(after): 
+            logger.debug(f"{member} just joined invalid VC (ignore)")
+            return
+        sql.register_join_vc(member.id, after.channel.id, _activity(after))
+        return
+
+    if before.channel and not after.channel: # User left a voice channel
+        logger.debug(f"{member} just left VC {before.channel}")
+        if not _validate_channel(before): 
+            logger.debug(f"{member} just left invalid VC (ignore)")
+            return
+        sql.register_leave_vc(member.id, before.channel.id, _activity(before))
+        return
+
+    if after.channel and before.channel: # Other
+        _valid_before = _validate_channel(before)
+        _valid_after = _validate_channel(after)
+        _act_before = _activity(before)
+        _act_after = _activity(after)
+        if after.channel.id != before.channel.id: # User changed voice channel
+            logger.debug(f"{member} just left VC {before.channel} (valid={_valid_before}) and joined {after.channel} (valid={_valid_after})")
+
+            if _valid_before:
+                logger.debug(f"{member} previous VC {before.channel} is valid")
+                sql.register_leave_vc(member.id, before.channel.id, _act_before)
+            else:
+                logger.debug(f"{member} previous VC {before.channel} is NOT valid")
+
+            if _valid_after:
+                logger.debug(f"{member} current VC {after.channel} is valid")
+                sql.register_join_vc(member.id, after.channel.id, _act_after)
+            else:
+                logger.debug(f"{member} current VC {after.channel} is NOT valid")
+
+            return
+
+        if _valid_before and _valid_after: # Check if user activity changed
+            if _act_before != _act_after:
+                logger.debug(f"{member} just changed activity in VC {before.channel} ({_act_before}->{_act_after})")
+                sql.register_leave_vc(member.id, before.channel.id, _act_before)
+                sql.register_join_vc(member.id, after.channel.id, _act_after)
+            else:
+                logger.debug(f"{member} is still in VC {before.channel} but action does not warrant tracking")
+
+        elif _valid_before and not _valid_after: # User exited a valid state
+            logger.debug(f"{member} just exited valid state in VC {before.channel}")
+            sql.register_leave_vc(member.id, before.channel.id, _act_before)
+
+        elif not _valid_before and _valid_after: # User entered a valid state
+            logger.debug(f"{member} just entered valid state in VC {after.channel}")
+            sql.register_join_vc(member.id, after.channel.id, _act_after)
+
+        else: # User is still in the same channel (un/muted, un/deafened, started/stopped streaming)
+            logger.debug(f"{member} is still in VC {before.channel} but action does not warrant tracking")
+
+    else:
+        logger.debug(f"{member} changed VC state but both after and before are None")
+
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
     # logger.info(f"{after} has updated profile")
@@ -1187,8 +1261,8 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Get the daily top 10 rankings')
-@discord.app_commands.describe(date='When to fetch data', phone='Format the output for copy/paste on a phone')
-async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], phone: typing.Optional[bool] = False):
+@discord.app_commands.describe(date='When to fetch data', phone='Format the output for copy/paste on a phone', vclimit='How many users to check for VC standings (default 3)')
+async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], phone: typing.Optional[bool] = False, vclimit: typing.Optional[int] = 3):
     if not await utils.safe_defer(interaction, ephemeral=True): return
     
     _date = date or (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
@@ -1207,13 +1281,31 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
         await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
         return
+
+    try:
+        vcdata = sql.get_dailytopvc(_date, limit=vclimit)
+    except sqlite3.DatabaseError as e:
+        log_debug(interaction, f"{interaction.user} query daily top VC failed : {e}")
+        await utils.safe_send(interaction, content=f"Failed to execute query:\n```\n{traceback.format_exc()}\n```", ephemeral=True, is_followup=True)
+        return
+    except Exception as e:
+        log_debug(interaction, f"{interaction.user} query for daily top VC failed : {e}")
+        await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
+        await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
+        return
         
-    if data is None:
+    if not data and not vcdata:
         msg = "Your query returned None"
     else:
-        msg = f"Top 10 users for {utils.to_date(_pdate)}!\n"
-        msg += "\n".join(" | ".join([utils.to_podium(idx + 1), ("" if phone else "\\") + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
-        msg += "\n"
+        msg = ""
+        if data:
+            msg += f"Top 10 users for {utils.to_date(_pdate)}!\n"
+            msg += "\n".join(" | ".join([utils.to_podium(idx + 1), ("" if phone else "\\") + utils.to_mention(line[0]), str(line[1])]) for idx, line in enumerate(data))
+            msg += "\n"
+        if vcdata:
+            msg += f"Top {vclimit} VC users!\n"
+            msg += "\n".join(" | ".join([utils.to_podium(idx + 1), ("" if phone else "\\") + utils.to_mention(line[0]), f"{utils.to_pretty_timedelta(line[1])}"]) for idx, line in enumerate(vcdata))
+            msg += "\n"
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux

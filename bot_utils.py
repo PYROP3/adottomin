@@ -293,6 +293,26 @@ class utils:
         if pos == 3: return ":third_place:"
         return str(pos)
 
+    def to_pretty_timedelta(self, seconds: int):#delta: timedelta):
+        fmt = []
+        _rem = int(seconds) #delta.total_seconds()
+        _d = int(_rem / 86400)
+        if _d:
+            fmt += [f"{_d} days"]
+        _rem = _rem % 86400
+        _h = int(_rem / 3600)
+        if _h:
+            fmt += [f"{_h} hours"]
+        _rem = _rem % 3600
+        _m = int(_rem / 60)
+        if _m:
+            fmt += [f"{_m} minutes"]
+        _s = _rem % 60
+        if _s:
+            fmt += [f"{_s} seconds"]
+
+        return ", ".join(fmt)
+
     async def handle_dm(self, msg: discord.Message):
         await self._enforce_dms(msg)
         await self._enforce_not_admin(msg)
