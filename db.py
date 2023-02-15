@@ -997,7 +997,13 @@ class database:
         con.commit()
         con.close()
 
-    def get_dailytopvc(self, date, limit: int = 3):
+    def get_dailytopvc(self, date, limit: int = 3, force: bool=False):
+        if force:
+            try:
+                self.force_calculate_sessions()
+            except Exception as e:
+                self.logger.error(f"get_dailytopvc error in force_calculate_sessions: {e}")
+        
         try:
             con = sqlite3.connect(vc_activity_db_file)
             cur = con.cursor()
@@ -1009,28 +1015,46 @@ class database:
             self.logger.error(f"get_dailytopvc error: {e}")
             return None
 
+    def get_opensessions(self):
+        con = sqlite3.connect(vc_activity_db_file)
+        cur = con.cursor()
+        open_sessions = cur.execute("""
+                SELECT user, channel, activity, created_at FROM (
+                    SELECT 
+                        DISTINCT user,             -- Only unique rows
+                        LAST_VALUE(channel) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as channel,
+                        LAST_VALUE(activity) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as activity,
+                        LAST_VALUE(action) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as last_action,
+                        LAST_VALUE(created_at) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as created_at
+                        FROM joins_and_leaves
+                        WINDOW w AS (
+                            PARTITION BY user      -- Taking into account rows with the same value in the object column
+                            ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
+                        )
+                ) WHERE last_action = 'join'
+                """).fetchall()
+        con.close()
+        return open_sessions
+
     # Used before fetching daily user data, in case some user is still in a vc session from the previous day
     def force_calculate_sessions(self):
         con = sqlite3.connect(vc_activity_db_file)
         cur = con.cursor()
-        open_sessions = cur.execute("""SELECT user, channel, activity, created_at FROM(
-                SELECT                           
-                    DISTINCT user,             -- Only unique rows
-                    channel,
-                    activity,
-                    LAST_VALUE(action) OVER (    -- The last value of the status column
-                        PARTITION BY user      -- Taking into account rows with the same value in the object column
-                        ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
-                        RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING    -- Take all rows in the partition
-                    ) as last_action,
-                    LAST_VALUE(created_at) OVER (    -- The last value of the status column
-                        PARTITION BY user      -- Taking into account rows with the same value in the object column
-                        ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
-                        RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING    -- Take all rows in the partition
-                    ) as created_at
-                FROM
-                    joins_and_leaves
-            ) WHERE last_action = 'join'""").fetchall()
+        open_sessions = cur.execute("""
+                SELECT user, channel, activity, created_at FROM (
+                    SELECT 
+                        DISTINCT user,             -- Only unique rows
+                        LAST_VALUE(channel) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as channel,
+                        LAST_VALUE(activity) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as activity,
+                        LAST_VALUE(action) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as last_action,
+                        LAST_VALUE(created_at) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as created_at
+                        FROM joins_and_leaves
+                        WINDOW ww AS (
+                            PARTITION BY user      -- Taking into account rows with the same value in the object column
+                            ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
+                        )
+                ) WHERE last_action = 'join'
+                """).fetchall()
 
         now = datetime.datetime.now()
         for user, channel, activity, join_datetimestr in open_sessions:
