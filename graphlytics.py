@@ -157,11 +157,23 @@ class Analytics(discord.app_commands.Group):
         logger.info(f"{interaction.user} requested joiners_and_leavers")
         await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_new_user_graph, range)
 
-    @discord.app_commands.command(description='Get analytics data for user activity')
+    @discord.app_commands.command(description='Get analytics data for user activity (text channels only)')
     @discord.app_commands.describe(range='Max days to fetch')
     async def active_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested active_users")
         await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_active_users_graph, range)
+
+    @discord.app_commands.command(description='Get analytics data for user VC activity')
+    @discord.app_commands.describe(range='Max days to fetch')
+    async def active_vc_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
+        logger.info(f"{interaction.user} requested active_vc_users")
+        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_active_vc_users_graph, range)
+
+    @discord.app_commands.command(description='Get analytics data for VC activity duration')
+    @discord.app_commands.describe(range='Max days to fetch')
+    async def vc_activity_duration(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
+        logger.info(f"{interaction.user} requested vc_activity_duration")
+        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_vc_activity_time_graph, range)
 
     @discord.app_commands.command(description='Get analytics data for commands activity')
     @discord.app_commands.describe(range='Max days to fetch')
@@ -291,6 +303,106 @@ class AnalyticsGenerator():
         ax.plot(xaxis, activity_data)
         ax.set_ylabel('Users')
         ax.set_title('Daily active users')
+        plt.xticks(rotation=90)
+        fig.set_size_inches(15, 10)
+        ax.set_ylim(ymin=0)
+        ax.legend()
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        plt.savefig(name)
+        return name
+
+    def generate_active_vc_users_graph(self, time_range=None):
+        today, min_date, min_date_str = self._min_date(time_range)
+
+        con = sqlite3.connect(db.vc_activity_db_file)
+        cur = con.cursor()
+        raw_activity_data = {line[1]: line[0] for line in cur.execute(f"""
+            SELECT
+                COUNT(DISTINCT user),
+                day
+            FROM sessions 
+            WHERE DATE(day) > DATE('{min_date_str}')
+            GROUP BY 
+                day
+            ORDER BY
+                day DESC
+            """).fetchall()}
+        con.close()
+        
+        logger.debug(f"[GRAPHLYTICS] Got {len(raw_activity_data)} datapoints (expected max {time_range})")
+
+        day_count = (today - min_date).days + 1 # FIXME this '+ 1' might be causing first value = 0?
+        activity_data = []
+        for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+            key = datetime.datetime.strftime(single_date, '%Y-%m-%d')
+            activity_data += [key in raw_activity_data and raw_activity_data[key] or 0]
+
+        fig, ax = plt.subplots()
+        xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))][1:] # FIXME first value is always 0
+        activity_data = activity_data[1:] # FIXME first value is always 0
+
+        ax.plot(xaxis, activity_data)
+        ax.set_ylabel('Users')
+        ax.set_title('Daily active VC users')
+        plt.xticks(rotation=90)
+        fig.set_size_inches(15, 10)
+        ax.set_ylim(ymin=0)
+        ax.legend()
+
+        name = "trash/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=string_len)) + ".png"
+        plt.savefig(name)
+        return name
+
+    def generate_vc_activity_time_graph(self, time_range=None):
+        today, min_date, min_date_str = self._min_date(time_range)
+        _activities = ['video', 'stream', 'voice']
+        colors = {
+            'video': 'red',
+            'stream': 'green',
+            'voice': 'blue'
+        }
+
+        con = sqlite3.connect(db.vc_activity_db_file)
+        cur = con.cursor()
+        raw_data = {line[1]: line[0] for line in cur.execute(f"""
+            SELECT
+                SUM(duration)/60.,
+                day || '_' || activity AS tag
+            FROM sessions 
+            WHERE date(day) > date('{min_date_str}')
+            GROUP BY 
+                tag
+            ORDER BY
+                day DESC
+            """).fetchall()}
+        con.close()
+        
+        logger.debug(f"[GRAPHLYTICS] Got {len(raw_data)} datapoints (expected max {time_range * len(_activities)})")
+
+        day_count = (today - min_date).days + 1 # FIXME this '+ 1' might be causing first value = 0?
+        i = 0
+        data_split = {x: [] for x in _activities}
+        for single_date in (min_date + datetime.timedelta(n) for n in range(day_count)):
+            for tag in _activities:
+                key = f"{datetime.datetime.strftime(single_date, '%Y-%m-%d')}_{tag}"
+                # print(key)
+                data_split[tag] += [key in raw_data and raw_data[key] or 0]
+            i += 1
+
+        data_split = {k: np.array(data_split[k][1:]) for k in data_split} # FIXME first value is always 0
+
+        fig, ax = plt.subplots()
+        width = 0.75
+        xaxis = [datetime.datetime.strftime(d, '%Y-%m-%d') for d in list(min_date + datetime.timedelta(n) for n in range(day_count))][1:] # FIXME first value is always 0
+
+        bottoms = np.zeros(day_count - 1) # FIXME first value is always 0
+        for key in _activities[::-1]:
+            ax.bar(xaxis, data_split[key], width, bottom=bottoms, label=key, color=colors[key])
+            bottoms += data_split[key]
+
+        ax.set_ylabel('Usage [minutes]')
+        ax.set_title('Combined VC usage per activity')
         plt.xticks(rotation=90)
         fig.set_size_inches(15, 10)
         ax.set_ylim(ymin=0)
