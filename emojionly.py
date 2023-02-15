@@ -6,11 +6,10 @@ import botlogger
 import db
 
 from discord.ext import commands
-
-emoji_prog = re.compile(r"^((<a?:[^:]+:[0-9]+>)|(:[^: ]+:)|([ \n]))+$")
+#emoji_prog = re.compile(r"^((<a?:[^:]+:[0-9]+>)|(:[^: ]+:)|([ \n]))+$")
 
 class emojionly_handler:
-    def __init__(self, bot: commands.Bot, database: db.database, emojichat_id: int):
+    def __init__(self, bot: commands.Bot, database: db.database, emojichat_id: int, allow_regional_indicators: bool=False):
         self.database = database
         self.bot = bot
         self.emojichat = None
@@ -18,12 +17,18 @@ class emojionly_handler:
 
         self.logger = botlogger.get_logger(__name__)
 
-    # def inject_chat(self, emojichat: discord.TextChannel):
-    #     self.emojichat = emojichat
+        valid_substrings = [
+            r"<a?:[^:]+:[0-9]+>",
+            r":[^: ]+:",
+            r"[ \n]"
+        ]
+        if allow_regional_indicators:
+            valid_substrings += [r"[🇦🇧🇨🇩🇪🇫🇬🇭🇮🇯🇰🇱🇲🇳🇴🇵🇶🇷🇸🇹🇺🇻🇼🇽🇾🇿]"] # Arguably defeats the purpose of an emoji-only chat]
+        self.emoji_prog = re.compile("(" + "|".join([f"({s})" for s in valid_substrings]) + ")+")
 
     async def handle_emoji_chat(self, msg: discord.Message):
         if msg.channel.id != self.emojichat_id: return
-        m = emoji_prog.search(emoji.demojize(msg.content))
+        m = self.emoji_prog.fullmatch(emoji.demojize(msg.content))
         if m: 
             self.logger.debug(f"Message [{msg.content}] contains only emojis")
             return
