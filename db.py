@@ -52,6 +52,8 @@ noship_version = 1
 noship_db_file = _dbfile('noship', noship_version)
 advertisements_version = 1
 advertisements_db_file = _dbfile('advertisements', advertisements_version)
+relationships_version = 1
+relationships_db_file = _dbfile('relationships', relationships_version)
 
 sql_files = [
     validations_db_file,
@@ -260,6 +262,15 @@ schemas = {
                 duration int NOT NULL,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user, day, channel, activity)
+            );'''],
+    relationships_db_file: ['''
+            CREATE TABLE relationships (
+                source int NOT NULL,
+                target int NOT NULL,
+                relationship TEXT,
+                created_at TIMESTAMP,
+                confirmed_at TIMESTAMP,
+                PRIMARY KEY (source, target)
             );'''],
 }
 
@@ -1044,12 +1055,12 @@ class database:
                 SELECT user, channel, activity, created_at FROM (
                     SELECT 
                         DISTINCT user,             -- Only unique rows
-                        LAST_VALUE(channel) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as channel,
-                        LAST_VALUE(activity) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as activity,
-                        LAST_VALUE(action) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as last_action,
-                        LAST_VALUE(created_at) OVER (ww RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as created_at
+                        LAST_VALUE(channel) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as channel,
+                        LAST_VALUE(activity) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as activity,
+                        LAST_VALUE(action) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as last_action,
+                        LAST_VALUE(created_at) OVER (w RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as created_at
                         FROM joins_and_leaves
-                        WINDOW ww AS (
+                        WINDOW w AS (
                             PARTITION BY user      -- Taking into account rows with the same value in the object column
                             ORDER by created_at asc        -- "Last" when sorting the rows of every object by the time column in ascending order
                         )
@@ -1107,6 +1118,74 @@ class database:
             cur.execute("INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?)", [user, date, channel, activity, _duration, datetime.datetime.now()])
         except sqlite3.IntegrityError:
             cur.execute("UPDATE sessions SET duration=duration+:duration, created_at=:created_at WHERE user=:user AND day=:day AND channel=:channel AND activity=:activity", {'duration': _duration, 'created_at': datetime.datetime.now(), 'user': user, 'day': date, 'channel': channel, 'activity': activity})
+
+    def relationship_create_entry(self, source: int, target: int, relationship: str):
+        con = sqlite3.connect(relationships_db_file)
+        cur = con.cursor()
+        now = datetime.datetime.now()
+        try:
+            cur.execute("INSERT INTO relationships VALUES (?, ?, ?, ?, ?)", [source, target, relationship, now, ""])
+        except sqlite3.IntegrityError:
+            cur.execute("UPDATE relationships SET relationship=:relationship, created_at=:now, confirmed_at='' WHERE source=:source AND target=:target", {
+                'relationship': relationship,
+                'now': now,
+                'source': source,
+                'target': target
+            })
+        con.commit()
+        con.close()
+
+    def relationship_delete_entry(self, source: int, target: int):
+        con = sqlite3.connect(relationships_db_file)
+        cur = con.cursor()
+        cur.execute("DELETE FROM relationships WHERE source=:source AND target=:target", {
+            'source': source,
+            'target': target
+        })
+        con.commit()
+        con.close()
+
+    def relationship_confirm_entry(self, source: int, target: int):
+        con = sqlite3.connect(relationships_db_file)
+        cur = con.cursor()
+        cur.execute("UPDATE relationships SET confirmed_at=:now WHERE source=:source AND target=:target", {
+            'now': datetime.datetime.now(),
+            'source': source,
+            'target': target
+        })
+        con.commit()
+        con.close()
+
+    def relationship_is_pending(self, source: int, target: int):
+        con = sqlite3.connect(relationships_db_file)
+        cur = con.cursor()
+        data = cur.execute("SELECT relationship, confirmed_at FROM relationships WHERE source=:source AND target=:target", {
+            'source': source,
+            'target': target
+        }).fetchone()
+        con.commit()
+        con.close()
+        return (data is not None, data and bool(data[1]), data and data[0]) # (Exists, is pending, relationship)
+
+    def relationship_get_centered(self, user: int):
+        con = sqlite3.connect(relationships_db_file)
+        cur = con.cursor()
+        as_source = [(int(l[0]), str(l[1]), bool(l[2])) for l in cur.execute("SELECT target, relationship, confirmed_at FROM relationships WHERE source=:user", {
+            'user': user
+        }).fetchall()]
+        as_target = [(int(l[0]), str(l[1]), bool(l[2])) for l in cur.execute("SELECT source, relationship, confirmed_at FROM relationships WHERE target=:user", {
+            'user': user
+        }).fetchall()]
+        con.close()
+        return (as_source, as_target)
+
+    def relationship_get_complete(self):
+        con = sqlite3.connect(relationships_db_file)
+        cur = con.cursor()
+        data = [(int(l[0]), int(l[1]), l[2], bool(l[3])) for l in cur.execute("SELECT source, target, relationship, confirmed_at FROM relationships").fetchall()]
+        users = set([l[0] for l in data] + [l[1] for l in data])
+        con.close()
+        return users, data
 
     def db2datetime(self, when: str):
         return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")

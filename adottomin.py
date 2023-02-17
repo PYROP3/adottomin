@@ -26,6 +26,7 @@ import graphlytics
 import kinks
 import memes
 import propervider as p
+import shipper
 
 from word_blocklist import blocklist
 
@@ -1662,6 +1663,7 @@ bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
 bot.tree.add_command(graphlytics.Analytics(utils))
+bot.tree.add_command(shipper.Relationship(sql, utils))
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):
