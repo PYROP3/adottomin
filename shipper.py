@@ -12,10 +12,13 @@ import string
 import typing
 import os
 import math
+import re
 
 from netgraph import Graph
 
 logger = botlogger.get_logger(__name__)
+
+emoji_remover = re.compile("(:[^: ]+:)|(<a?:[^: ]+:[0-9]+>)")
 
 # Commands
 @discord.app_commands.guild_only()
@@ -29,6 +32,8 @@ class Relationship(discord.app_commands.Group):
     @discord.app_commands.describe(user='Who the relationship should be attached to', relation='What your relationship with them is')
     async def create(self, interaction: discord.Interaction, user: discord.Member, relation: str):
         logger.info(f"{interaction.user} requested creation of '{relation}' with {user}")
+
+        relation = emoji_remover.sub("", relation)
 
         self.database.relationship_create_entry(interaction.user.id, user.id, relation)
         messaged = False
@@ -125,7 +130,15 @@ class Relationship(discord.app_commands.Group):
         graph_data =  [(user.id, target, relation, confirmed) for target, relation, confirmed in data_as_source]
         graph_data += [(source, user.id, relation, confirmed) for source, relation, confirmed in data_as_target]
 
+        if len(graph_data) == 0:
+            await self.utils.safe_send(interaction, content=f"You don't have any relationships registered, silly~", is_followup=True)
+            return
+
         name = await self.graph_core(interaction, graph_data, user_list, center=user)
+        if not name:
+            await self.utils.safe_send(interaction, content=f"Something went wrong... :c", is_followup=True)
+            return
+
         report_file = discord.File(name, filename=f"user_relationships.png")
 
         await self.utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
