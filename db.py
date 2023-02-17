@@ -1165,7 +1165,7 @@ class database:
         }).fetchone()
         con.commit()
         con.close()
-        return (data is not None, data and bool(data[1]), data and data[0]) # (Exists, is pending, relationship)
+        return (data is not None, data and not bool(data[1]), data and data[0]) # (Exists, is pending, relationship)
 
     def relationship_get_centered(self, user: int):
         con = sqlite3.connect(relationships_db_file)
