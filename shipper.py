@@ -169,7 +169,7 @@ class Relationship(discord.app_commands.Group):
                 line = word
             if line:
                 lines += [line]
-            logger.debug(f"Crumbled {text} to {lines}")
+            # logger.debug(f"Crumbled {text} to {lines}")
             return '\n'.join(lines)
 
         instance_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -183,7 +183,7 @@ class Relationship(discord.app_commands.Group):
         for user in user_list:
             try:
                 member = await interaction.guild.fetch_member(user)
-                logger.debug(f"Fetched member {member}")
+                # logger.debug(f"Fetched member {member}")
                 member_name = member.nick or member.name
                 # Images for graph nodes
                 icon_name = f"trash/{instance_name}/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)) + ".png"
@@ -192,7 +192,7 @@ class Relationship(discord.app_commands.Group):
                 G.add_node(member_name, image=PIL.Image.open(icon_name))
 
             except discord.NotFound:
-                logger.warning(f"Couldn't fetch user {user}")
+                # logger.warning(f"Couldn't fetch user {user}")
                 # member = None
                 member_name = str(user)
                 # icon_name = f"meme_stuff/incognito_user.png"
@@ -200,17 +200,17 @@ class Relationship(discord.app_commands.Group):
                 # G.add_node(user, image=PIL.Image.open(icon_name))
                 G.add_node(user)
 
-            logger.debug(f"G now has {len(G.nodes)} nodes")
+            # logger.debug(f"G now has {len(G.nodes)} nodes")
             member_list[user] = member_name
 
-        logger.debug(f"Processed {len(user_list)} users -> {len(member_list)} members")
+        # logger.debug(f"Processed {len(user_list)} users -> {len(member_list)} members")
 
         edge_widths = {}
 
         for source, target, relation, confirmed in graph_data:
             source_name = member_list[source]
             target_name = member_list[target]
-            logger.debug(f"Adding {relation} ({confirmed}) {source_name}->{target_name}")
+            # logger.debug(f"Adding {relation} ({confirmed}) {source_name}->{target_name}")
             style = '-' if confirmed else '--'
             G.add_edge(source_name, target_name, label=_crumble_text(relation), style=style)
             edge_widths[(source_name, target_name)] = 3 if confirmed else 1
@@ -230,7 +230,7 @@ class Relationship(discord.app_commands.Group):
                 if key == center_key:
                     continue
                 pos[key] = np.array([radius * coss[idx], radius * sins[idx]])
-                logger.debug(f"Figure pos for {key} ({idx}) = {pos[key]}")
+                # logger.debug(f"Figure pos for {key} ({idx}) = {pos[key]}")
                 idx += 1
         else:
             pos = nx.spring_layout(G)
@@ -269,7 +269,7 @@ class Relationship(discord.app_commands.Group):
         for n in member_list.values():
             xf, yf = tr_figure(pos[n])
             xa, ya = tr_axes((xf, yf))
-            logger.debug(f"Adding image for node {n} ({xa}, {ya})")
+            # logger.debug(f"Adding image for node {n} ({xa}, {ya})")
             # get overlapped axes and plot icon
             a = plt.axes([xa - (icon_center * size_factor), ya - (icon_center * size_factor), icon_size * size_factor, icon_size * size_factor])
             im = G.nodes[n]["image"] if "image" in G.nodes[n] else incognito_img
