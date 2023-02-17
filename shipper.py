@@ -11,6 +11,7 @@ import random
 import string
 import typing
 import os
+import math
 
 from netgraph import Graph
 
@@ -104,24 +105,27 @@ class Relationship(discord.app_commands.Group):
             logger.info(f"Error while trying to send DM to {user}: {e}\n{traceback.format_exc()}")
     
     @discord.app_commands.command(description='Create a visual relationship graph')
-    @discord.app_commands.describe(format='Whether to show only your circle, or the whole server')
-    @discord.app_commands.choices(format=[discord.app_commands.Choice(name=b, value=b) for b in ['mine', 'complete']])
-    async def display(self, interaction: discord.Interaction, format: discord.app_commands.Choice[str]):
-        logger.info(f"{interaction.user} requested display of relationship [{format.value}]")
+    #@discord.app_commands.describe(format='Whether to show only your circle, or the whole server')
+    @discord.app_commands.describe(user='Whose relationships to show (defaults to yourself)')
+    #@discord.app_commands.choices(format=[discord.app_commands.Choice(name=b, value=b) for b in ['mine', 'complete']])
+    #async def display(self, interaction: discord.Interaction, format: discord.app_commands.Choice[str]):
+    async def display(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]=None):
+        user = user or interaction.user
+        logger.info(f"{interaction.user} requested display of relationship [{user}]")
 
-        if format.value == 'complete':
-            await self.utils.safe_send(interaction, content="Not yet supported~", ephemeral=True)
-            return
+        # if format.value == 'complete':
+        #     await self.utils.safe_send(interaction, content="Not yet supported~", ephemeral=True)
+        #     return
 
         await self.utils.safe_defer(interaction)
 
-        data_as_source, data_as_target = self.database.relationship_get_centered(interaction.user.id)
-        user_list = list(dict.fromkeys([interaction.user.id] + [l[0] for l in data_as_source] + [l[0] for l in data_as_target]))
+        data_as_source, data_as_target = self.database.relationship_get_centered(user.id)
+        user_list = list(dict.fromkeys([user.id] + [l[0] for l in data_as_source] + [l[0] for l in data_as_target]))
 
-        graph_data =  [(interaction.user.id, target, relation, confirmed) for target, relation, confirmed in data_as_source]
-        graph_data += [(source, interaction.user.id, relation, confirmed) for source, relation, confirmed in data_as_target]
+        graph_data =  [(user.id, target, relation, confirmed) for target, relation, confirmed in data_as_source]
+        graph_data += [(source, user.id, relation, confirmed) for source, relation, confirmed in data_as_target]
 
-        name = await self.graph_core(interaction, graph_data, user_list, center=interaction.user)
+        name = await self.graph_core(interaction, graph_data, user_list, center=user)
         report_file = discord.File(name, filename=f"user_relationships.png")
 
         await self.utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
@@ -129,6 +133,31 @@ class Relationship(discord.app_commands.Group):
         os.remove(name)
 
     async def graph_core(self, interaction: discord.Interaction, graph_data: list[tuple[int, int, str, bool]], user_list: list, center: typing.Optional[discord.Member]=None, icon_size: typing.Optional[float]=None):
+
+        def _square_text(text):
+            if ' ' not in text: return text
+            split = text.split(' ')
+            perm = math.floor(math.sqrt(len(split)))
+            lines = len(split)//perm
+            return '\n'.join([' '.join(split[i*perm:(i+1)*perm]) for i in range(lines)])
+
+        def _crumble_text(text, max=13):
+            if ' ' not in text: return text
+            lines = []
+            line = ''
+            for word in text.split(' '):
+                if line == '':
+                    line = word
+                    continue
+                if len(line + ' ' + word) <= max:
+                    line += ' ' + word
+                    continue
+                lines += [line]
+                line = word
+            if line:
+                lines += [line]
+            logger.debug(f"Crumbled {text} to {lines}")
+            return '\n'.join(lines)
 
         instance_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         os.mkdir(f"trash/{instance_name}/")
@@ -170,7 +199,7 @@ class Relationship(discord.app_commands.Group):
             target_name = member_list[target]
             logger.debug(f"Adding {relation} ({confirmed}) {source_name}->{target_name}")
             style = '-' if confirmed else '--'
-            G.add_edge(source_name, target_name, label=relation, style=style)
+            G.add_edge(source_name, target_name, label=_crumble_text(relation), style=style)
             edge_widths[(source_name, target_name)] = 3 if confirmed else 1
 
         # Get a layout and create figure
@@ -193,18 +222,20 @@ class Relationship(discord.app_commands.Group):
         else:
             pos = nx.spring_layout(G)
 
+        cmap = plt.get_cmap('hsv')
+
         fig, ax = plt.subplots()
         Graph(G, 
             node_layout=pos, 
             ax=ax,
             origin=(-1, -1),
-            edge_color="black",
+            edge_color={edge: cmap(random.random()) for edge in edge_widths},
             edge_layout='curved',
             edge_layout_kwargs=dict(bundle_parallel_edges=False), 
             edge_width=edge_widths,
             node_edge_width=0.,
             scale=(2, 2),
-            node_size=15.,
+            node_size=20.,
             arrows=True,
             edge_labels=nx.get_edge_attributes(G, 'label'), 
             edge_label_fontdict=dict(size=8)
@@ -237,7 +268,7 @@ class Relationship(discord.app_commands.Group):
             size_factor = 1
 
         name = f"trash/{instance_name}.png"
-        plt.savefig(name)
+        plt.savefig(name, bbox_inches='tight')
         try:
             os.rmdir(f"trash/{instance_name}/")
         except:
