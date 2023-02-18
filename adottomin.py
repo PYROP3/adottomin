@@ -1604,19 +1604,21 @@ async def timestamp(
         await utils.safe_send(interaction, content=f"That doesn't look like a valid timezone~", ephemeral=True)
         return
 
+    update = dict()
+    if hour:
+        update['hour'] = hour
+    if minute:
+        update['minute'] = minute
+    if second:
+        update['second'] = second
+    if year:
+        update['year'] = year
+    if month:
+        update['month'] = month
+    if day:
+        update['day'] = day
     try:
-        if hour is not None:
-            t.hour = hour
-        if minute is not None:
-            t.minute = minute
-        if second is not None:
-            t.second = second
-        if year is not None:
-            t.year = year
-        if month is not None:
-            t.month = month
-        if day is not None:
-            t.day = day
+        t = t.replace(**update)
     except:
         await utils.safe_send(interaction, content=f"That doesn't look like a valid time, pls check your values~", ephemeral=True)
         return
