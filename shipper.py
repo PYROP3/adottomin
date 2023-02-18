@@ -18,7 +18,7 @@ from netgraph import Graph
 
 logger = botlogger.get_logger(__name__)
 
-emoji_remover = re.compile("(:[^: ]+:)|(<a?:[^: ]+:[0-9]+>)")
+emoji_remover = re.compile("(:[^: ]+:)|(<a?:[^: ]+:[0-9]+>)|((<@[0-9]+>))")
 
 # Commands
 @discord.app_commands.guild_only()
@@ -33,7 +33,15 @@ class Relationship(discord.app_commands.Group):
     async def create(self, interaction: discord.Interaction, user: discord.Member, relation: str):
         logger.info(f"{interaction.user} requested creation of '{relation}' with {user}")
 
+        if user.id == interaction.user.id:
+            await self.utils.safe_send(interaction, content=f"You can't create a relationship with yourself, silly~!", ephemeral=True)
+            return
+
         relation = emoji_remover.sub("", relation)
+
+        if len(relation) == 0:
+            await self.utils.safe_send(interaction, content=f"I have to remove stuff like emojis and user mentions from the text, silly~", ephemeral=True)
+            return
 
         self.database.relationship_create_entry(interaction.user.id, user.id, relation)
         messaged = False
@@ -130,8 +138,9 @@ class Relationship(discord.app_commands.Group):
         graph_data =  [(user.id, target, relation, confirmed) for target, relation, confirmed in data_as_source]
         graph_data += [(source, user.id, relation, confirmed) for source, relation, confirmed in data_as_target]
 
+        who_dont = "You don't" if user.id == interaction.user.id else f"{user.mention} doesn't"
         if len(graph_data) == 0:
-            await self.utils.safe_send(interaction, content=f"You don't have any relationships registered, silly~", is_followup=True)
+            await self.utils.safe_send(interaction, content=f"{who_dont} have any relationships registered, silly~", is_followup=True)
             return
 
         name = await self.graph_core(interaction, graph_data, user_list, center=user)
@@ -140,6 +149,31 @@ class Relationship(discord.app_commands.Group):
             return
 
         report_file = discord.File(name, filename=f"user_relationships.png")
+
+        await self.utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
+
+        os.remove(name)
+        
+    @discord.app_commands.command(description='Create a visual relationship graph of the whole server')
+    async def displayall(self, interaction: discord.Interaction):
+        logger.info(f"{interaction.user} requested display of whole server")
+        if not await self.utils.ensure_secretary(interaction): return
+
+        # if format.value == 'complete':
+        #     await self.utils.safe_send(interaction, content="Not yet supported~", ephemeral=True)
+        #     return
+
+        await self.utils.safe_defer(interaction)
+
+        user_list, graph_data = self.database.relationship_get_complete()
+
+
+        name = await self.graph_core(interaction, graph_data, user_list)
+        if not name:
+            await self.utils.safe_send(interaction, content=f"Something went wrong... :c", is_followup=True)
+            return
+
+        report_file = discord.File(name, filename=f"server_relationships.png")
 
         await self.utils.safe_send(interaction, content=f"Here you go~", file=report_file, is_followup=True)
 
@@ -179,6 +213,8 @@ class Relationship(discord.app_commands.Group):
         # Generate the network graph
         G = nx.DiGraph()
 
+        sq_factor = math.sqrt(len(user_list))
+        c_sq_factor = max(int(sq_factor)-1, 1)
         member_list = {}
         for user in user_list:
             try:
@@ -203,9 +239,14 @@ class Relationship(discord.app_commands.Group):
             # logger.debug(f"G now has {len(G.nodes)} nodes")
             member_list[user] = member_name
 
-        # logger.debug(f"Processed {len(user_list)} users -> {len(member_list)} members")
+        logger.debug(f"Processed {len(user_list)} users -> {len(member_list)} members")
 
         edge_widths = {}
+
+        # network_scale = 32
+        network_scale = 1
+        # edge_f = 2 - 3/sq_factor
+        edge_f = 3
 
         for source, target, relation, confirmed in graph_data:
             source_name = member_list[source]
@@ -213,10 +254,24 @@ class Relationship(discord.app_commands.Group):
             # logger.debug(f"Adding {relation} ({confirmed}) {source_name}->{target_name}")
             style = '-' if confirmed else '--'
             G.add_edge(source_name, target_name, label=_crumble_text(relation), style=style)
-            edge_widths[(source_name, target_name)] = 3 if confirmed else 1
+            edge_widths[(source_name, target_name)] = edge_f * network_scale if confirmed else 1
+
+        # _s = sq_factor * 5 OK for n=21 (_s=22.9128)
+        _s = sq_factor * 5 #13
+        fsize = (_s, _s)
+        # _s = int(100 / c_sq_factor**.7) OK for n=21 (fdpi=40.932)
+        #fdpi = int(100 / c_sq_factor**.7) # fdpi = (80) works okayish 
+        fdpi = 70 + int(1.5*math.sqrt(len(user_list)-3))
+        
+        # icon_scale = .4 OK for n=21
+        icon_scale = 2 / sq_factor
+
+        # fontsize = int(20 - 1. * math.sqrt(sq_factor)) #int(15 + 1.5 * c_sq_factor)
+        fontsize = int(20 - .5 * sq_factor)
 
         # Get a layout and create figure
         if center:
+            # radius = .3 * c_sq_factor OK for n=4 (radius=0.3)
             radius = 1.
             pos = nx.circular_layout(G, center=[0,0])
             center_key = center.nick or center.name
@@ -233,25 +288,33 @@ class Relationship(discord.app_commands.Group):
                 # logger.debug(f"Figure pos for {key} ({idx}) = {pos[key]}")
                 idx += 1
         else:
-            pos = nx.spring_layout(G)
+            # k=0.5*sq_factor OK for n=21 (k=2.291)
+            # k = 10/sq_factor
+            # k = 50 / len(user_list)
+            # k = 2 + 1/sq_factor
+            k = None
+            # k = 1.2 / sq_factor
+            iterations = 50
+            pos = nx.spring_layout(G, k=k, iterations=iterations, scale=network_scale)
 
         cmap = plt.get_cmap('hsv')
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=fsize, dpi=fdpi)
         Graph(G, 
             node_layout=pos, 
             ax=ax,
-            origin=(-1, -1),
+            origin=(-1 * network_scale, -1 * network_scale),
             edge_color={edge: cmap(random.random()) for edge in edge_widths},
             edge_layout='curved',
             edge_layout_kwargs=dict(bundle_parallel_edges=False), 
             edge_width=edge_widths,
-            node_edge_width=0.,
-            scale=(2, 2),
-            node_size=20.,
-            arrows=True,
             edge_labels=nx.get_edge_attributes(G, 'label'), 
-            edge_label_fontdict=dict(size=8)
+            edge_label_fontdict=dict(size=fontsize),
+            node_edge_width=0.,
+            node_alpha=0.,
+            node_size=20. * icon_scale / network_scale,
+            scale=(2 * network_scale, 2 * network_scale),
+            arrows=True
         )
 
         # Transform from data coordinates (scaled between xlim and ylim) to display coordinates
@@ -271,7 +334,14 @@ class Relationship(discord.app_commands.Group):
             xa, ya = tr_axes((xf, yf))
             # logger.debug(f"Adding image for node {n} ({xa}, {ya})")
             # get overlapped axes and plot icon
-            a = plt.axes([xa - (icon_center * size_factor), ya - (icon_center * size_factor), icon_size * size_factor, icon_size * size_factor])
+            a = plt.axes(
+                [
+                    xa - (icon_center * size_factor * icon_scale / network_scale), 
+                    ya - (icon_center * size_factor * icon_scale / network_scale), 
+                    icon_size * size_factor * icon_scale * .9 / network_scale, 
+                    icon_size * size_factor * icon_scale * .9 / network_scale
+                ]
+            )
             im = G.nodes[n]["image"] if "image" in G.nodes[n] else incognito_img
             a.imshow(im)
             # im = G.nodes[n]["image"] if "image" in G.nodes[n] else incognito_img
@@ -288,132 +358,3 @@ class Relationship(discord.app_commands.Group):
             logger.warning(f"error in os.rmdir")
         return name
 
-    # async def graph_core(self, interaction: discord.Interaction, graph_data: list[tuple[int, int, str, bool]], user_list: list, center: typing.Optional[discord.Member]=None, icon_size: typing.Optional[float]=None):
-
-    #     instance_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-    #     os.mkdir(f"trash/{instance_name}/")
-
-    #     # Generate the network graph
-    #     G = nx.Graph()
-
-    #     member_list = {}
-    #     for user in user_list:
-    #         try:
-    #             member = await interaction.guild.fetch_member(user)
-    #             member_name = member.nick or member.name
-    #             # Images for graph nodes
-    #             icon_name = f"trash/{instance_name}/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)) + ".png"
-    #             await member.avatar.save(fp=icon_name)
-    #             # Add member to graph
-    #             G.add_node(member_name, image=PIL.Image.open(icon_name))
-
-    #         except discord.NotFound:
-    #             logger.warning(f"Couldn't fetch user {user}")
-    #             member = None
-    #             member_name = str(user)
-    #             icon_name = f"meme_stuff/incognito_user.png"
-    #             # Add incognito member to graph
-    #             G.add_node(user, image=PIL.Image.open(icon_name))
-
-    #         member_list[user] = member_name
-
-    #     logger.debug(f"Processed {len(user_list)} users -> {len(member_list)} members")
-
-    #     # G.add_node("router", image=images["router"])
-    #     # for i in range(1, 4):
-    #     #     G.add_node(f"switch_{i}", image=images["switch"])
-    #     #     for j in range(1, 4):
-    #     #         G.add_node("PC_" + str(i) + "_" + str(j), image=images["PC"])
-
-    #     edge_labels = {}
-    #     edge_styles = []
-
-    #     # Get a layout and create figure
-    #     if center:
-    #         pos = nx.circular_layout(G, center=[0,0])
-    #         pos[0] = np.array([0, 0])
-    #     else:
-    #         pos = nx.spring_layout(G)
-
-    #     fig, ax = plt.subplots()
-
-    #     for source, target, relation, confirmed in graph_data:
-    #         source_name = member_list[source]
-    #         target_name = member_list[target]
-    #         logger.debug(f"Adding {relation} ({confirmed}) {source_name}->{target_name}")
-    #         style = '-' if confirmed else '--'
-    #         G.add_edge(source_name, target_name, style = style)
-    #         edge_labels[(source_name, target_name)] = relation
-    #         edge_styles += [style]
-    #         nx.draw_networkx_edges(
-    #             G,
-    #             pos=pos,
-    #             ax=ax,
-    #             arrows=True,
-    #             arrowstyle="-|>",
-    #             arrowsize=20,
-    #             style=style,
-    #             edgelist=[(source_name, target_name)],
-    #             connectionstyle='arc3, rad = 0.1',
-    #             min_source_margin=20,
-    #             min_target_margin=20,
-    #         )
-    #     nx.draw_networkx_edge_labels(
-    #         G, pos,
-    #         edge_labels=edge_labels
-    #     )
-
-    #     # G.add_edge("router", "switch_1")
-    #     # G.add_edge("router", "switch_2")
-    #     # G.add_edge("router", "switch_3")
-    #     # for u in range(1, 4):
-    #     #     for v in range(1, 4):
-    #     #         G.add_edge("switch_" + str(u), "PC_" + str(u) + "_" + str(v))
-
-    #     # Note: the min_source/target_margin kwargs only work with FancyArrowPatch objects.
-    #     # Force the use of FancyArrowPatch for edge drawing by setting `arrows=True`
-    #     # nx.draw_networkx_edges(
-    #     #     G,
-    #     #     pos=pos,
-    #     #     ax=ax,
-    #     #     arrows=True,
-    #     #     arrowstyle="-|>",
-    #     #     arrowsize=20,
-    #     #     style=edge_styles,
-    #     #     connectionstyle='arc3, rad = 0.1',
-    #     #     min_source_margin=20,
-    #     #     min_target_margin=20,
-    #     # )
-
-    #     # nx.draw_networkx_edge_labels(
-    #     #     G, pos,
-    #     #     edge_labels=edge_labels
-    #     # )
-
-    #     # Transform from data coordinates (scaled between xlim and ylim) to display coordinates
-    #     tr_figure = ax.transData.transform
-    #     # Transform from display to figure coordinates
-    #     tr_axes = fig.transFigure.inverted().transform
-
-    #     # Select the size of the image (relative to the X axis)
-    #     icon_size = icon_size or (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.025
-    #     icon_center = icon_size / 2.0
-
-    #     # Add the respective image to each node
-    #     size_factor = 2
-    #     for n in G.nodes:
-    #         xf, yf = tr_figure(pos[n])
-    #         xa, ya = tr_axes((xf, yf))
-    #         # get overlapped axes and plot icon
-    #         a = plt.axes([xa - (icon_center * size_factor), ya - (icon_center * size_factor), icon_size * size_factor, icon_size * size_factor])
-    #         a.imshow(G.nodes[n]["image"])
-    #         a.axis("off")
-    #         size_factor = 1
-
-    #     name = f"trash/{instance_name}.png"
-    #     plt.savefig(name)
-    #     try:
-    #         os.rmdir(f"trash/{instance_name}/")
-    #     except:
-    #         logger.warning(f"error in os.rmdir")
-    #     return name
