@@ -261,7 +261,7 @@ class Relationship(discord.app_commands.Group):
         fsize = (_s, _s)
         # _s = int(100 / c_sq_factor**.7) OK for n=21 (fdpi=40.932)
         #fdpi = int(100 / c_sq_factor**.7) # fdpi = (80) works okayish 
-        fdpi = 70 + int(1.5*math.sqrt(len(user_list)-3))
+        fdpi = 70 + int(1.5*math.sqrt(max(len(user_list)-3, 1)))
         
         # icon_scale = .4 OK for n=21
         icon_scale = 2 / sq_factor
