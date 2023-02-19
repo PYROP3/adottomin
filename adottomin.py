@@ -365,7 +365,11 @@ user_message_handlers = [
     emojionly_handler.handle_emoji_chat
 ]
 
-async def execute_handlers(msg, handlers):
+message_edit_handlers = [
+    emojionly_handler.handle_emoji_chat_edit
+]
+
+async def execute_handlers(msg: discord.Message, handlers: typing.List[typing.Callable]):
     for handle in handlers:
         try:
             # logger.debug(f"Running handler {handle.__name__}")
@@ -375,6 +379,17 @@ async def execute_handlers(msg, handlers):
         except Exception as e:
             logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
+            
+async def execute_edit_handlers(before: discord.Message, after: discord.Message, handlers: typing.List[typing.Callable]):
+    for handle in handlers:
+        try:
+            # logger.debug(f"Running handler {handle.__name__}")
+            await handle(before, after)
+        except bot_utils.HandlerException:
+            pass
+        except Exception as e:
+            logger.error(f"[{after.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
+            await _dm_log_error(f"[{after.channel}] on_message::{handle.__qualname__}\n{e}\n{traceback.format_exc()}")
 
 @bot.event
 async def on_message(msg: discord.Message):
@@ -416,6 +431,34 @@ async def on_message(msg: discord.Message):
             await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
     # else:
     #     logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
+
+@bot.event
+async def on_message_edit(before: discord.Message, after: discord.Message):
+    # Reuse code
+    msg = after
+
+    blocklist_match = blocklist_prog.search(msg.content.lower())
+    if blocklist_match is not None:
+        logger.info(f"[{msg.channel}] {msg.author} used blocked word: {blocklist_match.group(0)}")
+        try:
+            await msg.delete()
+        except discord.errors.Forbidden:
+            secrole = msg.guild.get_role(secretary_role_id)
+            logger.error(f"[{msg.channel}] Forbidden from deleting msg {msg.id}")
+            if secrole is not None:
+                await msg.reply(content=f"Hey {secrole.mention}! This message has a blocked word but I can't delete it...")
+            else:
+                logger.error(f"[{msg.channel}] Secretary role is None!")
+        warn = await msg.channel.send(content=f"Hey {msg.author.mention}, I'd think twice before posting that if I were you~")
+        try:
+            await warn.delete(delay=5.)
+        except discord.errors.Forbidden:
+            logger.error(f"[{msg.channel}] Forbidden from deleting blocked word warning")
+        return
+
+    if msg.author.id == bot.user.id: return
+
+    await execute_edit_handlers(before, after, message_edit_handlers)
 
 @bot.event
 async def on_member_join(member: discord.Member):

@@ -30,8 +30,11 @@ class emojionly_handler:
         if msg.channel.id != self.emojichat_id: return
         m = self.emoji_prog.fullmatch(emoji.demojize(msg.content))
         if m: 
-            self.logger.debug(f"Message [{msg.content}] contains only emojis")
+            # self.logger.debug(f"Message [{msg.content}] contains only emojis")
             return
-        self.logger.debug(f"Message [{msg.content}] contains non-emojis")
+        # self.logger.debug(f"Message [{msg.content}] contains non-emojis")
         await msg.delete()
         await msg.channel.send(content=f"Hey {msg.author.mention}, emojis only~", delete_after=5)
+
+    async def handle_emoji_chat_edit(self, before: discord.Message, after: discord.Message):
+        return await self.handle_emoji_chat(after)
