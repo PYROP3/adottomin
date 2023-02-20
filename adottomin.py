@@ -1530,7 +1530,7 @@ async def nut(interaction: discord.Interaction):
 @bot.tree.command(description='Send someone to horny jail')
 @discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
 async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
-    duration = 1
+    duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
 
@@ -1546,7 +1546,8 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
     
     jail_role = interaction.guild.get_role(jail_role_id)
     await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
-    await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} minutes~", send_anyway=True)
+    
+    await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {utils.plural('minute', duration)}~", send_anyway=True)
 
     await asyncio.sleep(duration * 60)
     
