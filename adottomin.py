@@ -27,6 +27,7 @@ import kinks
 import memes
 import propervider as p
 import shipper
+import nohorny
 
 from word_blocklist import blocklist
 
@@ -73,6 +74,7 @@ GUILD_OBJ = discord.Object(id=GUILD_ID)
 channel_ids = p.plist('CHANNEL_IDS')
 role_ids = p.plist('AGE_ROLE_IDS')
 tally_channel = p.pint('TALLY_CHANNEL_ID')
+nohorny_channels = p.plist('NOHORNY_CHANNEL_IDS', required=False)
 log_channel = p.pint('LOG_CHANNEL_ID')
 ad_channel = p.pint('AD_CHANNEL_ID')
 emojionly_channel = p.pint('EMOJI_CHANNEL_ID')
@@ -146,6 +148,7 @@ utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_s
 age_handler = age_handling.age_handler(bot, sql, utils, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
+nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -186,12 +189,14 @@ def _get_message_for_age(ctx: discord.Interaction, age_data, mention):
 @bot.event
 async def on_ready():
     logger.info(f"{bot.user} has connected to Discord")
+    main_channel = bot.get_channel(channel_ids[0])
     utils.inject_admin(bot.get_user(admin_id))
     utils.inject_pois([bot.get_user(id) for id in poi_user_ids])
     guild = await bot.fetch_guild(GUILD_ID)
     utils.inject_guild(guild)
-    age_handler.inject(bot.get_channel(channel_ids[0]), bot.get_channel(tally_channel), bot.get_channel(log_channel))
+    age_handler.inject(main_channel, bot.get_channel(tally_channel), bot.get_channel(log_channel))
     ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
+    nohorny_handler.inject(main_channel)
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
@@ -326,6 +331,7 @@ member_update_handlers = [
     _handle_nsfw_added,
     _handle_minor_role_added,
     _handle_new_alias,
+    nohorny_handler.handle_member_remove_horny
 ]
 
 @bot.event
@@ -361,6 +367,7 @@ user_message_handlers = [
     utils.handle_dm_cmd,
     utils.handle_failed_command,
     utils.handle_binary,
+    nohorny_handler.handle_horny,
     utils.handle_puppeteering,
     emojionly_handler.handle_emoji_chat
 ]
@@ -1523,12 +1530,18 @@ async def nut(interaction: discord.Interaction):
 @bot.tree.command(description='Send someone to horny jail')
 @discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
 async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
-    duration = 5
+    duration = 1
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
 
     if duration < 1: 
         await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
+        return
+
+    success = sql.jail_try_register_jailing(user.id, interaction.user.id, duration)
+
+    if not success:
+        await utils.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
         return
     
     jail_role = interaction.guild.get_role(jail_role_id)
@@ -1540,8 +1553,25 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
     try:
         log_debug(interaction, f"Unjailing {user} after {duration} minutes")
         await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
+        log_debug(interaction, f"Success unjailing {user}")
     except Exception as e:
         log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")
+
+@bot.tree.command(description='Remove someone from horny jail')
+@discord.app_commands.describe(user='User to unjail') #, duration='How long to jail them for, in minutes (default is 5)')
+async def hornyunjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
+    log_info(interaction, f"{interaction.user} is unjailing {user}")
+    if not await utils.ensure_queen(interaction): return
+
+    success = sql.jail_register_unjailing(user.id, interaction.user.id)
+
+    if not success:
+        await utils.safe_send(interaction, content=f"I don't think that user is in jail~", ephemeral=True)
+        return
+    
+    jail_role = interaction.guild.get_role(jail_role_id)
+    await user.remove_roles(jail_role, reason=f'{interaction.user} removed them from jail')
+    await utils.safe_send(interaction, content=f"Fine {user.mention}, I guess you can come out now, but you better be on your best behavior~", send_anyway=True)
 
 @bot.tree.command(description='When people can\'t be bothered to google stuff for themselves')
 @discord.app_commands.describe(user='Who to ping', query='What they asked for')

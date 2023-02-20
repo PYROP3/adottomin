@@ -54,6 +54,8 @@ advertisements_version = 1
 advertisements_db_file = _dbfile('advertisements', advertisements_version)
 relationships_version = 1
 relationships_db_file = _dbfile('relationships', relationships_version)
+jails_version = 1
+jails_db_file = _dbfile('jails', jails_version)
 
 sql_files = [
     validations_db_file,
@@ -271,6 +273,15 @@ schemas = {
                 created_at TIMESTAMP,
                 confirmed_at TIMESTAMP,
                 PRIMARY KEY (source, target)
+            );'''],
+    jails_db_file: ['''
+            CREATE TABLE jails (
+                offender int NOT NULL,
+                jailer int NOT NULL,
+                unjailer int,
+                created_at TIMESTAMP,
+                ends_at TIMESTAMP,
+                cancelled_at TIMESTAMP
             );'''],
 }
 
@@ -1186,6 +1197,56 @@ class database:
         users = set([l[0] for l in data] + [l[1] for l in data])
         con.close()
         return users, data
+
+    def jail_is_currently_jailed(self, offender: int, con: sqlite3.Connection=None, cur: sqlite3.Cursor=None):
+        must_close = con is None
+        con = con or sqlite3.connect(jails_db_file)
+        cur = cur or con.cursor()
+        now = datetime.datetime.now()
+        data = cur.execute("SELECT created_at, ends_at, cancelled_at FROM jails WHERE offender=:offender ORDER BY created_at DESC LIMIT 1", {'offender':offender}).fetchone()
+        if not data:
+            result = False, None
+        else:
+            # self.logger.debug(f"jail_is_currently_jailed {data}")
+            if data[2]: # If there is a cancellation date, it's already false
+                result = False, data[0]
+            else:
+                ends_at = self.db2datetime(data[1]) 
+                # self.logger.debug(f"now ({now}) vs ends_at ({ends_at}) = {now < ends_at}")
+                result = now < ends_at, data[0] # now < ends_at should always be true, but better safe than sorry
+        if must_close:
+            con.close()
+        # self.logger.debug(f"jail_is_currently_jailed={result}")
+        return result
+
+    def jail_try_register_jailing(self, offender: int, moderator: int, duration: int):
+        con = sqlite3.connect(jails_db_file)
+        cur = con.cursor()
+        is_jailed, _ = self.jail_is_currently_jailed(offender, con=con, cur=cur)
+        if not is_jailed:
+            now = datetime.datetime.now()
+            ends = now + datetime.timedelta(minutes=duration)
+            cur.execute("INSERT INTO jails VALUES (?, ?, 0, ?, ?, '')", [offender, moderator, now, ends])
+            con.commit()
+            result = True
+        else:
+            result = False
+        con.close()
+        return result
+
+    def jail_register_unjailing(self, offender: int, moderator: int):
+        con = sqlite3.connect(jails_db_file)
+        cur = con.cursor()
+        is_jailed, created_at = self.jail_is_currently_jailed(offender, con=con, cur=cur)
+        if is_jailed:
+            now = datetime.datetime.now()
+            cur.execute("UPDATE jails SET unjailer=:unjailer, cancelled_at=:cancelled_at WHERE offender=:offender AND created_at=:created_at", {'offender': offender, 'unjailer': moderator, 'created_at': created_at, 'cancelled_at': now})
+            con.commit()
+            result = True
+        else:
+            result = False
+        con.close()
+        return result
 
     def db2datetime(self, when: str):
         return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")

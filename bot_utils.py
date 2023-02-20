@@ -103,21 +103,35 @@ class utils:
     async def _enforce_not_dms(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.channel.type == discord.ChannelType.private: raise e()
 
-    async def _enforce_has_role(self, msg, roles, e: HandlerException=HandlerIgnoreException):
+    async def _enforce_has_role(self, msg, roles: set[int], e: HandlerException=HandlerIgnoreException):
+        if self.guild is None:
+            self.logger.warning(f"Utils guild link is still not ready")
+            raise e()
+        # try:
+        #     member = await self.guild.fetch_member(msg.author.id)
+        # except discord.errors.NotFound:
+        #     self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
+        #     raise e()
+        # if member is None: 
+        #     self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
+        #     raise e()
+        author_roles = await self.get_roles(msg.author.id, e=e)
+        # self.logger.debug(f"Comparing user {author_roles} to {roles}")
+        if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
+
+    async def get_roles(self, author_id: int, e: HandlerException=HandlerIgnoreException):
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
         try:
-            member = await self.guild.fetch_member(msg.author.id)
+            member = await self.guild.fetch_member(author_id)
         except discord.errors.NotFound:
-            self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
+            self.logger.warning(f"Failed to fetch {author_id} as Member")
             raise e()
         if member is None: 
-            self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
+            self.logger.warning(f"Got null when trying to fetch {author_id} as Member")
             raise e()
-        author_roles = member.roles
-        # self.logger.debug(f"Comparing user {author_roles} to {roles}")
-        if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
+        return member.roles
 
     async def _enforce_no_roles(self, msg, roles, e: HandlerException=HandlerIgnoreException):
         await self._enforce_admin_only(msg)
