@@ -1,5 +1,5 @@
 import discord
-import typing
+import asyncio
 
 import botlogger
 import bot_utils
@@ -24,9 +24,12 @@ class horny_handler:
         self.main_chat=main_chat
         
     async def handle_horny(self, msg: discord.Message):
-        await self.utils._enforce_has_role(msg, self.horny_role_id)
+        try:
+            await self.utils._enforce_has_role(msg, self.horny_role_id)
+        except asyncio.TimeoutError:
+            logger.debug(f"handle_horny._enforce_has_role raised asyncio.TimeoutError")
+            return
 
-        logger.debug(f"msg in {msg.channel.id} vs {self.nohorny_chats}")
         if msg.channel.id not in self.nohorny_chats:
             return
         
