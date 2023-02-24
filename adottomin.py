@@ -989,6 +989,9 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
 
     active_strikes = sql.create_warning(user.id, interaction.user.id, reason, WARNING_VALIDITY_DAYS)
 
+    if not utils._dm_user(f"Hey {user}! You're being warned cuz {reason}, and now you have {active_strikes} strikes~", user):
+        log_warn(interaction, f"Failed to DM {user.id} regarding strike {active_strikes}")
+
     if active_strikes < WARNINGS_BEFORE_BAN:
         log_info(interaction, f"{user} now has {active_strikes} active strikes")
         msg = f"{user.mention} is being warned by {interaction.user.mention}! That's {active_strikes} strikes so far~"
@@ -1533,6 +1536,10 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
     duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
+
+    if user.bot:
+        await utils.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
+        return
 
     if duration < 1: 
         await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)

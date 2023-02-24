@@ -50,7 +50,7 @@ class Relationship(discord.app_commands.Group):
                 f"Hey {user.nick or user.name}! {interaction.user} requested to register a '{relation}' relationship with you",
                 f"You can approve this with /relationship approve {interaction.user.mention}",
                 f"Or you can reject this with /relationship reject {interaction.user.mention}",
-                f"Please keep in mind that these commands only work in the server~"
+                f"**Please keep in mind that these commands _only work in the server_~**"
             ]
             await self.utils._split_dm("\n".join(lines), user)
             messaged = True

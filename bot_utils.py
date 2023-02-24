@@ -218,7 +218,7 @@ class utils:
             msg_fmt += new_line
         return msg_fmt.replace(user.mention, user.display_name)
 
-    async def _dm_user(self, msg: str, user):
+    async def _dm_user(self, msg: str, user: discord.Member):
         try:
             # user = self.bot.get_user(user_id)
             dm_chan = user.dm_channel or await user.create_dm()
@@ -230,6 +230,7 @@ class utils:
             self.logger.info(f"Forbidden from sending message to user {user.id}: {e}")
         except Exception as e:
             self.logger.error(f"Error while trying to dm user: {e}\n{traceback.format_exc()}")
+        return None
 
     def _is_self_mention(self, msg: discord.Message, member: discord.Member):
         return (member.id == msg.author.id) or (msg.author.bot and msg.interaction != None and msg.interaction.user.id == member.id)
@@ -513,6 +514,14 @@ class utils:
         country = coco.convert(names=country, to='ISO2', not_found='NULL')
         return f':flag_{country.lower()}:' if country != 'NULL' else ''
 
+    def _qualified_name(self, command: discord.app_commands.Command):
+        name = ''
+        parent = command.parent
+        while parent:
+            name = f"{parent.name}." + name
+            parent = parent.parent
+        return name + command.name
+
     async def safe_defer(self, interaction: discord.Interaction, ephemeral: bool=False, **kwargs):
         try:
             await interaction.response.defer(ephemeral=ephemeral, **kwargs)
@@ -523,25 +532,26 @@ class utils:
             return False
 
     async def safe_send(self, interaction: discord.Interaction, is_followup: bool=False, send_anyway: bool=False, **kwargs):
+        _name = self._qualified_name(interaction.command)
         try:
             if is_followup or 'deferred_as' in interaction.extras:
                 res = await interaction.followup.send(**kwargs)
             else:
                 res = await interaction.response.send_message(**kwargs)
-            self.database.register_command(interaction.user.id, interaction.command.name, interaction.channel_id, args=json.dumps('options' in interaction.data and interaction.data['options'] or {}))
+            self.database.register_command(interaction.user.id, _name, interaction.channel_id, args=json.dumps('options' in interaction.data and interaction.data['options'] or {}))
             return res
 
         except discord.errors.NotFound:
             self.logger.warning(f"NotFound error while trying to send message (send_anyway={send_anyway})")
-            self.database.register_command(interaction.user.id, interaction.command.name, interaction.channel_id, args=json.dumps('options' in interaction.data and interaction.data['options'] or {}), failed=True)
+            self.database.register_command(interaction.user.id, _name, interaction.channel_id, args=json.dumps('options' in interaction.data and interaction.data['options'] or {}), failed=True)
             if send_anyway:
                 if 'ephemeral' in kwargs and kwargs['ephemeral']:
                     self.logger.error(f"Not replying publicly to ephemeral")
                     return
                 if 'content' in kwargs:
-                    kwargs['content'] = f"{interaction.user.mention} used `/{interaction.command.name}`\n{kwargs['content']}"
+                    kwargs['content'] = f"{interaction.user.mention} used `/{_name}`\n{kwargs['content']}"
                 else:
-                    kwargs['content'] = f"{interaction.user.mention} used `/{interaction.command.name}`"
+                    kwargs['content'] = f"{interaction.user.mention} used `/{_name}`"
                 return await interaction.channel.send(**kwargs)
 
     def _iterate_dec(self, number:int):
