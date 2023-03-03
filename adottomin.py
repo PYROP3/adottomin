@@ -25,6 +25,7 @@ import games
 import graphlytics
 import kinks
 import memes
+import msg_handler_manager
 import propervider as p
 import shipper
 import nohorny
@@ -149,6 +150,7 @@ age_handler = age_handling.age_handler(bot, sql, utils, role_ids, LENIENCY_COUNT
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
+mhm = msg_handler_manager.HandlerManager(admin_id, bot)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -331,6 +333,11 @@ member_update_handlers = [
     _handle_nsfw_added,
     _handle_minor_role_added,
     _handle_new_alias,
+    lambda before, after: nohorny_handler.handle_horny_role_toggle(
+        before,
+        after,
+        lambda: mhm.create_dyn_lock(nohorny_handler.handle_horny, before.id),
+        lambda: mhm.remove_dyn_lock(nohorny_handler.handle_horny, before.id)),
     nohorny_handler.handle_member_remove_horny
 ]
 
@@ -357,20 +364,33 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
         logger.info(f"Reaction blocklisted, removing")
         reaction.remove(user)
 
-bot_message_handlers = [
-    utils.handle_offline_mentions
-]
-user_message_handlers = [
-    age_handler.handle_age,
+mhm.register_static_list([
     utils.handle_invite_link,
     utils.handle_dm,
     utils.handle_dm_cmd,
     utils.handle_failed_command,
-    utils.handle_binary,
-    nohorny_handler.handle_horny,
+    # utils.handle_binary, # has not been needed in a while
     utils.handle_puppeteering,
     emojionly_handler.handle_emoji_chat
-]
+])
+
+mhm.register_dynamic(age_handler.handle_age)
+mhm.register_dynamic(nohorny_handler.handle_horny)
+
+# bot_message_handlers = [
+#     utils.handle_offline_mentions
+# ]
+# user_message_handlers = [
+#     age_handler.handle_age,
+#     utils.handle_invite_link,
+#     utils.handle_dm,
+#     utils.handle_dm_cmd,
+#     utils.handle_failed_command,
+#     utils.handle_binary,
+#     nohorny_handler.handle_horny,
+#     utils.handle_puppeteering,
+#     emojionly_handler.handle_emoji_chat
+# ]
 
 message_edit_handlers = [
     emojionly_handler.handle_emoji_chat_edit
@@ -381,7 +401,7 @@ async def execute_handlers(msg: discord.Message, handlers: typing.List[typing.Ca
         try:
             # logger.debug(f"Running handler {handle.__name__}")
             await handle(msg)
-        except bot_utils.HandlerException:
+        except bot_utils.HandlerIgnoreException:
             pass
         except Exception as e:
             logger.error(f"[{msg.channel}] Error during {handle.__qualname__}: {e}\n{traceback.format_exc()}")
@@ -422,11 +442,11 @@ async def on_message(msg: discord.Message):
             logger.error(f"[{msg.channel}] Forbidden from deleting blocked word warning")
         return
 
-    await execute_handlers(msg, bot_message_handlers)
+    await execute_handlers(msg, [utils.handle_offline_mentions])
 
     if msg.author.id == bot.user.id: return
 
-    await execute_handlers(msg, user_message_handlers)
+    await mhm.on_message(msg)
         
     if not msg.author.bot:
         if msg.content.startswith(ignore_prefixes):
@@ -436,8 +456,6 @@ async def on_message(msg: discord.Message):
         except Exception as e:
             logger.error(f"[{msg.channel}] Error during register_message: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{msg.channel}] on_message::register_message\n{e}\n{traceback.format_exc()}")
-    # else:
-    #     logger.debug(f"[{msg.channel}] User ID: {msg.author.id} is a bot, not registering")
 
 @bot.event
 async def on_message_edit(before: discord.Message, after: discord.Message):
@@ -500,6 +518,7 @@ async def on_member_join(member: discord.Member):
 
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
         sql.create_entry(member.id, greeting.id)
+        mhm.create_dyn_lock(age_handler.handle_age, member.id)
 
         if pendelton_mode:
             await greeting.reply(content=f"{member.mention} If someone asked you to say \"Pendelton\", or any other password, kindly ignore them!\nAnd, if you still can, tell them to suck an egg ^^")
@@ -536,6 +555,7 @@ async def on_member_join(member: discord.Member):
                 must_continue = await age_handler.do_age_check(channel, member, is_reminder=True)
                 if not must_continue:
                     logger.debug(f"[{channel}] Early exit on_member_join")
+                    mhm.remove_dyn_lock(age_handler.handle_age, member.id)
                     return
                 else:
                     logger.debug(f"[{channel}] {member} Sending reminder message")
@@ -552,6 +572,7 @@ async def on_member_join(member: discord.Member):
             await _dm_log_error(f"[{channel}] [final] do_age_check\n{e}\n{traceback.format_exc()}")
         
         logger.debug(f"[{channel}] Exit on_member_join")
+        mhm.remove_dyn_lock(age_handler.handle_age, member.id)
 
     except Exception as e:
         logger.error(f"[{channel}] Error during on_member_join: {e}\n{traceback.format_exc()}")

@@ -1,5 +1,6 @@
 import discord
 import asyncio
+import typing
 
 import botlogger
 import bot_utils
@@ -56,3 +57,15 @@ class horny_handler:
         jail_role = self.main_chat.guild.get_role(next(iter(self.horny_role_id)))
         await after.add_roles(jail_role, reason=f'user tried to force remove jail role')
         await self.main_chat.send(content=f"Did you really think you were gonna get off the hook so easily, {after.mention}~?", delete_after=3)
+
+    async def handle_horny_role_toggle(self, before: discord.Member, after: discord.Member, on_receive: typing.Callable, on_lose: typing.Callable):
+        has_before = len(self.horny_role_id.intersection([role.id for role in before.roles])) == 1
+        has_after = len(self.horny_role_id.intersection([role.id for role in after.roles])) == 1
+
+        if has_before and not has_after:
+            on_lose()
+            return
+        
+        if has_after and not has_before:
+            on_receive()
+            
