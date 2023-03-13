@@ -40,6 +40,7 @@ class age_handler:
         # Age regex
         self.mention_prog = re.compile(r"<@[0-9]+>")
         self.url_prog = re.compile(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)")
+        self.hundred_plus_prog = re.compile(r"([1-9][0-9][0-9]+)")
         self.age_prog = re.compile(r"(18|19|[2-9][0-9]+)") # 18, 19 or 20+
         self.minor_prog = re.compile(r"(?: |^)\b(1[0-7])\b") # 0-9 or 10-17
         self.minor_prog_2 = re.compile(r"not 18") # 0-9 or 10-17
@@ -161,7 +162,7 @@ class age_handler:
         return self.minor_prog.search(msg) is not None or self.minor_prog_2.search(msg) is not None
 
     def is_ignore(self, msg: str):
-        return self.ignore_prog.search(msg) is not None
+        return self.ignore_prog.search(msg) is not None or self.hundred_plus_prog.search(msg)
 
     def get_ban_age(self, msg: str):
         return int(self.minor_prog.search(msg).group())
