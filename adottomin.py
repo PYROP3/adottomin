@@ -107,7 +107,7 @@ usernames_blocked = [
     "pennington"
 ]
 
-blocklist_prog = re.compile("|".join(blocklist), flags=re.IGNORECASE)
+blocklist_prog = re.compile("|".join([f'\\b{word}\\b' for word in blocklist]), flags=re.IGNORECASE)
 
 gatekeep_perms = {'send_messages': False}
 
@@ -223,6 +223,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         if vc.self_stream:
             return 'stream'
         return 'voice'
+    
+    if member.bot:
+        return
 
     if after.channel and not before.channel: # User joined a voice channel
         logger.debug(f"{member} just joined VC {after.channel}")
@@ -284,8 +287,6 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     else:
         logger.debug(f"{member} changed VC state but both after and before are None")
 
-    # logger.debug(f"Finished on_member_update")
-
 async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     if (nsfw_role_id in utils.role_ids(before)) or (nsfw_role_id not in utils.role_ids(after)): return
     if not utils.just_joined(before.id): 
@@ -295,7 +296,6 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     if user_age_roles != set(): 
         logger.info(f"{after} added nsfw role and has age tags: {user_age_roles}")
         return
-    # nsfw_role = [role for role in after.roles if role.id == nsfw_role_id]
     nsfw_role = discord.utils.get(after.guild.roles, name="NSFW")
     logger.info(f"{after} added nsfw role but is still being verified")
     await after.remove_roles(*[nsfw_role], reason="Not verified", atomic=False)
@@ -343,8 +343,6 @@ member_update_handlers = [
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
-    # logger.info(f"{after} has updated profile")
-
     for handler in member_update_handlers:
         try:
             await handler(before, after)
@@ -357,9 +355,7 @@ reaction_user_blocklist = []
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
-    # logger.info(f"Added reaction {reaction}")
     emoji = reaction.emoji if type(reaction.emoji) == str else reaction.emoji.name
-    # logger.debug(f"Added emoji = {emoji}")
     if emoji in reaction_blocklist or user.id in reaction_user_blocklist:
         logger.info(f"Reaction blocklisted, removing")
         reaction.remove(user)
@@ -376,21 +372,6 @@ mhm.register_static_list([
 
 mhm.register_dynamic(age_handler.handle_age)
 mhm.register_dynamic(nohorny_handler.handle_horny)
-
-# bot_message_handlers = [
-#     utils.handle_offline_mentions
-# ]
-# user_message_handlers = [
-#     age_handler.handle_age,
-#     utils.handle_invite_link,
-#     utils.handle_dm,
-#     utils.handle_dm_cmd,
-#     utils.handle_failed_command,
-#     utils.handle_binary,
-#     nohorny_handler.handle_horny,
-#     utils.handle_puppeteering,
-#     emojionly_handler.handle_emoji_chat
-# ]
 
 message_edit_handlers = [
     emojionly_handler.handle_emoji_chat_edit
