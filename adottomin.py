@@ -1532,6 +1532,40 @@ async def nut(interaction: discord.Interaction):
         content = "\n".join([f"{nut} x {utils.n_em(amount)}" for (nut, amount) in nut_counts])
         await utils.safe_send(interaction, content=content, send_anyway=True)
 
+@bot.tree.context_menu()
+async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
+    duration = 1
+    log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
+    if not await utils.ensure_secretary(interaction): return
+
+    if user.bot:
+        await utils.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
+        return
+
+    if duration < 1: 
+        await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
+        return
+
+    success = sql.jail_try_register_jailing(user.id, interaction.user.id, duration)
+
+    if not success:
+        await utils.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
+        return
+    
+    jail_role = interaction.guild.get_role(jail_role_id)
+    await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
+    
+    await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {utils.plural('minute', duration)}~", send_anyway=True)
+
+    await asyncio.sleep(duration * 60)
+    
+    try:
+        log_debug(interaction, f"Unjailing {user} after {duration} minutes")
+        await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
+        log_debug(interaction, f"Success unjailing {user}")
+    except Exception as e:
+        log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")
+
 @bot.tree.command(description='Send someone to horny jail')
 @discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
 async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):

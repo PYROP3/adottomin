@@ -516,10 +516,11 @@ class utils:
 
     def _qualified_name(self, command: discord.app_commands.Command):
         name = ''
-        parent = command.parent
-        while parent:
-            name = f"{parent.name}." + name
-            parent = parent.parent
+        if not isinstance(command, discord.app_commands.ContextMenu):
+            parent = command.parent
+            while parent:
+                name = f"{parent.name}." + name
+                parent = parent.parent
         return name + command.name
 
     async def safe_defer(self, interaction: discord.Interaction, ephemeral: bool=False, **kwargs):
