@@ -1534,7 +1534,7 @@ async def nut(interaction: discord.Interaction):
 
 @bot.tree.context_menu()
 async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
-    duration = 1
+    duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
 
