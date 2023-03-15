@@ -33,7 +33,7 @@ class HandlerManager:
 
     def remove_dyn_lock(self, handler: typing.Callable, lock: int):
         logger.debug(f"remove lock {lock} from {handler} (prev {len(self._dyn_handler_locks[handler])})")
-        self._dyn_handler_locks[handler].remove(lock)
+        self._dyn_handler_locks[handler].discard(lock)
         if len(self._dyn_handler_locks[handler]) == 0:
             logger.debug(f"deactivate {handler}")
             self._dyn_handlers.discard(handler)
