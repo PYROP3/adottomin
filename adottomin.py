@@ -1415,19 +1415,19 @@ async def aliases(interaction: discord.Interaction, user: discord.Member):
         msg = f"These are {user.mention}'s known aliases~\n> "
         msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
     else:
-        msg = f"I couldn't find that user in the database..."
+        msg = f"I couldn't find {user.mention} in the database..."
     await utils.safe_send(interaction, content=msg, ephemeral=True)
 
-# @bot.tree.command(description='We do a little bit of stalking')
-# @discord.app_commands.describe(user='User to search')
-# async def aliasesalt(interaction: discord.Interaction, userId: int):
-#     aliases = utils.get_unique_aliases_id(userId)
-#     if len(aliases):
-#         msg = f"These are {utils.to_mention(str(userId))}'s known aliases~\n> "
-#         msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
-#     else:
-#         msg = f"I couldn't find that user ID in the database..."
-#     await utils.safe_send(interaction, content=msg, ephemeral=True)
+@bot.tree.command(description='We do a little bit of stalking')
+@discord.app_commands.describe(user_id='User ID to search')
+async def aliasesalt(interaction: discord.Interaction, user_id: int):
+    aliases = utils.get_unique_aliases_id(user_id)
+    if len(aliases):
+        msg = f"These are {utils.to_mention(str(user_id))}'s known aliases~\n> "
+        msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
+    else:
+        msg = f"I couldn't find {utils.to_mention(str(user_id))} in the database..."
+    await utils.safe_send(interaction, content=msg, ephemeral=True)
 
 @bot.tree.command(description='Contribute to the server\'s world (heat) map')
 @discord.app_commands.describe(country='Where you\'re from')
