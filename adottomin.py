@@ -1420,7 +1420,7 @@ async def aliases(interaction: discord.Interaction, user: discord.Member):
 
 @bot.tree.command(description='We do a little bit of stalking')
 @discord.app_commands.describe(user='User to search')
-async def aliasesalt(interaction: discord.Interaction, userId: discord.Member):
+async def aliasesalt(interaction: discord.Interaction, userId: int):
     aliases = utils.get_unique_aliases_id(userId)
     if len(aliases):
         msg = f"These are {utils.to_mention(str(userId))}'s known aliases~\n> "
