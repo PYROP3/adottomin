@@ -1227,7 +1227,7 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
 
     msg = f"Here are {user.mention}'s simps~\n> "
     msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
-    await utils.safe_send(interaction, content=msg, allowed_mentions=discord.AllowedMentions.none())
+    await utils.safe_send(interaction, content=msg, allowed_mentions=discord.AllowedMentions(users=[user]))
 
 # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
