@@ -1411,8 +1411,22 @@ async def bubblewrap(interaction: discord.Interaction):
 @discord.app_commands.describe(user='User to search')
 async def aliases(interaction: discord.Interaction, user: discord.Member):
     aliases = utils.get_unique_aliases(user)
-    msg = f"These are {user.mention}'s known aliases~\n> "
-    msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
+    if len(aliases):
+        msg = f"These are {user.mention}'s known aliases~\n> "
+        msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
+    else:
+        msg = f"I couldn't find that user in the database..."
+    await utils.safe_send(interaction, content=msg, ephemeral=True)
+
+@bot.tree.command(description='We do a little bit of stalking')
+@discord.app_commands.describe(user='User to search')
+async def aliasesalt(interaction: discord.Interaction, userId: discord.Member):
+    aliases = utils.get_unique_aliases_id(userId)
+    if len(aliases):
+        msg = f"These are {utils.to_mention(str(userId))}'s known aliases~\n> "
+        msg += ", ".join([utils.markdown_surround(alias, "`") for alias in aliases])
+    else:
+        msg = f"I couldn't find that user ID in the database..."
     await utils.safe_send(interaction, content=msg, ephemeral=True)
 
 @bot.tree.command(description='Contribute to the server\'s world (heat) map')

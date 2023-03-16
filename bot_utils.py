@@ -464,7 +464,10 @@ class utils:
         return set([role.id for role in user.roles])
 
     def get_unique_aliases(self, user: discord.Member):
-        return {alias[0]: alias[1] for alias in self.database.get_aliases(user.id)}
+        return self.get_unique_aliases_id(user.id)
+
+    def get_unique_aliases_id(self, user_id: int):
+        return {alias[0]: alias[1] for alias in self.database.get_aliases(user_id)}
 
     def escape(self, string: str, *chars: typing.Iterable[str]):
         for char in chars:

@@ -649,7 +649,7 @@ class database:
             con.close()
             return res
         except:
-            return None
+            return []
 
     def find_id_from_alias(self, alias):
         try:
