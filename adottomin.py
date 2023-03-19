@@ -1324,6 +1324,36 @@ async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Ch
             msg = msg[:2000-len(aux)-1] + aux
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
+@bot.tree.command(description='Debug command')
+async def vcopensessions(interaction: discord.Interaction):
+    if not await utils.safe_defer(interaction, ephemeral=True): return
+    
+    log_info(interaction, f"{interaction.user} requested sql query for vcopensessions")
+    if not await utils.ensure_admin(interaction): return
+
+    try:
+        data = sql.get_opensessions()
+    except sqlite3.DatabaseError as e:
+        log_debug(interaction, f"{interaction.user} query [vcopensessions] failed : {e}")
+        await utils.safe_send(interaction, content=f"Failed to execute query [vcopensessions]:\n```\n{traceback.format_exc()}\n```", ephemeral=True, is_followup=True)
+        return
+    except Exception as e:
+        log_debug(interaction, f"{interaction.user} query [vcopensessions] failed : {e}")
+        await _dm_log_error(f"[{interaction.channel}] vcopensessions\n{e}\n{traceback.format_exc()}")
+        await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
+        return
+        
+    if data is None:
+        msg = "Your query returned None"
+    else:
+        msg = f"Here are the results for your query:\n```\n"
+        msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data))
+        msg += "\n```"
+        if len(msg) > 2000:
+            aux = "```\nTRUNC"
+            msg = msg[:2000-len(aux)-1] + aux
+    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
+
 @bot.tree.command(description='Get the daily top 10 rankings')
 @discord.app_commands.describe(date='When to fetch data', phone='Format the output for copy/paste on a phone', vclimit='How many users to check for VC standings (default 3)')
 async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], phone: typing.Optional[bool] = False, vclimit: typing.Optional[int] = 3):
