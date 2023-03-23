@@ -930,6 +930,27 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
 
     await utils.safe_send(interaction, content=f"{user.mention} is {emote} {pct}% horny today!{nice} :3", send_anyway=True)
 
+@bot.tree.command(description='Rate your gender!')
+@discord.app_commands.describe(user='Who to rate (if empty, rates you)')
+async def genderrate(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
+    user = user or interaction.user
+    log_info(interaction, f"{interaction.user} requested genderrate for {user}")
+    if (user.id == bot.user.id):
+        await utils.safe_send(interaction, content=f"I'm **always** :100: gender, {interaction.user.mention}~")
+        return
+
+    pct, nice = memes.percent_from(f"gender/{int(user.id)}")
+    if pct == 69:
+        emote = ":sunglasses:"
+    elif pct < 33:
+        emote = ":confused:"
+    elif pct < 66:
+        emote = ":slight_smile:"
+    else:
+        emote = ":yum:"
+
+    await utils.safe_send(interaction, content=f"{user.mention} is {emote} {pct}% gender today!{nice} :3", send_anyway=True)
+
 @bot.tree.command(description='Explain it like you\'re a boomer')
 @discord.app_commands.describe(expression='What to search')
 async def boomersplain(interaction: discord.Interaction, expression: str):
