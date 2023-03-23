@@ -414,6 +414,16 @@ class database:
         except:
             return None
 
+    def get_previous_age(self, user):
+        try:
+            con = sqlite3.connect(member_analytics_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT age FROM joiners WHERE user = :id AND age > 0 AND age < 100 ORDER BY created_at DESC LIMIT 1", {"id": user}).fetchone()
+            con.close()
+            return res and int(res[0])
+        except:
+            return None
+
     def create_warning(self, user, moderator, reason="", time_range=None):
         con = sqlite3.connect(warnings_db_file)
         cur = con.cursor()

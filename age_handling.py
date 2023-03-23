@@ -19,6 +19,7 @@ MSG_GREETING = f"{em.e('NekoHi', 'wave')} Hello {'{}'}! May I ask your age, pls?
 MSG_TRY_AGAIN = "Try again, {}"
 MSG_TRY_AGAIN_JOKE = "First time I heard that one... You're a riot, {}!"
 MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
+MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you were {}... :thinking: But in any case, welcome back to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_AGE_IN_DMS = f"{'{}'} told me their age in DMs and they're chill! :sunglasses:"
@@ -93,16 +94,22 @@ class age_handler:
                     await msg.channel.send(MSG_TRY_AGAIN.format(msg.author.mention))
                 else:
                     self.logger.debug(f"[{msg.channel}] {msg.author} said a valid age ({age})")
+
+                    sent_already = False
+                    if (prev_age := self.sql.get_previous_age(msg.author.id)) and prev_age != age:
+                        sent_already = True
+                        await msg.channel.send(MSG_DIFFERENT_AGE.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
                 
                     self.sql.delete_entry(msg.author.id)
                     self.sql.set_age(msg.author.id, age, force=True)
 
                     # embed = discord.Embed()
                     # embed.set_image(url=f"https://tenor.com/view/mpeg-gif-20384897")
-                    await msg.channel.send(MSG_WELCOME.format(msg.author.mention))
+                    if not sent_already:
+                        await msg.channel.send(MSG_WELCOME.format(msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
                     if isinstance(msg.channel, discord.DMChannel):
                         self.logger.debug(f"Message sent in DMchannel")
-                        await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention))
+                        await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
                     return
 
         if leniency > 0:
