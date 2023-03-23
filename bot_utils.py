@@ -60,8 +60,17 @@ attachment_save_location = "attachments"
 
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
 
-def quote_each_line(msg):
-    return "\n".join(f"> {line}" for line in msg.split('\n'))
+def quote_each_line(msg: str, additional:str=""):
+    lines = msg.split('\n') + additional.split('\n')
+    return "".join([f"> {line}\n" for line in lines])
+
+def get_attachments(self, msg: discord.Message):
+    extras = {
+        "attachment": len(msg.attachments),
+        "embed": len(msg.embeds),
+        "sticker": len(msg.stickers)
+    }
+    return " ".join(["<{} {}>".format(amount, self.plural(item, amount)) for item, amount in extras.items() if amount])
 
 class HandlerException(Exception):
     pass
@@ -200,14 +209,14 @@ class utils:
 
     async def _format_msg_chain(self, user: discord.User, original_msg: discord.Message, max_size: int = 1500):
         msg_chain = await self._get_msg_chain(original_msg)
-        msg_fmt = quote_each_line(msg_chain[0].content).replace(user.mention, user.display_name) + "\n"
+        msg_fmt = quote_each_line(msg_chain[0].content, additional=get_attachments(self, msg_chain[0])).replace(user.mention, user.display_name) + "\n"
         for message in msg_chain[1:]:
             if message is None:
                 new_line = "As a reply to an unknown message\n"
             else:
                 try:
                     _sender = "you" if (user.id == message.author.id) else f"{message.author.mention}"
-                    new_line = f"As a reply to a message {_sender} sent:\n{quote_each_line(message.content).replace(user.mention, user.display_name)}\n"
+                    new_line = f"As a reply to a message {_sender} sent:\n{quote_each_line(message.content, additional=get_attachments(self, message)).replace(user.mention, user.display_name)}\n"
                 except Exception as e:
                     new_line = f"As a reply to a deleted message\n"
                     self.logger.warning(f"Error while trying to get message contents: {e}\n{traceback.format_exc()}")
@@ -332,7 +341,7 @@ class utils:
         await self._enforce_dms(msg)
         await self._enforce_not_admin(msg)
         if len(msg.content) == 0: return
-        content = f"{msg.author.mention} ({msg.author.id}) messaged me:\n{quote_each_line(msg.content)}\n"
+        content = f"{msg.author.mention} ({msg.author.id}) messaged me:\n{quote_each_line(msg.content, additional=get_attachments(self, msg))}\n"
         await self._split_dm(content, self.admin)
 
     async def handle_puppeteering(self, msg: discord.Message):
