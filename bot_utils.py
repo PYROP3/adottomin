@@ -62,7 +62,7 @@ puppeteer_prog = re.compile(r"<@([0-9]+)>")
 
 def quote_each_line(msg: str, additional:str=""):
     lines = msg.split('\n') + additional.split('\n')
-    return "".join([f"> {line}\n" for line in lines])
+    return "".join([f"> {line}\n" for line in lines[::-1]])
 
 def get_attachments(self, msg: discord.Message):
     extras = {

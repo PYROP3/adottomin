@@ -2,6 +2,7 @@ import datetime
 import enum
 import os
 import sqlite3
+import diff_match_patch as dmp_module
 
 import botlogger
 
@@ -56,6 +57,8 @@ relationships_version = 1
 relationships_db_file = _dbfile('relationships', relationships_version)
 jails_version = 1
 jails_db_file = _dbfile('jails', jails_version)
+modnotes_version = 1
+modnotes_db_file = _dbfile('modnotes', modnotes_version)
 
 sql_files = [
     validations_db_file,
@@ -75,7 +78,11 @@ sql_files = [
     member_analytics_db_file,
     cmds_analytics_db_file,
     once_alerts_db_file,
-    noship_db_file
+    noship_db_file,
+    advertisements_db_file,
+    relationships_db_file,
+    jails_db_file,
+    modnotes_db_file
 ]
 
 class once_alerts(enum.Enum):
@@ -282,6 +289,24 @@ schemas = {
                 created_at TIMESTAMP,
                 ends_at TIMESTAMP,
                 cancelled_at TIMESTAMP
+            );'''],
+    modnotes_db_file: ['''
+            CREATE TABLE notes (
+                user int NOT NULL,
+                revision int NOT NULL,
+                content TEXT,
+                moderator int NOT NULL,
+                updated_at TIMESTAMP,
+                PRIMARY KEY (user)
+            );''',
+            '''
+            CREATE TABLE patches (
+                user int NOT NULL,
+                revision int NOT NULL,
+                patch TEXT,
+                moderator int NOT NULL,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user, revision)
             );'''],
 }
 
@@ -1257,6 +1282,55 @@ class database:
             result = False
         con.close()
         return result
+    
+                #     user int NOT NULL,
+                # revision int NOT NULL,
+                # content TEXT,
+                # moderator int NOT NULL,
+                # updated_at TIMESTAMP,
+    
+    def create_or_update_modnote(self, user: int, moderator: int, content: str):
+        now = datetime.datetime.now()
+        con = sqlite3.connect(modnotes_db_file)
+        cur = con.cursor()
+        try:
+            cur.execute("INSERT INTO notes VALUES (?, 1, ?, ?, ?)", [user, content, moderator, now])
+        except sqlite3.IntegrityError:
+            revision, old_content, old_moderator, old_now = cur.execute("SELECT revision, content, moderator, updated_at FROM notes WHERE user=:user", {'user': user}).fetchone()
+            dmp = dmp_module.diff_match_patch()
+            patch_str = dmp.patch_toText(dmp.patch_make(content, old_content))
+            cur.execute("INSERT INTO patches VALUES (?, ?, ?, ?, ?)", [user, revision, patch_str, old_moderator, old_now])
+            cur.execute("UPDATE notes SET revision=revision + 1, content=:content, moderator=:moderator, updated_at=:now WHERE user=:user", {'user':user, 'content':content, 'moderator':moderator, 'now':now})
+        con.commit()
+        con.close()
+
+    def get_modnote(self, user: int, revision: int=None) -> tuple:
+        con = sqlite3.connect(modnotes_db_file)
+        cur = con.cursor()
+        rawdata = cur.execute("SELECT revision, content, moderator, updated_at FROM notes WHERE user=:user", {'user': user}).fetchone()
+        
+        if not rawdata:
+            con.close()
+            return None
+        
+        latest_revision, content, moderator, updated_at = rawdata
+        
+        if revision and revision < int(latest_revision):
+            self.logger.debug(f"Fetch revision {revision}")
+            dmp = dmp_module.diff_match_patch()
+            patches = cur.execute("SELECT revision, patch, moderator, created_at FROM patches WHERE user=:user AND revision >= :target_revision ORDER BY revision DESC", {'user': user, 'target_revision': revision}).fetchall()
+            self.logger.debug(f"Retrieved patches={patches}")
+            patch_objs = [dmp.patch_fromText(patch_str)[0] for _, patch_str, _, _ in patches]
+            self.logger.debug(f"patch_objs={patch_objs}")
+            patched_content = dmp.patch_apply(patch_objs, content)[0]
+            target_revision, _, moderator, created_at = patches[-1]
+            result_data = (int(target_revision), patched_content, int(moderator), self.db2datetime(created_at))
+        else:
+            self.logger.debug(f"Fetch latest ({revision} vs {latest_revision})")
+            result_data = (int(latest_revision), content, int(moderator), self.db2datetime(updated_at))
+
+        con.close()
+        return result_data
 
     def db2datetime(self, when: str):
         return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")

@@ -25,6 +25,7 @@ import games
 import graphlytics
 import kinks
 import memes
+import modnotes
 import msg_handler_manager
 import propervider as p
 import shipper
@@ -1848,6 +1849,7 @@ bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
 bot.tree.add_command(graphlytics.Analytics(utils))
 bot.tree.add_command(shipper.Relationship(sql, utils))
+bot.tree.add_command(modnotes.Modnotes(sql, utils))
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):
