@@ -1316,17 +1316,17 @@ class database:
         latest_revision, content, moderator, updated_at = rawdata
         
         if revision and revision < int(latest_revision):
-            self.logger.debug(f"Fetch revision {revision}")
+            # self.logger.debug(f"Fetch revision {revision}")
             dmp = dmp_module.diff_match_patch()
             patches = cur.execute("SELECT revision, patch, moderator, created_at FROM patches WHERE user=:user AND revision >= :target_revision ORDER BY revision DESC", {'user': user, 'target_revision': revision}).fetchall()
-            self.logger.debug(f"Retrieved patches={patches}")
+            # self.logger.debug(f"Retrieved patches={patches}")
             patch_objs = [dmp.patch_fromText(patch_str)[0] for _, patch_str, _, _ in patches]
-            self.logger.debug(f"patch_objs={patch_objs}")
+            # self.logger.debug(f"patch_objs={patch_objs}")
             patched_content = dmp.patch_apply(patch_objs, content)[0]
             target_revision, _, moderator, created_at = patches[-1]
             result_data = (int(target_revision), patched_content, int(moderator), self.db2datetime(created_at))
         else:
-            self.logger.debug(f"Fetch latest ({revision} vs {latest_revision})")
+            # self.logger.debug(f"Fetch latest ({revision} vs {latest_revision})")
             result_data = (int(latest_revision), content, int(moderator), self.db2datetime(updated_at))
 
         con.close()

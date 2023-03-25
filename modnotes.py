@@ -25,6 +25,7 @@ class DirectionalButton(discord.ui.Button):
         self.offset = offset
         self.parent = parent
         self.logger = botlogger.get_logger(f"{__name__}::DirectionalButton")
+        self.logger.setLevel("INFO")
 
     async def callback(self, interaction: discord.Interaction):
         self.logger.debug(f"{interaction.user}({interaction.user.id}) clicked on {self.offset}")
@@ -36,6 +37,7 @@ class NotesBrowseView(discord.ui.View):
     def __init__(self, interaction: discord.Interaction, user: discord.Member, revision: int, sql: db.database, utils: bot_utils.utils):
         super().__init__()
         self.logger = botlogger.get_logger(f"{__name__}::NotesBrowseView")
+        self.logger.setLevel("INFO")
         self.interaction = interaction
         self.target_user = user
         self.current_revision = revision
