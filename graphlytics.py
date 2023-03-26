@@ -64,7 +64,7 @@ neg_colors = {
     'unknown': 'grey'
 }
 
-def generate_world_heatmap(cmap: str = 'gist_ncar'):
+def generate_world_heatmap(cmap: str = 'plasma'):
     if cmap not in cmaps: return None
 
     con = sqlite3.connect(db.worldmap_db_file)
