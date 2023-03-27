@@ -1845,13 +1845,19 @@ async def removeadvertisement(interaction: discord.Interaction, message: str):
         await utils.safe_send(interaction, content=f"Something went wrong... are you sure the message is still there?", ephemeral=True)
 
 @bot.tree.command(description='Mute yourself, put your phone down and go get some eep!')
-async def sleepme(interaction: discord.Interaction):
-    log_info(interaction, f"{interaction.user} is sleeping themselves")
+@discord.app_commands.describe(duration='Whether you want to eep (longer) or nap (shorter). The default is eep!')
+@discord.app_commands.choices(duration=[discord.app_commands.Choice(name="eep", value=4), discord.app_commands.Choice(name="nap", value=1)])
+async def sleepme(interaction: discord.Interaction, duration: discord.app_commands.Choice[int]=4):
+    if isinstance(duration, int):
+        duration = discord.app_commands.Choice(name="eep", value=4)
 
+    log_info(interaction, f"{interaction.user} is sleeping themselves ({duration.name}/{duration.value}h)")
+
+    content = {"eep": "Gn {}! Cya tomorrow~", "nap": "Have a nice nappies {}! Cya later~"}[duration.name]
     try:
-        await interaction.user.timeout(datetime.timedelta(hours=4), reason="sleepy sleepy gn")
+        await interaction.user.timeout(datetime.timedelta(hours=duration.value), reason=f"sleepy sleepy gn ({duration.value}h)")
 
-        await utils.safe_send(interaction, content=f"Gn {interaction.user.mention}! Cya tomorrow~", allowed_mentions=discord.AllowedMentions.none(), send_anyway=True)
+        await utils.safe_send(interaction, content=content.format(interaction.user.mention), allowed_mentions=discord.AllowedMentions.none(), send_anyway=True)
     except:
         log_warn(interaction, f"Failed to timeout {interaction.user}")
         await utils.safe_send(interaction, content=f"Hmm it looks like I can't help you, {interaction.user.mention}... :c", allowed_mentions=discord.AllowedMentions.none(), send_anyway=True)
