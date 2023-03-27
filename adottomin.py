@@ -1844,6 +1844,18 @@ async def removeadvertisement(interaction: discord.Interaction, message: str):
     else:
         await utils.safe_send(interaction, content=f"Something went wrong... are you sure the message is still there?", ephemeral=True)
 
+@bot.tree.command(description='Mute yourself, put your phone down and go get some eep!')
+async def sleepme(interaction: discord.Interaction):
+    log_info(interaction, f"{interaction.user} is sleeping themselves")
+
+    try:
+        await interaction.user.timeout(datetime.timedelta(hours=4), reason="sleepy sleepy gn")
+
+        await utils.safe_send(interaction, content=f"Gn {interaction.user.mention}! Cya tomorrow~", allowed_mentions=discord.AllowedMentions.none(), send_anyway=True)
+    except:
+        log_warn(interaction, f"Failed to timeout {interaction.user}")
+        await utils.safe_send(interaction, content=f"Hmm it looks like I can't help you, {interaction.user.mention}... :c", allowed_mentions=discord.AllowedMentions.none(), send_anyway=True)
+
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
