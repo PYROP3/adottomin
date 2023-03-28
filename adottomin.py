@@ -317,7 +317,7 @@ async def _handle_minor_role_added(before: discord.Member, after: discord.Member
     
     logger.info(f"{after} added minor role but is still being verified")
     await notif.send(content=f"{after.mention} caught the bait~")
-    await age_handler.kick_or_ban(after, notif, reason="Chose minor age role", force_ban=True)
+    await age_handler.kick_or_ban(after, reason="Chose minor age role", force_ban=True)
 
 async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
     if before is not None and after.display_name == before.display_name:
@@ -482,20 +482,20 @@ async def on_member_join(member: discord.Member):
         
         if RAID_MODE or is_raid_mode():
             logger.info(f"[{channel}] Raid mode ON: {member}")
-            await age_handler.kick_or_ban(member, channel, reason=age_handling.REASON_RAID)
+            await age_handler.kick_or_ban(member, reason=age_handling.REASON_RAID)
             return
 
         autoblock = sql.is_autoblocked(member.id)
         if autoblock is not None:
             mod, reason, date = autoblock
             logger.info(f"[{channel}] {member} is PRE-blocked: {date}/{mod}: {reason}")
-            await age_handler.kick_or_ban(member, channel, reason=reason, force_ban=True)
+            await age_handler.kick_or_ban(member, reason=reason, force_ban=True)
             return
 
         for name in usernames_blocked:
             if name in member.name.lower():
                 logger.info(f"[{channel}] {member} is name-blocked: annoying")
-                await age_handler.kick_or_ban(member, channel, reason="annoying", force_ban=True)
+                await age_handler.kick_or_ban(member, reason="annoying", force_ban=True)
                 return
 
         greeting = await channel.send(age_handling.MSG_GREETING.format(member.mention))
