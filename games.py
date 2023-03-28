@@ -69,9 +69,10 @@ class RPSGameBase(discord.ui.View):
             return
 
         if not self.opponent and interaction.user.id != self.creator.id:
+            logger.debug(f"setting new opponent as {interaction.user}")
             self.opponent = interaction.user
 
-        if self.choices[interaction.user.id]:
+        if interaction.user.id in self.choices and self.choices[interaction.user.id]:
             await interaction.response.send_message(content=f'You already chose an option, silly~', ephemeral=True)
             return
 
@@ -79,7 +80,7 @@ class RPSGameBase(discord.ui.View):
 
         self.choices[interaction.user.id] = choice
 
-        # logger.debug(f"[RockPaperScissors] self.choices={self.choices}")
+        logger.debug(f"[RockPaperScissors] self.choices={self.choices}")
         if len(self.choices) > 1 and None not in [self.choices[k] for k in self.choices]: # Both chose
             await self._handle_game_over()
 
