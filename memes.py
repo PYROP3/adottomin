@@ -156,6 +156,8 @@ def get_formatted_definition(contents):
     url = f"https://www.urbandictionary.com/define.php?term={clean_term}"
 
     definition = BeautifulSoup(requests.get(url).content, 'html.parser').find("div", {"class": "definition"})
+    if definition is None:
+        return None
 
     # Term itself
     word_txt = definition.find("div", {"class": "flex"}).text

@@ -957,19 +957,26 @@ async def genderrate(interaction: discord.Interaction, user: typing.Optional[dis
 async def boomersplain(interaction: discord.Interaction, expression: str):
     log_info(interaction, f"{interaction.user} requested definition for {expression}")
 
-    word_txt, meaning_txt, example_txt = memes.get_formatted_definition(expression)
-    
+    def_data = memes.get_formatted_definition(expression)
+
     embed = discord.Embed(
-        title=f"**{word_txt}**",
+        title=f"**{expression}**",
         colour=random.choice(bot_utils.EMBED_COLORS),
         timestamp=datetime.datetime.now()
     )
+    
+    if def_data:
+        word_txt, meaning_txt, example_txt = def_data
 
-    if meaning_txt is not None and len(meaning_txt) > 0:
-        embed.add_field(name="Definition", value=meaning_txt, inline=False)
+        embed.title=f"**{word_txt}**"
 
-    if example_txt is not None and len(example_txt) > 0:
-        embed.add_field(name="Usage", value=f"_{example_txt}_", inline=False)
+        if meaning_txt is not None and len(meaning_txt) > 0:
+            embed.add_field(name="Definition", value=meaning_txt, inline=False)
+
+        if example_txt is not None and len(example_txt) > 0:
+            embed.add_field(name="Usage", value=f"_{example_txt}_", inline=False)
+    else:
+        embed.add_field(name="Hmmm...", value=f"I couldn't find anything about that... Are you sure that's a real thing?", inline=False)
     
     # try:
     #     icon_url = interaction.user.avatar.url
