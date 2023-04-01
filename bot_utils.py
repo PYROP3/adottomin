@@ -61,8 +61,8 @@ attachment_save_location = "attachments"
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
 
 def quote_each_line(msg: str, additional:str=""):
-    lines = msg.split('\n') + additional.split('\n')
-    return "".join([f"> {line}\n" for line in lines[::-1]])
+    lines = msg.split('\n') + (additional.split('\n') if len(additional) else [])
+    return "".join([f"> {line}\n" for line in lines])
 
 def get_attachments(self, msg: discord.Message):
     extras = {
@@ -506,7 +506,7 @@ class utils:
     async def ensure_admin(self, interaction):
         if (interaction.user.id != self.admin.id):
             self.logger.debug(f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
-            await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+            await self.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True)
             return False
         return True
 
@@ -514,7 +514,7 @@ class utils:
         _author_roles = self.role_ids(interaction.user)
         if (interaction.user.id != self.admin.id) and set(_author_roles).intersection(roles) == set():
             self.logger.debug(f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
-            await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+            await self.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True)
             return False
         return True
 
