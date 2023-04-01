@@ -118,10 +118,11 @@ class NotesWindowModal(discord.ui.Modal, title="User notes editor"):
         self.handler = handler
         self.user_id = user.id
         self.mod_id = interaction.user.id
+        shortname = name if len(name := str(user)) < 20 else name[:17] + "..."
         if revision > 0:
-            label = f"{user}'s info (v{revision+1})"
+            label = f"{shortname}'s info (v{revision+1})"
         else:
-            label = f"{user}'s info (first revision)"
+            label = f"{shortname}'s info (first revision)"
         self._content_text = discord.ui.TextInput(label=label, style=discord.TextStyle.paragraph, default=content, required=False)
         self.add_item(self._content_text)
 
