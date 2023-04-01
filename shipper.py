@@ -188,7 +188,7 @@ class Relationship(discord.app_commands.Group):
             lines = len(split)//perm
             return '\n'.join([' '.join(split[i*perm:(i+1)*perm]) for i in range(lines)])
 
-        def _crumble_text(text, max=13):
+        def _crumble_text(text, nmax=13):
             if ' ' not in text: return text
             lines = []
             line = ''
@@ -196,7 +196,7 @@ class Relationship(discord.app_commands.Group):
                 if line == '':
                     line = word
                     continue
-                if len(line + ' ' + word) <= max:
+                if len(line + ' ' + word) <= nmax:
                     line += ' ' + word
                     continue
                 lines += [line]
@@ -253,7 +253,7 @@ class Relationship(discord.app_commands.Group):
             target_name = member_list[target]
             # logger.debug(f"Adding {relation} ({confirmed}) {source_name}->{target_name}")
             style = '-' if confirmed else '--'
-            G.add_edge(source_name, target_name, label=_crumble_text(relation), style=style)
+            G.add_edge(source_name, target_name, label=_crumble_text(relation, nmax=13+c_sq_factor), style=style)
             edge_widths[(source_name, target_name)] = edge_f * network_scale if confirmed else 1
 
         # _s = sq_factor * 5 OK for n=21 (_s=22.9128)
