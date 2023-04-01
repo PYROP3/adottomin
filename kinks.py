@@ -23,6 +23,9 @@ from pathlib import Path
 logger = botlogger.get_logger(__name__)
 emoji_font = Path('./fonts/noto_emoji/static/NotoEmoji-Regular.ttf')
 
+def aprilfools():
+    return "no " + random.choice([':3', 'c:', ':/', ':p', 'uwu', 'owo'])
+
 kinklist = {
     'Body Part':{
         'Asses':None,
@@ -830,6 +833,9 @@ def _make_kink_cmd(database, utils, category):
     @discord.app_commands.command(name=safe_name(category), description=f'Manage {category.lower()}-related kinks')
     async def _test(interaction: discord.Interaction):
         logger.info(f"Got kink {category} request from {interaction.user.id}")
+
+        await utils.safe_send(interaction, content=aprilfools())
+        return
         await utils.safe_send(interaction, view=KinksView(category, interaction, database), ephemeral=True)
     return _test
 
@@ -867,6 +873,9 @@ class Kinklist(discord.app_commands.Group):
         user = user or interaction.user
         logger.info(f"{interaction.user} requested kink list: {user}")
 
+        await self.utils.safe_send(interaction, content=aprilfools())
+        return
+
         is_own = user.id == interaction.user.id
 
         is_public = self.database.get_kinklist_visibility(user.id)
@@ -887,6 +896,9 @@ class Kinklist(discord.app_commands.Group):
     async def show(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]=None):
         user = user or interaction.user
         logger.info(f"{interaction.user} requested kink list: {user}")
+
+        await self.utils.safe_send(interaction, content=aprilfools())
+        return
 
         is_own = user.id == interaction.user.id
 
@@ -996,6 +1008,9 @@ class Kinklist(discord.app_commands.Group):
     async def matrix(self, interaction: discord.Interaction, user: discord.Member):
         logger.info(f"Got kink compatibility matrix request from {interaction.user.id}: '{user}'")
 
+        await self.utils.safe_send(interaction, content=aprilfools())
+        return
+
         if interaction.user.id == user.id:
             await self.utils.safe_send(interaction, content=f"Try choosing someone other than yourself~", ephemeral=True)
             return
@@ -1071,6 +1086,9 @@ class Kinklist(discord.app_commands.Group):
     async def compatibility(self, interaction: discord.Interaction, user: discord.Member):
         logger.info(f"Got kink compatibility request from {interaction.user.id}: '{user}'")
 
+        await self.utils.safe_send(interaction, content=aprilfools())
+        return
+
         if interaction.user.id == user.id:
             await self.utils.safe_send(interaction, content=f"Try choosing someone other than yourself~", ephemeral=True)
             return
@@ -1108,6 +1126,9 @@ class Kinklist(discord.app_commands.Group):
     # @discord.app_commands.choices(confirmation=[discord.app_commands.Choice(name=b, value=b) for b in ['I understand', 'Cancel']])
     async def import_flist(self, interaction: discord.Interaction, url: str):
         logger.info(f"Got kink import_flist request from {interaction.user.id}: '{url}'")
+
+        await self.utils.safe_send(interaction, content=aprilfools())
+        return
 
         _regexed = _flist_url_prog.search(url)
         if _regexed is None:
