@@ -1611,33 +1611,7 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
 
-    if user.bot:
-        await utils.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
-        return
-
-    if duration < 1: 
-        await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
-        return
-
-    success = sql.jail_try_register_jailing(user.id, interaction.user.id, duration)
-
-    if not success:
-        await utils.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
-        return
-    
-    jail_role = interaction.guild.get_role(jail_role_id)
-    await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
-    
-    await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {utils.plural('minute', duration)}~", send_anyway=True)
-
-    await asyncio.sleep(duration * 60)
-    
-    try:
-        log_debug(interaction, f"Unjailing {user} after {duration} minutes")
-        await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
-        log_debug(interaction, f"Success unjailing {user}")
-    except Exception as e:
-        log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")
+    await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
 @bot.tree.command(description='Send someone to horny jail')
 @discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
@@ -1646,33 +1620,16 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, 
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
 
-    if user.bot:
-        await utils.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
-        return
+    await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
-    if duration < 1: 
-        await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
-        return
+@bot.tree.command(description='Send someone to horny prison')
+@discord.app_commands.describe(user='User to jail')
+async def hornyprison(interaction: discord.Interaction, user: discord.Member):
+    duration = 3 * 60
+    log_info(interaction, f"{interaction.user} is imprisoning {user} for {duration} minutes")
+    if not await utils.ensure_queen(interaction): return
 
-    success = sql.jail_try_register_jailing(user.id, interaction.user.id, duration)
-
-    if not success:
-        await utils.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
-        return
-    
-    jail_role = interaction.guild.get_role(jail_role_id)
-    await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
-    
-    await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {utils.plural('minute', duration)}~", send_anyway=True)
-
-    await asyncio.sleep(duration * 60)
-    
-    try:
-        log_debug(interaction, f"Unjailing {user} after {duration} minutes")
-        await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
-        log_debug(interaction, f"Success unjailing {user}")
-    except Exception as e:
-        log_debug(interaction, f"Failed to remove role : {e} | {traceback.format_exc()}")
+    await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
 @bot.tree.command(description='Remove someone from horny jail')
 @discord.app_commands.describe(user='User to unjail') #, duration='How long to jail them for, in minutes (default is 5)')

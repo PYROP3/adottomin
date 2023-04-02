@@ -1,3 +1,4 @@
+import asyncio
 import country_converter as coco
 import discord
 import inspect
@@ -614,6 +615,37 @@ class utils:
     #         return '%s%dm%ds' % (sign_string, minutes, seconds)
     #     else:
     #         return '%s%ds' % (sign_string, seconds)
+
+    async def core_hornyjail(self, interaction: discord.Interaction, user: discord.Member, duration: int, jail_role_id: int):
+        self.logger.info(f"{interaction.user} is jailing {user} for {duration} minutes")
+
+        if user.bot:
+            await utils.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
+            return
+
+        if duration < 1: 
+            await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
+            return
+
+        success = self.database.jail_try_register_jailing(user.id, interaction.user.id, duration)
+
+        if not success:
+            await utils.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
+            return
+        
+        jail_role = interaction.guild.get_role(jail_role_id)
+        await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
+        
+        await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {utils.plural('minute', duration)}~", send_anyway=True)
+
+        await asyncio.sleep(duration * 60)
+        
+        try:
+            self.logger.debug(f"Unjailing {user} after {duration} minutes")
+            await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
+            self.logger.debug(f"Success unjailing {user}")
+        except Exception as e:
+            self.logger.debug(f"Failed to remove role : {e} | {traceback.format_exc()}")
 
     async def core_joinhistory(self, interaction: discord.Interaction, userid: int, sql: db.database, username: str=None):
         username = username or userid
