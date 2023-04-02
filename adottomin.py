@@ -359,7 +359,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
     emoji = reaction.emoji if type(reaction.emoji) == str else reaction.emoji.name
     if emoji in reaction_blocklist or user.id in reaction_user_blocklist:
         logger.info(f"Reaction blocklisted, removing")
-        reaction.remove(user)
+        await reaction.remove(user)
 
 mhm.register_static_list([
     utils.handle_invite_link,
