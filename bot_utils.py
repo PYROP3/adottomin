@@ -620,23 +620,23 @@ class utils:
         self.logger.info(f"{interaction.user} is jailing {user} for {duration} minutes")
 
         if user.bot:
-            await utils.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
+            await self.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
             return
 
         if duration < 1: 
-            await utils.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
+            await self.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
             return
 
         success = self.database.jail_try_register_jailing(user.id, interaction.user.id, duration)
 
         if not success:
-            await utils.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
+            await self.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
             return
         
         jail_role = interaction.guild.get_role(jail_role_id)
         await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
         
-        await utils.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {utils.plural('minute', duration)}~", send_anyway=True)
+        await self.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {self.plural('minute', duration)}~", send_anyway=True)
 
         await asyncio.sleep(duration * 60)
         
