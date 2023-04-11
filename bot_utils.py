@@ -248,7 +248,7 @@ class utils:
     async def handle_offline_mentions(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
         for member in msg.mentions:
-            will_send = not self._is_self_mention(msg, member) and member.status in VALID_NOTIFY_STATUS and self.database.is_in_offline_ping_allowlist(member.id)
+            will_send = not self._is_self_mention(msg, member) and member.status in VALID_NOTIFY_STATUS and self.database.is_in_offline_ping_allowlist(member.id) and msg.channel.permissions_for(member).view_channel
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if not will_send: continue
             fmt_msg_chain = await self._format_msg_chain(member, msg)
