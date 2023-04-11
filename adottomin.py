@@ -1826,6 +1826,16 @@ async def sleepme(interaction: discord.Interaction, duration: discord.app_comman
         log_warn(interaction, f"Failed to timeout {interaction.user}")
         await utils.safe_send(interaction, content=f"Hmm it looks like I can't help you, {interaction.user.mention}... :c", allowed_mentions=discord.AllowedMentions.none(), send_anyway=True)
 
+@bot.tree.command(description='Zap!')
+@discord.app_commands.describe(user='User to zap')
+async def zap(interaction: discord.Interaction, user: discord.Member):
+    try:
+        await utils._split_dm(f"_**zap!**_", user)
+        await utils.safe_send(interaction, content="Zapped 'em good!", ephemeral=True)
+    except Exception as e:
+        logger.info(f"Error while trying to send DM to {user}: {e}\n{traceback.format_exc()}")
+        await utils.safe_send(interaction, content="I think they've blocked me :c", ephemeral=True)
+
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
