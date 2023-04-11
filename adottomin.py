@@ -1829,6 +1829,16 @@ async def sleepme(interaction: discord.Interaction, duration: discord.app_comman
 @bot.tree.command(description='Zap!')
 @discord.app_commands.describe(user='User to zap')
 async def zap(interaction: discord.Interaction, user: discord.Member):
+    if not await utils.ensure_secretary(interaction): return
+    if user.id == bot.user.id:
+        await utils.safe_send(interaction, content="Why would you wanna zap me :c", ephemeral=True)
+        return
+    if user.bot:
+        await utils.safe_send(interaction, content="Can't zap bots! No good!!!", ephemeral=True)
+        return
+    if user.id == interaction.user.id:
+        await utils.safe_send(interaction, content="I won't indulge in your kinks~", ephemeral=True)
+        return
     try:
         await utils._split_dm(f"_**zap!**_", user)
         await utils.safe_send(interaction, content="Zapped 'em good!", ephemeral=True)
