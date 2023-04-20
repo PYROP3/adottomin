@@ -66,6 +66,7 @@ MSG_RAID_MODE_ON_ALREADY = "Raid mode is already on"
 MSG_RAID_MODE_OFF_ALREADY = "Raid mode is already off"
 MSG_CANT_DO_IT = "I can't do that to that user~ :3"
 MSG_USER_ALREADY_MAXED = "That user is already at max tier!"
+MSG_USER_ALREADY_MOON = "That user is already a moon fur-iend!"
 MSG_CONGRATULATIONS_PROMOTION = "Congratulations on your promotion to tier {}, {}!"
 
 bot_home = os.getenv("BOT_HOME") or os.getcwd()
@@ -317,7 +318,7 @@ async def _handle_minor_role_added(before: discord.Member, after: discord.Member
     
     logger.info(f"{after} added minor role but is still being verified")
     await notif.send(content=f"{after.mention} caught the bait~")
-    await age_handler.kick_or_ban(after, reason="Chose minor age role", force_ban=True)
+    await age_handler.kick_or_ban(after, age=minor_role_id, force_update_age=True, reason="Chose minor age role", force_ban=True)
 
 async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
     if before is not None and after.display_name == before.display_name:
@@ -1069,6 +1070,43 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
     if friends_role_ids[2] in _user_roles:
         log_debug(interaction, f"{user} already at max tier")
         await utils.safe_send(interaction, content=MSG_USER_ALREADY_MAXED, ephemeral=True)
+        return
+
+    if friends_role_ids[1] in _user_roles:
+        if not await utils.ensure_divine(interaction): return
+        # log_debug(interaction, f"{user} will NOT be promoted to tier 3")
+        # await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
+        # return
+        msg = f"{user.mention} Congraitiualtionon tier3"
+        new_role_id = friends_role_ids[2]
+        
+    else:
+        log_debug(interaction, f"{user} will be promoted to tier 2")
+        msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
+        new_role_id = friends_role_ids[1]
+        
+    try:
+        member = interaction.guild.get_member(user.id)
+        new_role = interaction.guild.get_role(new_role_id)
+        await member.add_roles(new_role, reason=f"{interaction.user} said so")
+        await utils.safe_send(interaction, content=msg, send_anyway=True)
+    except discord.HTTPException as e:
+        log_error(interaction, f"Failed to give role {new_role} to {user}")
+        log_debug(interaction, e)
+        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
+
+@bot.tree.command(description='Promote a user to moon tier')
+@discord.app_commands.describe(user='User to promote')
+async def promoonte(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} requested promotion for {user}")
+    if not await utils.ensure_divine(interaction): return
+
+    # todo set moon role id
+
+    _user_roles = [role.id for role in user.roles]
+    if moon_role_id in _user_roles:
+        log_debug(interaction, f"{user} already a moon furiend")
+        await utils.safe_send(interaction, content=MSG_USER_ALREADY_MOON, ephemeral=True)
         return
 
     if friends_role_ids[1] in _user_roles:
