@@ -452,7 +452,7 @@ class database:
     def create_warning(self, user, moderator, reason="", time_range=None):
         con = sqlite3.connect(warnings_db_file)
         cur = con.cursor()
-        cur.execute("INSERT INTO warnings VALUES (?, ?, ?, ?)", [user, reason, moderator, datetime.datetime.now()])
+        cur.execute("INSERT INTO warnings VALUES (?, ?, ?, ?)", [user, moderator, reason, datetime.datetime.now()])
         con.commit()
         min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
         data = cur.execute("SELECT * FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
@@ -651,7 +651,7 @@ class database:
         cur = con.cursor()
         res = self.is_simping(simp, simp_for, cur=cur)
         if res is not None:
-            cur.execute("UPDATE simps SET starred=:new_state WHERE simp=:simp AND simp_for = simp_for", {"simp": simp, "simp_for": simp_for, "new_state": new_state})
+            cur.execute("UPDATE simps SET starred=:new_state WHERE simp=:simp AND simp_for=:simp_for", {"simp": simp, "simp_for": simp_for, "new_state": new_state})
         con.commit()
         con.close()
         self.logger.debug(f"Update_simping: {simp} x {simp_for} - {new_state}: {res}")
