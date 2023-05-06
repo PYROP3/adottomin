@@ -1329,7 +1329,7 @@ _raw_fortunes = [
     "I am a fortune. You just broke my little house. Where will i live now?.",
     "Old dreams never die they just get filed away.",
     "You have a strong desire for a home and your family interests come first.",
-    "The time is alway right to do what is right.",
+    "The time is always right to do what is right.",
     "If you refuse to accept anything but the best, you very often get it.",
     "It's never crowded along the extra mile.",
     "You will be selected for a promotion because of your accomplishments.",

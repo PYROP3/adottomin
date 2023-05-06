@@ -25,6 +25,7 @@ import games
 import graphlytics
 import kinks
 import memes
+import mistletoe
 import modnotes
 import msg_handler_manager
 import propervider as p
@@ -88,10 +89,12 @@ queen_role_id = p.pint('QUEEN_ROLE_ID')
 owner_role_id = p.pint('OWNER_ROLE_ID')
 divine_role_id = p.pint('DIVINE_ROLE_ID')
 secretary_role_id = p.pint('SECRETARY_ROLE_ID')
+dogretary_role_id = p.pint('DOGRETARY_ROLE_ID')
 nsfw_role_id = p.pint('NSFW_ROLE_ID')
 jail_role_id = p.pint('JAIL_ROLE_ID')
 minor_role_id = p.pint('MINOR_ROLE_ID', required=False)
 friends_role_ids = p.plist('FRIENDS_ROLE_IDS')
+moon_role_id = 0 #p.pint('MOON_ROLE_ID', required=False)
 
 game_channel_ids = p.plist('GAME_CHANNEL_IDS')
 
@@ -116,6 +119,8 @@ gatekeep_perms = {'send_messages': False}
 ignore_prefixes = ('$')
 
 advertisement_slowmode = datetime.timedelta(seconds=30)
+
+file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
 
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -153,6 +158,7 @@ ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, s
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
 mhm = msg_handler_manager.HandlerManager(admin_id, bot)
+mistletoe_handler = mistletoe.mistletoe_handler()
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
@@ -303,7 +309,7 @@ async def _handle_nsfw_added(before: discord.Member, after: discord.Member):
     await after.remove_roles(*[nsfw_role], reason="Not verified", atomic=False)
     notif = after.guild.get_channel(channel_ids[0])
     await notif.send(content=f"Straight for the NSFW and didn't even tell me your age, {after.mention}?~")
-    await utils.send_poi_dms(f"{after.mention} just got told off for going straight for NSFW~")
+    # await utils.send_poi_dms(f"{after.mention} just got told off for going straight for NSFW~")
 
 async def _handle_minor_role_added(before: discord.Member, after: discord.Member):
     if not minor_role_id: return
@@ -609,9 +615,11 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 pinAttachmentFile = None
                 if len(attachments) >= 1:
                     try:
-                        icon_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + ".png"
+                        re_file_ext = file_ext_prog.search(attachments[0].filename)
+                        file_ext = re_file_ext and re_file_ext.group(1) or "png"
+                        icon_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + "." + file_ext
                         logger.debug(f"icon_name=trash/{icon_name}")
-
+                        
                         await attachments[0].save(fp="trash/" + icon_name)
 
                         pinAttachmentFile = discord.File("trash/" + icon_name, filename=icon_name)
@@ -814,6 +822,24 @@ async def randomcitizen(interaction: discord.Interaction):
         return
     member = random.choice([member for member in guild.members if not member.bot])
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member.mention}~")
+
+@bot.tree.command(description='Get many pinged!')
+async def randomcitizens(interaction: discord.Interaction, amount: int):
+    log_info(interaction, f"{interaction.user} requested {amount} randomcitizens")
+    guild = interaction.guild
+    if guild is None: 
+        await utils.safe_send(interaction, content=f"That command only works in a server!", ephemeral=True)
+        return
+    if not await utils.ensure_secretary(interaction): return
+    if amount <= 0:
+        await utils.safe_send(interaction, content=f"Try choosing a _natural_ number, silly~", ephemeral=True)
+        return
+    if amount > 10:
+        await utils.safe_send(interaction, content=f"Oh geez, that's a lot of people! Maybe try a lil less~?", ephemeral=True)
+        return
+    members = random.choices([member for member in guild.members if not member.bot], k=amount)
+    member_mentions = " and ".join([", ".join([member.mention for member in members[:-1]])] + [members[-1].mention]) if amount > 1 else members[0].mention
+    await _meme(interaction, "random_citizen", msg=f"Get pinged, {member_mentions}~")
 
 @bot.tree.command(description='Get a random fortune!')
 async def fortune(interaction: discord.Interaction):
@@ -1073,7 +1099,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
         return
 
     if friends_role_ids[1] in _user_roles:
-        if not await utils.ensure_divine(interaction): return
+        if not await utils._ensure_roles(interaction, divine_role_id, dogretary_role_id): return
         # log_debug(interaction, f"{user} will NOT be promoted to tier 3")
         # await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
         # return
@@ -1289,7 +1315,11 @@ async def simps(interaction: discord.Interaction, user: discord.Member):
     simps = sql.get_simps(user.id)
     
     if simps is None or len(simps) == 0:
-        await utils.safe_send(interaction, content=f"Awww... {user.mention} doesn't have any simps yet")
+        meme_name = memes.no_simps
+        meme_file = discord.File(meme_name, filename=meme_name)
+        # embed = discord.Embed()
+        # embed.set_image(url=f"attachment://{meme_name}")
+        await utils.safe_send(interaction, file=meme_file, content=f"No simps, {user.mention}?")
         return
 
     msg = f"Here are {user.mention}'s simps~\n> "
@@ -1883,6 +1913,26 @@ async def zap(interaction: discord.Interaction, user: discord.Member):
     except Exception as e:
         logger.info(f"Error while trying to send DM to {user}: {e}\n{traceback.format_exc()}")
         await utils.safe_send(interaction, content="I think they've blocked me :c", ephemeral=True)
+
+@bot.tree.command(description='Hold up a mistletoe~')
+@discord.app_commands.describe(users='How many people to gather under the mistletoe (default is 2)')
+async def mistletoe(interaction: discord.Interaction, users: typing.Optional[int]=2):
+    log_info(interaction, f"{interaction.user} is requesting a mistletoe for {users}")
+
+    if users < 2:
+        await utils.safe_send(interaction, content="That's not enough people to kiss under the mistletoe, silly~", ephemeral=True)
+        return
+
+    if users > 10:
+        await utils.safe_send(interaction, content="That's WAY too many people to kiss under the mistletoe, silly~", ephemeral=True)
+        return
+    
+    created = mistletoe_handler.try_new_mistletoe(interaction.channel_id, users)
+    if not created:
+        await utils.safe_send(interaction, content="I'm still waiting on a mistletoe, silly~", ephemeral=True)
+        return
+
+    await _meme(interaction, "mistletoe", text=str(users), msg=f"Next {users} to talk have to kiss under the mistletoe~!")
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
