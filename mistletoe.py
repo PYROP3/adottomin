@@ -31,6 +31,9 @@ class mistletoe_handler:
         del(self.awaiting_users[channel])
 
     async def handle_mistletoe_msg(self, msg: discord.Message):
+        if msg.channel.id not in self.pending_mistletoes:
+            return
+        
         if len(self.pending_mistletoes[msg.channel.id]) >= self.awaiting_users[msg.channel.id]:
             logger.warning(f"handle_mistletoe_msg mistletoe for {msg.channel} already fulfilled")
             self.clear_mistletoe(msg.channel.id)
