@@ -127,7 +127,7 @@ def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
         if id == "simpcard": return[_args_icon(icon, (210, 320), (183, 245))]
         if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
                     for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
-        if id == "mistletoe": return[_args_text(f"Next {text} people to talk", (350, 50), (600, 80)), _args_text(f"have to kiss~", (350, 527), (600, 80))]
+        if id == "mistletoe": return[_args_text(f"Next {text} people to talk", (700, 80), (400, 50)), _args_text(f"have to kiss~", (700, 80), (400, 550))]
 
 def create_meme(id: str, author_icon: str=None, icon: str=None, text: str=None):
     return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, author_icon=author_icon, icon=icon, text=text))

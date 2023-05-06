@@ -158,7 +158,7 @@ ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, s
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
 mhm = msg_handler_manager.HandlerManager(admin_id, bot)
-mistletoe_handler = mistletoe.mistletoe_handler()
+mistletoe_handler = mistletoe.mistletoe_handler(mhm)
 
 def is_raid_mode():
     return exists(RAID_MODE_CTRL)
