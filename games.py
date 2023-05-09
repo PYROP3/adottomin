@@ -53,15 +53,22 @@ class RPSGameBase(discord.ui.View):
         cr = self.choices[self.creator.id]
         op = self.choices[self.opponent.id]
         if op == cr:
-            return f"Both {self.creator.mention} and {self.opponent.mention} chose {self._ch(op)}, so it's a tie!~"
-        winning_choice, losing_choice = (cr, op) if op in self.rules[cr] else (op, cr)
+            content = f"Both {self.creator.mention} and {self.opponent.mention} chose {self._ch(op)}, so it's a tie!~"
 
-        _styles = {winning_choice: discord.enums.ButtonStyle.green, losing_choice: discord.enums.ButtonStyle.red}
+            styles = lambda choice: discord.enums.ButtonStyle.gray
+
+        else:
+            winning_choice, losing_choice = (cr, op) if op in self.rules[cr] else (op, cr)
+            content = self._message_game_end(winning_choice, losing_choice)
+
+            _styles = {winning_choice: discord.enums.ButtonStyle.green, losing_choice: discord.enums.ButtonStyle.red}
+            styles = lambda choice: choice in _styles and _styles[choice] or discord.enums.ButtonStyle.gray
+
         for button in self.buttons:
             button.disabled = True
-            button.style = button.choice in _styles and _styles[button.choice] or discord.enums.ButtonStyle.gray
+            button.style = styles(button.choice)
 
-        await self.interaction.edit_original_response(content=self._message_game_end(winning_choice, losing_choice), view=self)
+        await self.interaction.edit_original_response(content=content, view=self)
 
     async def _on_button_callback(self, choice: enum.Enum, interaction: discord.Interaction):
         if interaction.user.id not in self.choices and self.opponent:
