@@ -1224,19 +1224,6 @@ async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Ch
 
     await utils.safe_send(interaction, content=msg)
 
-@bot.tree.command(description='Update settings on whether to notify you about pings while you\'re offline')
-@discord.app_commands.describe(enable='Enable (on) or disable (off) notifications')
-@discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
-async def offlinepings(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
-    log_info(interaction, f"{interaction.user} requested offlinepings: {enable.value}")
-
-    if enable.value == "off":
-        sql.remove_from_offline_ping_allowlist(interaction.user.id)
-        await utils.safe_send(interaction, content="Okay, I won't send you notifications if you're pinged~", ephemeral=True)
-    else:
-        sql.add_to_offline_ping_allowlist(interaction.user.id)
-        await utils.safe_send(interaction, content="Okay, I'll let you know if you're pinged~", ephemeral=True)
-
 @bot.tree.command(description='Start simping for someone!')
 @discord.app_commands.describe(user='Who you wanna simp for')
 async def simp(interaction: discord.Interaction, user: discord.Member):
