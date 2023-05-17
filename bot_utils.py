@@ -3,6 +3,7 @@ import country_converter as coco
 import discord
 import inspect
 import json
+import msg_handler_manager
 import queue
 import random
 import re
@@ -14,6 +15,8 @@ import typing
 
 import botlogger
 import db
+import propervider as p
+
 
 from datetime import datetime, timedelta
 from discord.ext import commands
@@ -59,6 +62,9 @@ attachments_channel_ids = [1002078229168922785]
 # attachments_channel_ids = [471017843459358733]
 attachment_save_location = "attachments"
 
+ad_channel = p.pint('AD_CHANNEL_ID')
+ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID')
+
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
 
 def quote_each_line(msg: str, additional:str=""):
@@ -82,9 +88,10 @@ class HandlerIgnoreException(HandlerException):
 invite_prog = re.compile(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(.+)")
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, chatting_roles_allowlist=[], chatting_servicename: str=None):
+    def __init__(self, bot: commands.Bot, database: db.database, mhm: msg_handler_manager.HandlerManager, chatting_roles_allowlist=[], chatting_servicename: str=None):
         self.database = database
         self.bot = bot
+        self.mhm = mhm
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.chatting_servicename = chatting_servicename
         self.admin = None
@@ -244,6 +251,19 @@ class utils:
 
     def _is_self_mention(self, msg: discord.Message, member: discord.Member):
         return (member.id == msg.author.id) or (msg.author.bot and msg.interaction != None and msg.interaction.user.id == member.id)
+
+    async def handle_cork_board_post(self, msg: discord.Message):
+        await self._enforce_not_dms(msg)
+        if msg.channel.id != ad_channel: return
+        if not self.mhm.is_lock(self.handle_cork_board_post, msg.author.id): return
+
+        ad_role = msg.guild.get_role(ad_poster_role_id)
+        try:
+            await msg.author.remove_roles(ad_role, reason=f"posted in cork-board")
+        except Exception as e:
+            self.logger.error(f"handle_cork_board_post: {e}\n{traceback.format_exc()}")
+
+        self.mhm.remove_dyn_lock(self.handle_cork_board_post, msg.author.id)
 
     async def handle_offline_mentions(self, msg: discord.Message):
         await self._enforce_not_dms(msg)

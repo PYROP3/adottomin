@@ -94,7 +94,8 @@ nsfw_role_id = p.pint('NSFW_ROLE_ID')
 jail_role_id = p.pint('JAIL_ROLE_ID')
 minor_role_id = p.pint('MINOR_ROLE_ID', required=False)
 friends_role_ids = p.plist('FRIENDS_ROLE_IDS')
-moon_role_id = 0 #p.pint('MOON_ROLE_ID', required=False)
+moon_role_id = p.pint('MOON_ROLE_ID', required=False)
+ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID')
 
 game_channel_ids = p.plist('GAME_CHANNEL_IDS')
 
@@ -151,13 +152,13 @@ logger.info(f"Guild ID = {GUILD_ID}")
 logger.info(f"Role IDs = {role_ids}")
 logger.info(f"Tallly channel IDs = {tally_channel}")
 
+mhm = msg_handler_manager.HandlerManager(admin_id, bot)
 sql = db.database(LENIENCY_COUNT)
-utils = bot_utils.utils(bot, sql, [divine_role_id, secretary_role_id], chatbot_service)
+utils = bot_utils.utils(bot, sql, mhm, [divine_role_id, secretary_role_id], chatbot_service)
 age_handler = age_handling.age_handler(bot, sql, utils, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
-mhm = msg_handler_manager.HandlerManager(admin_id, bot)
 mistletoe_handler = mistletoe.mistletoe_handler(mhm)
 
 def is_raid_mode():
@@ -359,7 +360,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             await _dm_log_error(f"on_member_update\n{e}\n{traceback.format_exc()}")
 
 reaction_blocklist = []
-reaction_user_blocklist = []
+reaction_user_blocklist = []#[954175797495746621]
 
 @bot.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
@@ -380,6 +381,7 @@ mhm.register_static_list([
 
 mhm.register_dynamic(age_handler.handle_age)
 mhm.register_dynamic(nohorny_handler.handle_horny)
+mhm.register_dynamic(utils.handle_cork_board_post)
 
 message_edit_handlers = [
     emojionly_handler.handle_emoji_chat_edit
@@ -1112,9 +1114,10 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
         new_role_id = friends_role_ids[1]
         
     try:
-        member = interaction.guild.get_member(user.id)
+        # member = interaction.guild.get_member(user.id)
         new_role = interaction.guild.get_role(new_role_id)
-        await member.add_roles(new_role, reason=f"{interaction.user} said so")
+        # await member.add_roles(new_role, reason=f"{interaction.user} said so")
+        await user.add_roles(new_role, reason=f"{interaction.user} said so")
         await utils.safe_send(interaction, content=msg, send_anyway=True)
     except discord.HTTPException as e:
         log_error(interaction, f"Failed to give role {new_role} to {user}")
@@ -1850,6 +1853,30 @@ async def advertise(interaction: discord.Interaction):
     log_info(interaction, f"{interaction.user} is requesting to create an AD")
     
     await ad_handler.create_advertisement(interaction)
+
+@bot.tree.command(description='[MOD] Allow a user to post in cork-board')
+async def allowad(interaction: discord.Interaction, user: discord.Member):
+    log_info(interaction, f"{interaction.user} is requesting to allow an AD for {user}")
+    if not await utils.ensure_divine(interaction): return
+    
+    if user.bot:
+        await utils.safe_send(interaction, content=f"That user is a bot...", ephemeral=True)
+        return
+    
+    if ad_poster_role_id in [role.id for role in user.roles]:
+        await utils.safe_send(interaction, content=f"Seems like they already have the role, but I'll keep watching to remove it after they post it!", ephemeral=True)
+        mhm.create_dyn_lock(utils.handle_cork_board_post, user.id)
+        return
+
+    ad_role = interaction.guild.get_role(ad_poster_role_id)
+
+    try:
+        await user.add_roles(ad_role, reason=f"{interaction.user} said so")
+        await utils.safe_send(interaction, content=f"Good news, {user.mention}! You can make your post in <#{ad_channel}> now~\nJust make sure you follow the rules at the top, mkay?")
+    except:
+        await utils.safe_send(interaction, content=f"I couldn't give 'em the role, but I'll keep watching to remove it after they post it!", ephemeral=True)
+
+    mhm.create_dyn_lock(utils.handle_cork_board_post, user.id)
 
 @bot.tree.command(description='Remove an unwanted advertisement (e.g. spam)')
 @discord.app_commands.describe(message='Message to remove (must be an ad)')
