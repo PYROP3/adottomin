@@ -22,6 +22,7 @@ import copypasta_utils
 import db
 import emojionly
 import games
+import ghostpings
 import graphlytics
 import kinks
 import memes
@@ -1967,6 +1968,7 @@ bot.tree.add_command(games.Game(utils, bot))
 bot.tree.add_command(graphlytics.Analytics(utils))
 bot.tree.add_command(shipper.Relationship(sql, utils))
 bot.tree.add_command(modnotes.Modnotes(sql, utils))
+bot.tree.add_command(ghostpings.Ghostpings(sql, utils))
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):

@@ -15,7 +15,7 @@ validations_version = 1
 validations_db_file = _dbfile('validations', validations_version)
 warnings_version = 2
 warnings_db_file = _dbfile('warnings', warnings_version)
-offline_ping_blocklist_version = 2
+offline_ping_blocklist_version = 3
 offline_ping_blocklist_db_file = _dbfile('offline_ping_blocklist', offline_ping_blocklist_version)
 activity_version = 2
 activity_db_file = _dbfile('activity', activity_version)
@@ -118,6 +118,7 @@ schemas = {
     offline_ping_blocklist_db_file: ['''
             CREATE TABLE allowlist (
                 user int NOT NULL,
+                bitmask int NOT NULL,
                 PRIMARY KEY (user)
             );'''],
     activity_db_file: ['''
@@ -466,37 +467,56 @@ class database:
         data = cur.execute("SELECT moderator, reason, date FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
         con.close()
         return data
-
-    def add_to_offline_ping_allowlist(self, user):
+    
+    def set_ghost_ping_settings(self, user: int, settings: int):
         con = sqlite3.connect(offline_ping_blocklist_db_file)
         cur = con.cursor()
         try:
-            cur.execute("INSERT INTO allowlist VALUES (?)", [user])
+            cur.execute("INSERT INTO allowlist VALUES (?, ?)", [user, settings])
             con.commit()
         except sqlite3.IntegrityError:
-            self.logger.warning(f"Duplicated user id {user} in allowlist")
+            self.logger.debug(f"Duplicated user id {user} in allowlist")
+            cur.execute("UPDATE allowlist SET bitmask=:settings WHERE user=:user", {'user': user, 'settings':settings})
+            con.commit()
         con.close()
 
-    def remove_from_offline_ping_allowlist(self, user):
+    # def add_to_offline_ping_allowlist(self, user):
+    #     con = sqlite3.connect(offline_ping_blocklist_db_file)
+    #     cur = con.cursor()
+    #     try:
+    #         cur.execute("INSERT INTO allowlist VALUES (?)", [user])
+    #         con.commit()
+    #     except sqlite3.IntegrityError:
+    #         self.logger.warning(f"Duplicated user id {user} in allowlist")
+    #     con.close()
+
+    # def remove_from_ghost_ping_allowlist(self, user):
+    #     con = sqlite3.connect(offline_ping_blocklist_db_file)
+    #     cur = con.cursor()
+    #     try:
+    #         cur.execute("DELETE FROM allowlist WHERE user=:id", {"id": user})
+    #         con.commit()
+    #     except:
+    #         pass
+    #     con.close()
+
+    def get_ghost_ping_settings(self, user: int):
         con = sqlite3.connect(offline_ping_blocklist_db_file)
         cur = con.cursor()
-        try:
-            cur.execute("DELETE FROM allowlist WHERE user=:id", {"id": user})
-            con.commit()
-        except:
-            pass
+        bitmask = cur.execute("SELECT bitmask FROM allowlist WHERE user=:user", {'user': user}).fetchone() or [0]
         con.close()
+        return bitmask[0]
 
-    def is_in_offline_ping_allowlist(self, user):
-        try:
-            con = sqlite3.connect(offline_ping_blocklist_db_file)
-            cur = con.cursor()
-            res = cur.execute("SELECT user FROM allowlist WHERE user = :id", {"id": user}).fetchone()
-            con.commit()
-            con.close()
-            return res is not None
-        except:
-            return False
+    # def is_in_offline_ping_allowlist(self, user):
+    #     try:
+    #         con = sqlite3.connect(offline_ping_blocklist_db_file)
+    #         cur = con.cursor()
+    #         res = cur.execute("SELECT user FROM allowlist WHERE user = :id", {"id": user}).fetchone()
+    #         con.commit()
+    #         con.close()
+    #         return res is not None
+    #     except:
+    #         return False
 
     def register_message(self, user, message_id, channel_id):
         con = sqlite3.connect(activity_db_file)
