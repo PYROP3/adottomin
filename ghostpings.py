@@ -2,9 +2,7 @@ import datetime
 from typing import Any
 import discord
 import enum
-import random
-import traceback
-import typing
+import itertools
 
 from discord.interactions import Interaction
 
@@ -22,10 +20,13 @@ async def _silent_reply(interaction: discord.Interaction):
         pass # Silently ignore
 
 class GhostpingsStatus(enum.Enum):
-    Offline = (1<<0, '⚫')
-    Busy    = (1<<1, '🔴')
-    Away    = (1<<2, '🟡')
-    Online  = (1<<3, '🟢')
+    Offline  = (1<<0, '⚫')
+    Busy     = (1<<1, '🔴')
+    Away     = (1<<2, '🟡')
+    Online   = (1<<3, '🟢')
+
+GhostpingsStatusBitmask = list(itertools.accumulate([x.value[0] for x in GhostpingsStatus], lambda x, y: x | y))[-1]
+GhostpingsStatusEveryone = (1<<4, '🤖')
 
 _bitmask_conversion = {
     discord.Status.offline: GhostpingsStatus.Offline,
@@ -57,8 +58,8 @@ class GhostPingsSettingsView(discord.ui.View):
         self.logger = botlogger.get_logger(f"{__name__}::GhostPingsWindowModal")
         self.interaction = interaction
         self.sql = sql
-        prev_bitmask = sql.get_ghost_ping_settings(interaction.user.id)
-        self.opts = [discord.components.SelectOption(label=status.name, value=status.value[0], emoji=status.value[1], default=bool(prev_bitmask & status.value[0])) for status in GhostpingsStatus]
+        self.prev_bitmask = sql.get_ghost_ping_settings(interaction.user.id)
+        self.opts = [discord.components.SelectOption(label=status.name, value=status.value[0], emoji=status.value[1], default=bool(self.prev_bitmask & status.value[0])) for status in GhostpingsStatus]
         self.select = GhostpingsStatusSelect(self, min_values=0, max_values=len(GhostpingsStatus), options=self.opts)
         self.add_item(self.select)
 
@@ -69,9 +70,11 @@ class GhostPingsSettingsView(discord.ui.View):
         self.logger.error(f"on_error: {self.select.values} by {interaction.user}: {error}")
 
     async def _callback(self, interaction: discord.Interaction, bitmask: int):
-        self.logger.info(f"_callback: set ghost pings as {bitmask} for {interaction.user}")
+        zerobitmask = bitmask == 0
+        bitmask = (bitmask & GhostpingsStatusBitmask) | (self.prev_bitmask & ~GhostpingsStatusBitmask)
+        self.logger.info(f"_callback: set ghost pings {self.prev_bitmask} -> {bitmask} for {interaction.user}")
         self.sql.set_ghost_ping_settings(interaction.user.id, bitmask)
-        if bitmask == 0:
+        if zerobitmask:
             content = "Okay, I won't notify you about ghost pings! Feel free to change your preferences at any time~"
         else:
             content = "Alrighty, I updated your preferences! Feel free to change them at any time~"
@@ -86,6 +89,14 @@ def compute_user_bitmask(user: discord.Member, sql: db.database):
     allow_bitmask = sql.get_ghost_ping_settings(user.id)
     # logger.debug(f"Compare bitmask {current_bitmask} to {allow_bitmask} = {bool(current_bitmask & allow_bitmask)}")
     return bool(current_bitmask & allow_bitmask)
+
+def is_everyone_allowed(user: discord.Member, sql: db.database):
+    current_bitmask = user.status in _bitmask_conversion and _bitmask_conversion[user.status].value[0] or GhostpingsStatus.Offline.value[0]
+    allow_bitmask = sql.get_ghost_ping_settings(user.id)
+    return bool(allow_bitmask & GhostpingsStatusEveryone[0]) and bool(current_bitmask & allow_bitmask)
+
+def get_everyone_allowlist(sql: db.database):
+    return [int(user) for user in sql.get_ghost_ping_users_by_value(GhostpingsStatusEveryone[0])]
 
 # MODALS DON'T WORK WITH SelectOption !!!
 # class GhostPingsWindowModal(discord.ui.Modal, title="Ghost ping settings"):
@@ -133,3 +144,23 @@ class Ghostpings(discord.app_commands.Group):
             content="Please choose in which status(es) Botto should be allowed to send you ghost ping notifications~", 
             view=GhostPingsSettingsView(interaction, self.database),
             ephemeral=True)
+    
+    @discord.app_commands.command(description='Edit your settings for @ everyone ghost pings notifications')
+    async def at_everyone(self, interaction: discord.Interaction, allow: bool):
+        self.logger.info(f"{interaction.user} requested ghostpings at_everyone edit: {allow}")
+
+        bitmask = self.database.get_ghost_ping_settings(interaction.user.id)
+        additional = ""
+        if bitmask == 0:
+            additional = "\nRemember to also use `/ghostpings settings` to let me know when I should notify you~"
+        
+        if allow:
+            bitmask |= GhostpingsStatusEveryone[0]
+            content = f"Okay, I'll let you know when `@everyone` is pinged!{additional}"
+            
+        else:
+            bitmask &= ~(GhostpingsStatusEveryone[0])
+            content = f"Okay, I won't message you when `@everyone` is pinged!"
+
+        self.database.set_ghost_ping_settings(interaction.user.id, bitmask)
+        await self.utils.safe_send(interaction, content=content, ephemeral=True)

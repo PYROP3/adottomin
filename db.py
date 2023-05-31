@@ -475,7 +475,7 @@ class database:
             cur.execute("INSERT INTO allowlist VALUES (?, ?)", [user, settings])
             con.commit()
         except sqlite3.IntegrityError:
-            self.logger.debug(f"Duplicated user id {user} in allowlist")
+            self.logger.debug(f"Duplicated user id {user} in ghostpings allowlist")
             cur.execute("UPDATE allowlist SET bitmask=:settings WHERE user=:user", {'user': user, 'settings':settings})
             con.commit()
         con.close()
@@ -506,6 +506,14 @@ class database:
         bitmask = cur.execute("SELECT bitmask FROM allowlist WHERE user=:user", {'user': user}).fetchone() or [0]
         con.close()
         return bitmask[0]
+    
+    def get_ghost_ping_users_by_value(self, mask, match_all:bool=True):
+        con = sqlite3.connect(offline_ping_blocklist_db_file)
+        cur = con.cursor()
+        cond = "== :value" if match_all else "!= 0"
+        users = cur.execute("SELECT user FROM allowlist WHERE bitmask & :value " + cond, {'value': mask}).fetchall()
+        con.close()
+        return [int(user[0]) for user in users]
 
     # def is_in_offline_ping_allowlist(self, user):
     #     try:
