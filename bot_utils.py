@@ -62,8 +62,10 @@ attachment_save_location = "attachments"
 
 ad_channel = p.pint('AD_CHANNEL_ID')
 ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID')
+horny_channel_id = p.pint('HORNY_CHANNEL_ID')
 
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
+file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
 
 def quote_each_line(msg: str, additional:str=""):
     lines = msg.split('\n') + (additional.split('\n') if len(additional) else [])
@@ -176,6 +178,9 @@ class utils:
     def inject_guild(self, guild: discord.Guild):
         self.logger.debug(f"Injected guild {guild}")
         self.guild = guild
+        
+    async def on_utils_setup(self):
+        self.horny_channel = await self.guild.fetch_channel(horny_channel_id)
 
     def _is_chatbot_available(self):
         if self.chatting_servicename is None: return False
@@ -638,7 +643,7 @@ class utils:
     #     else:
     #         return '%s%ds' % (sign_string, seconds)
 
-    async def core_hornyjail(self, interaction: discord.Interaction, user: discord.Member, duration: int, jail_role_id: int):
+    async def core_hornyjail(self, interaction: discord.Interaction, user: discord.Member, duration: int, jail_role_id: int, message: typing.Optional[discord.Message]=None, delete_original: typing.Optional[bool]=False):
         self.logger.info(f"{interaction.user} is jailing {user} for {duration} minutes")
 
         if user.bot:
@@ -658,7 +663,17 @@ class utils:
         jail_role = interaction.guild.get_role(jail_role_id)
         await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
         
-        await self.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {self.plural('minute', duration)}~", send_anyway=True)
+        await self.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {self.plural('minute', duration)}! Feel free to continue the conversation in {self.horny_channel.mention}~", send_anyway=True)
+
+        # Send embedded message to an appropriate chat
+        if message:
+            msg_embed, msg_attachments = await self.core_message_as_embed(message, add_jump=False)
+            await self.horny_channel.send(file=msg_attachments, embed=msg_embed)
+            if delete_original:
+                try:
+                    await message.delete()
+                except Exception as e:
+                    self.logger.warning(f"Failed to remove original message : {e} | {traceback.format_exc()}")
 
         await asyncio.sleep(duration * 60)
         
@@ -695,3 +710,35 @@ class utils:
         content += " (" + ("in" if last_action == 'join' else "out") + f" for {self.pretty_time_delta(datetime.now() - last_datetime)} so far)\n"
 
         await self.safe_send(interaction, content=content, send_anyway=True)
+
+    async def core_message_as_embed(self, message: discord.Message, add_jump: bool=True):
+        embed = discord.Embed(
+            description=message.content if len(message.content) > 0 else None,
+            colour=random.choice(EMBED_COLORS),
+            timestamp=datetime.now()
+        )
+
+        attachments = message.attachments
+        pinAttachmentFile = None
+        if len(attachments) >= 1:
+            try:
+                re_file_ext = file_ext_prog.search(attachments[0].filename)
+                file_ext = re_file_ext and re_file_ext.group(1) or "png"
+                icon_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + "." + file_ext
+                self.logger.debug(f"icon_name=trash/{icon_name}")
+                
+                await attachments[0].save(fp="trash/" + icon_name)
+
+                pinAttachmentFile = discord.File("trash/" + icon_name, filename=icon_name)
+                embed.set_image(url=f"attachment://{icon_name}")
+            except Exception as e:
+                self.logger.error(f"Error while trying to save pin attachment: {e}\n{traceback.format_exc()}")
+
+        if add_jump:
+            embed.add_field(name="Jump", value=message.jump_url, inline=False)
+        
+        embed.set_footer(text=f'Sent in: {message.channel.name} - at: {message.created_at}')
+
+        embed.set_author(name=f'Sent by {message.author}', icon_url=message.author.avatar.url)
+
+        return (embed, pinAttachmentFile)

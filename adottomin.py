@@ -124,6 +124,8 @@ advertisement_slowmode = datetime.timedelta(seconds=30)
 
 file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
 
+logger = botlogger.get_logger("adottomin")
+
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
@@ -131,10 +133,13 @@ class BottoBot(discord.Client):
 
     async def setup_hook(self):
         self.tree.copy_global_to(guild=GUILD_OBJ)
-        await self.tree.sync(guild=GUILD_OBJ)
+        try:
+            await self.tree.sync(guild=GUILD_OBJ)
+        except Exception as e:
+            logger.error(f"Failed to sync command tree : {e} | {traceback.format_exc()}")
+            exit(1)
 
 bot = BottoBot(intents=discord.Intents.all())
-logger = botlogger.get_logger("adottomin")
 
 def log_debug(interaction: discord.Interaction, msg: str):
     logger.debug(f"[{interaction.channel}] {msg}")
@@ -206,6 +211,7 @@ async def on_ready():
     utils.inject_pois([bot.get_user(id) for id in poi_user_ids])
     guild = await bot.fetch_guild(GUILD_ID)
     utils.inject_guild(guild)
+    await utils.on_utils_setup()
     age_handler.inject(main_channel, bot.get_channel(tally_channel), bot.get_channel(log_channel))
     ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
     nohorny_handler.inject(main_channel)
@@ -607,47 +613,14 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 if sql.is_pinned(pin.id):
                     logger.debug(f"Message {pin.id} is already pinned, skipping...")
                     return
-
-                pinEmbed = discord.Embed(
-                    description=pin.content if len(pin.content) > 0 else None,
-                    colour=random.choice(bot_utils.EMBED_COLORS),
-                    timestamp=datetime.datetime.now()
-                )
-
-                attachments = pin.attachments
-                pinAttachmentFile = None
-                if len(attachments) >= 1:
-                    try:
-                        re_file_ext = file_ext_prog.search(attachments[0].filename)
-                        file_ext = re_file_ext and re_file_ext.group(1) or "png"
-                        icon_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + "." + file_ext
-                        logger.debug(f"icon_name=trash/{icon_name}")
-                        
-                        await attachments[0].save(fp="trash/" + icon_name)
-
-                        pinAttachmentFile = discord.File("trash/" + icon_name, filename=icon_name)
-                        pinEmbed.set_image(url=f"attachment://{icon_name}")
-                    except Exception as e:
-                        logger.error(f"Error while trying to save pin attachment: {e}\n{traceback.format_exc()}")
-
-                pinEmbed.add_field(name="Jump", value=pin.jump_url, inline=False)
                 
-                pinEmbed.set_footer(text=f'Sent in: {pin.channel.name} - at: {pin.created_at}')
-                
-                try:
-                    creator = await channel.guild.fetch_member(pin.author.id)
-                    icon_url = creator.avatar.url
-                except Exception as e:
-                    logger.warning(f"Exception while trying to handle pin {pin.id} thumbnail: {e}\n{traceback.format_exc()}")
-                    icon_url = None
-
-                pinEmbed.set_author(name=f'Sent by {pin.author}', icon_url=icon_url)
+                pinEmbed, pinAttachmentFile = await utils.core_message_as_embed(pin, add_jump=True)
                 archived = await pin_channel.send(file=pinAttachmentFile, embed=pinEmbed)
 
                 sql.register_pin(pin.id, archived.id)
 
-                if pinAttachmentFile:
-                    os.remove("trash/" + icon_name)
+                # if pinAttachmentFile:
+                #     os.remove("trash/" + icon_name)
             except Exception as e:
                 logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
             # updated = True
@@ -1665,22 +1638,36 @@ async def nut(interaction: discord.Interaction):
         content = "\n".join([f"{nut} x {utils.n_em(amount)}" for (nut, amount) in nut_counts])
         await utils.safe_send(interaction, content=content, send_anyway=True)
 
-@bot.tree.context_menu()
-async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
+# Jail a user directly
+@bot.tree.context_menu(name="Horny Jail")
+async def hornyjail(interaction: discord.Interaction, user: discord.Member):
     duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
 
     await utils.core_hornyjail(interaction, user, duration, jail_role_id)
+
+# Jail a user from their message
+@bot.tree.context_menu(name="Horny Jail author")
+async def hornyjail(interaction: discord.Interaction, message: discord.Message):
+    duration = 5
+    log_info(interaction, f"{interaction.user} is jailing {message.author} for {duration} minutes")
+    if not await utils.ensure_secretary(interaction): return
+
+    await utils.core_hornyjail(interaction, message.author, duration, jail_role_id, message=message)
 
 @bot.tree.command(description='Send someone to horny jail')
-@discord.app_commands.describe(user='User to jail') #, duration='How long to jail them for, in minutes (default is 5)')
-async def hornyjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
+@discord.app_commands.describe(user='User to jail', message_id='Message to send to the appropriate channel', delete_original='Also delete the original message after posting it to the correct channel') #, duration='How long to jail them for, in minutes (default is 5)')
+async def hornyjail(interaction: discord.Interaction, user: discord.Member, message_id: typing.Optional[int]=None, delete_original: typing.Optional[bool]=False): #, duration: typing.Optional[int]=5):
     duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
     if not await utils.ensure_secretary(interaction): return
+    try:
+        message = await interaction.channel.fetch_message(message_id) if message_id else None
+    except:
+        message = None
 
-    await utils.core_hornyjail(interaction, user, duration, jail_role_id)
+    await utils.core_hornyjail(interaction, user, duration, jail_role_id, message=message, delete_original=delete_original)
 
 @bot.tree.command(description='Send someone to horny prison')
 @discord.app_commands.describe(user='User to jail')
