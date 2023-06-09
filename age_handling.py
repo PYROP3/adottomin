@@ -19,8 +19,10 @@ MSG_GREETING = f"{em.e('NekoHi', 'wave')} Hello {'{}'}! May I ask your age, pls?
 MSG_TRY_AGAIN = "Try again, {}"
 MSG_TRY_AGAIN_JOKE = "First time I heard that one... You're a riot, {}!"
 MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
-MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you were {}... :thinking: But in any case, welcome back to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
-MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
+MSG_APPEND = "Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
+MSG_DIFFERENT_AGE_BIRTHDAY = "Oh, last time you said you were {}... So happy late birthday, {}~! :tada: :birthday: And welcome back to the server! " + MSG_APPEND
+MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you were {}... :thinking: But in any case, welcome back to the server! " + MSG_APPEND
+MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! " + MSG_APPEND
 MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_AGE_IN_DMS = f"{'{}'} told me their age in DMs and they're chill! :sunglasses:"
 
@@ -98,7 +100,10 @@ class age_handler:
                     sent_already = False
                     if (prev_age := self.sql.get_previous_age(msg.author.id)) and prev_age != age:
                         sent_already = True
-                        await msg.channel.send(MSG_DIFFERENT_AGE.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
+                        if prev_age + 1 == age:
+                            await msg.channel.send(MSG_DIFFERENT_AGE_BIRTHDAY.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
+                        else:    
+                            await msg.channel.send(MSG_DIFFERENT_AGE.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
                 
                     self.sql.delete_entry(msg.author.id)
                     self.sql.set_age(msg.author.id, age, force=True)
