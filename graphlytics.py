@@ -138,10 +138,8 @@ class Analytics(discord.app_commands.Group):
         self.utils = utils
         self.generator = AnalyticsGenerator()
 
-    async def _handle_internal(self, interaction: discord.Interaction, ensure: typing.Callable, generator: typing.Callable, *gen_args):
+    async def _handle_internal(self, interaction: discord.Interaction, generator: typing.Callable, *gen_args):
         await self.utils.safe_defer(interaction)
-
-        if not await ensure(interaction): return
 
         report_name = generator(*gen_args)
         logger.debug(f"report_name={report_name}")
@@ -155,37 +153,37 @@ class Analytics(discord.app_commands.Group):
     @discord.app_commands.describe(range='Max days to fetch')
     async def joiners_and_leavers(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested joiners_and_leavers")
-        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_new_user_graph, range)
+        await self._handle_internal(interaction, self.generator.generate_new_user_graph, range)
 
     @discord.app_commands.command(description='Get analytics data for user activity (text channels only)')
     @discord.app_commands.describe(range='Max days to fetch')
     async def active_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested active_users")
-        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_active_users_graph, range)
+        await self._handle_internal(interaction, self.generator.generate_active_users_graph, range)
 
     @discord.app_commands.command(description='Get analytics data for user VC activity')
     @discord.app_commands.describe(range='Max days to fetch')
     async def active_vc_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested active_vc_users")
-        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_active_vc_users_graph, range)
+        await self._handle_internal(interaction, self.generator.generate_active_vc_users_graph, range)
 
     @discord.app_commands.command(description='Get analytics data for VC activity duration')
     @discord.app_commands.describe(range='Max days to fetch')
     async def vc_activity_duration(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested vc_activity_duration")
-        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_vc_activity_time_graph, range)
+        await self._handle_internal(interaction, self.generator.generate_vc_activity_time_graph, range)
 
     @discord.app_commands.command(description='Get analytics data for commands activity')
     @discord.app_commands.describe(range='Max days to fetch')
     async def command_usage(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested command_usage")
-        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_distinct_commands_graph, range)
+        await self._handle_internal(interaction, self.generator.generate_distinct_commands_graph, range)
 
     @discord.app_commands.command(description='Get analytics data for command user activity')
     @discord.app_commands.describe(range='Max days to fetch')
     async def command_users(self, interaction: discord.Interaction, range: typing.Optional[int] = 7):
         logger.info(f"{interaction.user} requested command_usage")
-        await self._handle_internal(interaction, self.utils.ensure_divine, self.generator.generate_command_users_graph, range)
+        await self._handle_internal(interaction, self.generator.generate_command_users_graph, range)
 
 class AnalyticsGenerator():
     def _min_date(self, time_range: int):
