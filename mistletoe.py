@@ -27,8 +27,14 @@ class mistletoe_handler:
     def clear_mistletoe(self, channel: int):
         logger.debug(f"clear_mistletoe: {channel}")
         self.mhm.remove_dyn_lock(self.handle_mistletoe_msg, channel)
-        del(self.pending_mistletoes[channel])
-        del(self.awaiting_users[channel])
+        try:
+            del(self.pending_mistletoes[channel])
+        except:
+            pass
+        try:
+            del(self.awaiting_users[channel])
+        except:
+            pass
 
     async def handle_mistletoe_msg(self, msg: discord.Message):
         if msg.channel.id not in self.pending_mistletoes:
