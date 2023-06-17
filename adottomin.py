@@ -635,7 +635,6 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
 async def raidmode(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
-    if not await utils.ensure_divine(interaction): return
     await utils.safe_defer(interaction)
 
     if enable.value == "on":
@@ -659,7 +658,6 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
 @discord.app_commands.describe(enable='Whether to turn gatekeep mode on or off')
 @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
 async def gatekeep(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
-    if not await utils.ensure_divine(interaction): return
     await utils.safe_defer(interaction)
 
     if enable.value == "on":
@@ -807,7 +805,6 @@ async def randomcitizens(interaction: discord.Interaction, amount: int):
     if guild is None: 
         await utils.safe_send(interaction, content=f"That command only works in a server!", ephemeral=True)
         return
-    if not await utils.ensure_secretary(interaction): return
     if amount <= 0:
         await utils.safe_send(interaction, content=f"Try choosing a _natural_ number, silly~", ephemeral=True)
         return
@@ -1015,7 +1012,6 @@ async def horny(interaction: discord.Interaction, user: typing.Optional[discord.
 @discord.app_commands.describe(user='User to warn', reason='Why are they being warned')
 async def strike(interaction: discord.Interaction, user: discord.Member, reason: str):
     log_info(interaction, f"{interaction.user} requested strike for {user}: '{reason}'")
-    if not await utils.ensure_secretary(interaction): return
 
     if set(utils.role_ids(user)).intersection(set([divine_role_id, secretary_role_id])) != set():
         log_debug(interaction, f"{user} cannot be warned")
@@ -1045,7 +1041,6 @@ async def strike(interaction: discord.Interaction, user: discord.Member, reason:
 @discord.app_commands.describe(user='User to check', all='Get all strikes (only gets active strikes by default)')
 async def getstrikes(interaction: discord.Interaction, user: discord.Member, all: typing.Optional[bool]=False):
     log_info(interaction, f"{interaction.user} requested strikes for {user}")
-    if not await utils.ensure_secretary(interaction): return
 
     strikes = sql.get_warnings(user.id, None if all else WARNING_VALIDITY_DAYS)
 
@@ -1100,7 +1095,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
 @discord.app_commands.describe(user='User to promote')
 async def promoonte(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested promotion for {user}")
-    if not await utils.ensure_divine(interaction): return
 
     _user_roles = [role.id for role in user.roles]
     if moon_role_id in _user_roles:
@@ -1124,7 +1118,6 @@ async def age(interaction: discord.Interaction, user: discord.Member):
     if not await utils.safe_defer(interaction, ephemeral=True): return
 
     log_info(interaction, f"{interaction.user} requested age for {user}")
-    if not await utils.ensure_secretary(interaction): return
         
     age_data = sql.get_age(user.id)
     mention = user.mention
@@ -1140,7 +1133,6 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     if not await utils.safe_defer(interaction, ephemeral=True): return
     
     log_info(interaction, f"{interaction.user} requested age for ID {user_id}")
-    if not await utils.ensure_secretary(interaction): return
 
     try:
         user_id = int(user_id)
@@ -1336,44 +1328,11 @@ async def suicide(interaction: discord.Interaction):
 
     await utils.safe_send(interaction, content=msg, ephemeral=True)
 
-@bot.tree.command(description='Perform a SQL query')
-@discord.app_commands.describe(file='File to connect', query='SQL query')
-@discord.app_commands.choices(file=[discord.app_commands.Choice(name=b, value=b) for b in db.sql_files])
-async def rawsql(interaction: discord.Interaction, file: discord.app_commands.Choice[str], query: str):
-    if not await utils.safe_defer(interaction, ephemeral=True): return
-    
-    log_info(interaction, f"{interaction.user} requested sql query for {file}")
-    if not await utils.ensure_admin(interaction): return
-
-    try:
-        data = sql.raw_sql(file.value, query)
-    except sqlite3.DatabaseError as e:
-        log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
-        await utils.safe_send(interaction, content=f"Failed to execute query [{query}]:\n```\n{traceback.format_exc()}\n```", ephemeral=True, is_followup=True)
-        return
-    except Exception as e:
-        log_debug(interaction, f"{interaction.user} query [{query}] failed : {e}")
-        await _dm_log_error(f"[{interaction.channel}] _rawsql\n{e}\n{traceback.format_exc()}")
-        await utils.safe_send(interaction, content="Failed to execute query", ephemeral=True, is_followup=True)
-        return
-        
-    if data is None:
-        msg = "Your query returned None"
-    else:
-        msg = f"Here are the results for your query:\n```\n{query}\n\n"
-        msg += "\n".join(" | ".join([str(idx + 1)] + [str(item) for item in line]) for idx, line in enumerate(data))
-        msg += "\n```"
-        if len(msg) > 2000:
-            aux = "```\nTRUNC"
-            msg = msg[:2000-len(aux)-1] + aux
-    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
-
 @bot.tree.command(description='Debug command')
 async def vcopensessions(interaction: discord.Interaction):
     if not await utils.safe_defer(interaction, ephemeral=True): return
     
     log_info(interaction, f"{interaction.user} requested sql query for vcopensessions")
-    if not await utils.ensure_admin(interaction): return
 
     try:
         data = sql.get_opensessions()
@@ -1406,7 +1365,6 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
     _date = date or (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     _pdate = datetime.datetime.strptime(_date, "%Y-%m-%d")
     log_info(interaction, f"{interaction.user} requested daily top 10 for {_date}")
-    if not await utils.ensure_queen(interaction): return
 
     try:
         data = sql.get_dailytopten(_date, game_channel_ids)
@@ -1447,32 +1405,6 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
         if len(msg) > 2000:
             aux = "\nTRUNC"
             msg = msg[:2000-len(aux)-1] + aux
-    await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
-
-@bot.tree.command(description='Pre-block a user before they\'ve even joined')
-@discord.app_commands.describe(user='User ID to block', reason='Reason for block')
-async def autoblock(interaction: discord.Interaction, user: str, reason: str):
-    if not await utils.safe_defer(interaction, ephemeral=True): return
-
-    mod = interaction.user
-    _author_roles = [role.id for role in interaction.user.roles]
-    log_info(interaction, f"{interaction.user} requested age for {user}")
-    if not await utils.ensure_secretary(interaction): return
-
-    try:
-        user_id = int(user)
-    except:
-        log_debug(interaction, f"{user} is not a valid ID")
-        await utils.safe_send(interaction, content=f"{user} is not a valid ID", ephemeral=True, is_followup=True)
-        return
-        
-    data = sql.try_autoblock(user_id, mod.id, reason)
-    if data is None:
-        msg = f"I'll ban them if they ever set foot here, {interaction.user.mention}~"
-    else:
-        prev_mod_id, prev_reason, date = data
-        prev_mod = bot.get_user(prev_mod_id)
-        msg = f"That user has already been pre-blocked by {prev_mod.mention} on {date}: {prev_reason}"
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Pop pop pop!')
@@ -1529,7 +1461,6 @@ async def worldmap(interaction: discord.Interaction):
     if not await utils.safe_defer(interaction): return
 
     log_info(interaction, f"{interaction.user} requested worldmap")
-    if not await utils.ensure_secretary(interaction): return
 
     report_name = graphlytics.generate_world_heatmap()
     log_debug(interaction, f"report_name={report_name}")
@@ -1625,7 +1556,6 @@ async def nut(interaction: discord.Interaction):
 async def hornyjail(interaction: discord.Interaction, user: discord.Member):
     duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
-    if not await utils.ensure_secretary(interaction): return
 
     await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
@@ -1634,7 +1564,6 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member):
 async def hornyjail(interaction: discord.Interaction, message: discord.Message):
     duration = 5
     log_info(interaction, f"{interaction.user} is jailing {message.author} for {duration} minutes")
-    if not await utils.ensure_secretary(interaction): return
 
     await utils.core_hornyjail(interaction, message.author, duration, jail_role_id, message=message)
 
@@ -1643,7 +1572,6 @@ async def hornyjail(interaction: discord.Interaction, message: discord.Message):
 async def hornyjail(interaction: discord.Interaction, user: discord.Member, message_id: typing.Optional[int]=None, delete_original: typing.Optional[bool]=False): #, duration: typing.Optional[int]=5):
     duration = 5
     log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
-    if not await utils.ensure_secretary(interaction): return
     try:
         message = await interaction.channel.fetch_message(message_id) if message_id else None
     except:
@@ -1691,7 +1619,6 @@ async def lmgtfy(interaction: discord.Interaction, user: discord.Member, query: 
 @discord.app_commands.describe(user='Who to check')
 async def joinhistory(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} is fetching {user} history")
-    if not await utils.ensure_secretary(interaction): return
 
     await utils.core_joinhistory(interaction, user.id, sql, str(user))
 
@@ -1699,7 +1626,6 @@ async def joinhistory(interaction: discord.Interaction, user: discord.Member):
 @discord.app_commands.describe(user='Who to check')
 async def joinhistoryalt(interaction: discord.Interaction, user: str):
     log_info(interaction, f"{interaction.user} is fetching {user} history alt")
-    if not await utils.ensure_secretary(interaction): return
 
     try:
         userid = int(user)
@@ -1729,7 +1655,6 @@ async def yesship(interaction: discord.Interaction):
 @discord.app_commands.describe(user='Username to search')
 async def searchid(interaction: discord.Interaction, user: str):
     log_info(interaction, f"{interaction.user} is searching for {user}'s ID")
-    # if not await utils.ensure_secretary(interaction): return
     if "#" in user:
         user = user[:user.index("#")]
 
@@ -1744,67 +1669,67 @@ async def searchid(interaction: discord.Interaction, user: str):
     
     await utils.safe_send(interaction, content=content, ephemeral=True)
 
-@bot.tree.command(description='Get a discord timestamp that changes automatically')
-@discord.app_commands.describe(
-    timezone='Your timezone (like EST, GMT, UTC, BST..., defaults to UTC)', 
-    style='How you want your timestamp formatted',
-    hour='24-hour of timestamp (0-23, defaults to right now)',
-    minute='minute of timestamp (0-59, defaults to right now)',
-    second='second of timestamp (0-59, defaults to right now)',
-    year='year of timestamp (defaults to right now)',
-    month='month of timestamp (1-12, defaults to right now)',
-    day='day of timestamp (1-31, defaults to right now)')
-@discord.app_commands.choices(
-    style=[discord.app_commands.Choice(name=n, value=v) for n, v in [
-        ("Default (November 28, 2018 9:01 AM)", ""),
-        ("Short Time (9:01 AM)", ":t"),
-        ("Long Time (9:01:00 AM)", ":T"),
-        ("Short Date (11/28/2018)", ":d"),
-        ("Long Date (November 28, 2018)", ":D"),
-        ("Short Date/Time (November 28, 2018 9:01 AM)", ":f"),
-        ("Long Date/Time (Wednesday, November 28, 2018 9:01 AM)", ":F"),
-        ("Relative Time (3 years ago)", ":R")]])
-async def timestamp(
-    interaction: discord.Interaction, 
-    timezone: typing.Optional[str]="UTC", 
-    hour: typing.Optional[int]=None, 
-    minute: typing.Optional[int]=None, 
-    second: typing.Optional[int]=None, 
-    year: typing.Optional[int]=None, 
-    month: typing.Optional[int]=None, 
-    day: typing.Optional[int]=None, 
-    style: typing.Optional[discord.app_commands.Choice[str]]=""):
-    try:
-        t = datetime.datetime.now(tz=tz.gettz(timezone))
-    except:
-        await utils.safe_send(interaction, content=f"That doesn't look like a valid timezone~", ephemeral=True)
-        return
+# @bot.tree.command(description='Get a discord timestamp that changes automatically')
+# @discord.app_commands.describe(
+#     timezone='Your timezone (like EST, GMT, UTC, BST..., defaults to UTC)', 
+#     style='How you want your timestamp formatted',
+#     hour='24-hour of timestamp (0-23, defaults to right now)',
+#     minute='minute of timestamp (0-59, defaults to right now)',
+#     second='second of timestamp (0-59, defaults to right now)',
+#     year='year of timestamp (defaults to right now)',
+#     month='month of timestamp (1-12, defaults to right now)',
+#     day='day of timestamp (1-31, defaults to right now)')
+# @discord.app_commands.choices(
+#     style=[discord.app_commands.Choice(name=n, value=v) for n, v in [
+#         ("Default (November 28, 2018 9:01 AM)", ""),
+#         ("Short Time (9:01 AM)", ":t"),
+#         ("Long Time (9:01:00 AM)", ":T"),
+#         ("Short Date (11/28/2018)", ":d"),
+#         ("Long Date (November 28, 2018)", ":D"),
+#         ("Short Date/Time (November 28, 2018 9:01 AM)", ":f"),
+#         ("Long Date/Time (Wednesday, November 28, 2018 9:01 AM)", ":F"),
+#         ("Relative Time (3 years ago)", ":R")]])
+# async def timestamp(
+#     interaction: discord.Interaction, 
+#     timezone: typing.Optional[str]="UTC", 
+#     hour: typing.Optional[int]=None, 
+#     minute: typing.Optional[int]=None, 
+#     second: typing.Optional[int]=None, 
+#     year: typing.Optional[int]=None, 
+#     month: typing.Optional[int]=None, 
+#     day: typing.Optional[int]=None, 
+#     style: typing.Optional[discord.app_commands.Choice[str]]=""):
+#     try:
+#         t = datetime.datetime.now(tz=tz.gettz(timezone))
+#     except:
+#         await utils.safe_send(interaction, content=f"That doesn't look like a valid timezone~", ephemeral=True)
+#         return
 
-    update = dict()
-    if hour:
-        update['hour'] = hour
-    if minute:
-        update['minute'] = minute
-    if second:
-        update['second'] = second
-    if year:
-        update['year'] = year
-    if month:
-        update['month'] = month
-    if day:
-        update['day'] = day
-    try:
-        t = t.replace(**update)
-    except:
-        await utils.safe_send(interaction, content=f"That doesn't look like a valid time, pls check your values~", ephemeral=True)
-        return
+#     update = dict()
+#     if hour:
+#         update['hour'] = hour
+#     if minute:
+#         update['minute'] = minute
+#     if second:
+#         update['second'] = second
+#     if year:
+#         update['year'] = year
+#     if month:
+#         update['month'] = month
+#     if day:
+#         update['day'] = day
+#     try:
+#         t = t.replace(**update)
+#     except:
+#         await utils.safe_send(interaction, content=f"That doesn't look like a valid time, pls check your values~", ephemeral=True)
+#         return
 
-    if type(style) != str:
-        style = style.value
+#     if type(style) != str:
+#         style = style.value
 
-    ts = f"<t:{int(time.mktime(t.timetuple()))}{style}>"
+#     ts = f"<t:{int(time.mktime(t.timetuple()))}{style}>"
 
-    await utils.safe_send(interaction, content=f"Here's your timestamp~\n```{ts}```And here's how it's going to look like: {ts}", ephemeral=True)
+#     await utils.safe_send(interaction, content=f"Here's your timestamp~\n```{ts}```And here's how it's going to look like: {ts}", ephemeral=True)
 
 @bot.tree.command(description='Advertise your commissions')
 async def advertise(interaction: discord.Interaction):
@@ -1815,7 +1740,6 @@ async def advertise(interaction: discord.Interaction):
 @bot.tree.command(description='[MOD] Allow a user to post in cork-board')
 async def allowad(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} is requesting to allow an AD for {user}")
-    if not await utils.ensure_divine(interaction): return
     
     if user.bot:
         await utils.safe_send(interaction, content=f"That user is a bot...", ephemeral=True)
@@ -1840,7 +1764,6 @@ async def allowad(interaction: discord.Interaction, user: discord.Member):
 @discord.app_commands.describe(message='Message to remove (must be an ad)')
 async def removeadvertisement(interaction: discord.Interaction, message: str):
     log_info(interaction, f"{interaction.user} is deleting ad {message} history alt")
-    if not await utils.ensure_secretary(interaction): return
 
     try:
         messageid = int(message)
@@ -1882,7 +1805,6 @@ async def sleepme(interaction: discord.Interaction, duration: discord.app_comman
 @bot.tree.command(description='Zap!')
 @discord.app_commands.describe(user='User to zap')
 async def zap(interaction: discord.Interaction, user: discord.Member):
-    if not await utils.ensure_secretary(interaction): return
     if user.id == bot.user.id:
         await utils.safe_send(interaction, content="Why would you wanna zap me :c", ephemeral=True)
         return

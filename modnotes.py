@@ -184,17 +184,12 @@ class Modnotes(discord.app_commands.Group):
     @discord.app_commands.command(description='Create or edit a user\'s mod note (be aware this can be seen by the entire mod team)')
     async def edit(self, interaction: discord.Interaction, user: discord.Member):
         self.logger.info(f"{interaction.user} requested modnotes edit: {user}")
-
-        if not await self.utils.ensure_secretary(interaction): return
-
         await self.handler.edit_modnote(interaction, user)
     
     @discord.app_commands.command(description='Fetch a user\'s mod note')
     @discord.app_commands.describe(revision='Which version of the note to retrieve (will retrieve latest by default)')
     async def get(self, interaction: discord.Interaction, user: discord.Member, revision: typing.Optional[int]=None):
         self.logger.info(f"{interaction.user} requested modnotes get: {user}")
-
-        if not await self.utils.ensure_secretary(interaction): return
 
         raw_data = self.database.get_modnote(user.id, revision=revision)
         if not raw_data:
