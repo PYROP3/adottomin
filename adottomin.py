@@ -1417,7 +1417,7 @@ async def vcopensessions(interaction: discord.Interaction):
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
 @bot.tree.command(description='Get the daily top 10 rankings')
-@discord.app_commands.describe(date='When to fetch data', phone='Format the output for copy/paste on a phone', vclimit='How many users to check for VC standings (default 3)')
+@discord.app_commands.describe(date='When to fetch data ("yyyy-mm-dd")', phone='Format the output for copy/paste on a phone', vclimit='How many users to check for VC standings (default 3)')
 async def dailytopten(interaction: discord.Interaction, date: typing.Optional[str], phone: typing.Optional[bool] = False, vclimit: typing.Optional[int] = 3):
     if not await utils.safe_defer(interaction, ephemeral=True): return
     
