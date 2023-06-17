@@ -1077,9 +1077,6 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
 
     if friends_role_ids[1] in _user_roles:
         if not await utils._ensure_roles(interaction, divine_role_id, dogretary_role_id): return
-        # log_debug(interaction, f"{user} will NOT be promoted to tier 3")
-        # await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
-        # return
         msg = f"{user.mention} Congraitiualtionon tier3"
         new_role_id = friends_role_ids[2]
         
@@ -1097,7 +1094,7 @@ async def promote(interaction: discord.Interaction, user: discord.Member):
     except discord.HTTPException as e:
         log_error(interaction, f"Failed to give role {new_role} to {user}")
         log_debug(interaction, e)
-        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
+        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Angie's fault~", ephemeral=True)
 
 @bot.tree.command(description='Promote a user to moon tier')
 @discord.app_commands.describe(user='User to promote')
@@ -1105,36 +1102,21 @@ async def promoonte(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested promotion for {user}")
     if not await utils.ensure_divine(interaction): return
 
-    # todo set moon role id
-
     _user_roles = [role.id for role in user.roles]
     if moon_role_id in _user_roles:
         log_debug(interaction, f"{user} already a moon furiend")
         await utils.safe_send(interaction, content=MSG_USER_ALREADY_MOON, ephemeral=True)
         return
-
-    if friends_role_ids[1] in _user_roles:
-        if not await utils.ensure_divine(interaction): return
-        # log_debug(interaction, f"{user} will NOT be promoted to tier 3")
-        # await utils.safe_send(interaction, content="Khris said no promotions to t3~", ephemeral=True)
-        # return
-        msg = f"{user.mention} Congraitiualtionon tier3"
-        new_role_id = friends_role_ids[2]
-        
-    else:
-        log_debug(interaction, f"{user} will be promoted to tier 2")
-        msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
-        new_role_id = friends_role_ids[1]
         
     try:
         member = interaction.guild.get_member(user.id)
-        new_role = interaction.guild.get_role(new_role_id)
+        new_role = interaction.guild.get_role(moon_role_id)
         await member.add_roles(new_role, reason=f"{interaction.user} said so")
-        await utils.safe_send(interaction, content=msg, send_anyway=True)
+        await utils.safe_send(interaction, content=f"{user.mention} corbobulation in lunar", send_anyway=True)
     except discord.HTTPException as e:
         log_error(interaction, f"Failed to give role {new_role} to {user}")
         log_debug(interaction, e)
-        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Khris' fault~", ephemeral=True)
+        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Angie's fault~", ephemeral=True)
 
 @bot.tree.command(description='Check a user\'s reported age')
 @discord.app_commands.describe(user='User to check')
