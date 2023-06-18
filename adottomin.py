@@ -588,7 +588,6 @@ async def on_member_remove(member: discord.Member):
 
 @bot.event
 async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):
-    logger.debug(f"Received pin update in {channel}")
     if channel.id in pin_archive_blocklist_ids:
         logger.debug(f"Ignoring pin update in {channel}")
         return
@@ -611,9 +610,9 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
         for pin in all_pins:
             try:
                 if sql.is_pinned(pin.id):
-                    logger.debug(f"Message {pin.id} is already pinned, skipping...")
                     return
                 
+                logger.info(f"Pinning message {pin.id} from channel {channel}")
                 pinEmbed, pinAttachmentFile = await utils.core_message_as_embed(pin, add_jump=True)
                 archived = await pin_channel.send(file=pinAttachmentFile, embed=pinEmbed)
 
@@ -623,10 +622,6 @@ async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildCh
                 #     os.remove("trash/" + icon_name)
             except Exception as e:
                 logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
-            # updated = True
-
-        # if updated:
-        #     await pin.channel.send(f"Your pinned message is in {pin_channel.mention}~")
 
     except Exception as e:
         logger.error(f"Exception while trying to handle pin updates: {e}\n{traceback.format_exc()}")
