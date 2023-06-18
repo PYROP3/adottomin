@@ -84,6 +84,7 @@ log_channel = p.pint('LOG_CHANNEL_ID')
 ad_channel = p.pint('AD_CHANNEL_ID')
 emojionly_channel = p.pint('EMOJI_CHANNEL_ID')
 chats_home = os.getenv('CHATS_HOME')
+purgeable_channels = p.plist('PURGEABLE_CHANNEL_IDS', required=False)
 chatbot_service = os.getenv('CHATBOT_SERVICE')
 
 queen_role_id = p.pint('QUEEN_ROLE_ID')
@@ -585,6 +586,9 @@ async def on_member_remove(member: discord.Member):
     await ad_handler.try_remove_advertisement(member.id)
     
     sql.register_leaver(member.id)
+
+    for channel_id in purgeable_channels:
+        await utils.purge_user_from_channel(bot.get_channel(channel_id), member.id, "User left the server")
 
 @bot.event
 async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):
@@ -1835,6 +1839,29 @@ async def mistletoe(interaction: discord.Interaction, users: typing.Optional[int
         return
 
     await _meme(interaction, "mistletoe", text=str(users), msg=f"Next {users} to talk have to kiss under the mistletoe~!")
+
+@bot.tree.command(description='Purge a user\'s messages from the current channel')
+@discord.app_commands.describe(user='Who to purge', userid='Who to purge (user id in case someone already left)', complete='Whether to purge all messages or only those with images (default)')
+async def purgemessages(interaction: discord.Interaction, user: typing.Optional[discord.Member], userid: typing.Optional[str], complete: typing.Optional[bool]=False):
+    log_info(interaction, f"{interaction.user} is requesting a purge of {interaction.channel} for {user}")
+
+    if (not user and not userid) or (user and userid):
+        await utils.safe_send(interaction, content="Please choose either user or userid", ephemeral=True)
+        return
+    
+    try:
+        userid = userid and int(userid) or user.id
+    except:
+        await utils.safe_send(interaction, content="That's not a valid user id...", ephemeral=True)
+        return
+
+    await utils.safe_send(interaction, content=f"Purge in progress for user <@{userid}>...", ephemeral=True)
+
+    await utils.purge_user_from_channel(interaction.channel, userid, f"`/purgemessages complete:{complete}`", mod=interaction.user, complete=complete)
+
+    # msg = await interaction.original_response()
+    # await msg.edit(content=f"Purge of user <@{userid}> completed, boss!")
+    await interaction.edit_original_response(content=f"Purge of user <@{userid}> completed, boss!")
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))

@@ -63,6 +63,7 @@ attachment_save_location = "attachments"
 ad_channel = p.pint('AD_CHANNEL_ID')
 ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID')
 horny_channel_id = p.pint('HORNY_CHANNEL_ID')
+log_channel_id = p.pint('LOG_CHANNEL_ID')
 
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
 file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
@@ -181,6 +182,7 @@ class utils:
         
     async def on_utils_setup(self):
         self.horny_channel = await self.guild.fetch_channel(horny_channel_id)
+        self.log_channel = await self.guild.fetch_channel(log_channel_id)
 
     def _is_chatbot_available(self):
         if self.chatting_servicename is None: return False
@@ -594,6 +596,42 @@ class utils:
                 else:
                     kwargs['content'] = f"{interaction.user.mention} used `/{_name}`"
                 return await interaction.channel.send(**kwargs)
+            
+    async def purge_user_from_channel(self, channel: discord.TextChannel, userid: int, reason: str, complete: bool=False, mod: discord.Member=None):
+        total_messages = 0
+        total_purged = 0
+        total_ignored = 0
+        async for message in channel.history(limit=None):
+            total_messages += 1
+            if message.author.id != userid: continue
+            if (not complete) and (not message.attachments): 
+                total_ignored += 1
+                continue
+            self.logger.info(f"Purging message {message.id} from {channel}")
+            await message.delete()
+            total_purged += 1
+
+        self.logger.info(f"Purged {total_purged}, ignored {total_ignored} out of {total_messages} in {channel}")
+
+        try:
+            user = await self.bot.fetch_user(userid)
+        except:
+            user = None
+
+        mod = mod or self.bot.user
+        purge_embed = discord.Embed(
+                colour=discord.Colour.blurple(),
+                timestamp=datetime.now()
+            )         
+        purge_embed.add_field(name="User", value=f"<@{userid}>", inline=True)
+        purge_embed.add_field(name="Moderator", value=mod.mention, inline=True)
+        purge_embed.add_field(name="Channel", value=channel.mention, inline=True)
+        purge_embed.add_field(name="Reason", value=reason, inline=True)
+        purge_embed.add_field(name="Messages", value=f"{total_purged} purged | {total_ignored} ignored", inline=True)
+        purge_embed.set_footer(text=f'ID: {userid}')
+        av = user or self.bot.user
+        purge_embed.set_author(name=f"Purge | {user.name if user else userid}", icon_url=av.avatar and av.avatar.url)
+        await self.log_channel.send(embed=purge_embed)
 
     def _iterate_dec(self, number:int):
         while number >= 10:
