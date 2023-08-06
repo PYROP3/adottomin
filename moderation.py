@@ -107,11 +107,13 @@ class ModerationCore:
         self.database.register_command(msg.author.id, cmd, msg.channel.id, args=' '.join(content[1:]))
         await self._do_generic(action, target, msg, **params)
     
-    async def _do_reply(self, repliable: typing.Union[discord.Interaction, discord.Message], content=str, ephemeral: bool=False):
+    async def _do_reply(self, repliable: typing.Union[discord.Interaction, discord.Message, discord.TextChannel], content=str, ephemeral: bool=False):
         if isinstance(repliable, discord.Interaction):
             await self.utils.safe_send(repliable, content=content, ephemeral=ephemeral)
-        else:
+        elif isinstance(repliable, discord.Message):
             await repliable.reply(content=content)
+        else:
+            await repliable.send(content=content)
     
     async def _do_generic(self, action: actions, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None, **extras):
         reason_log = reason_log or reason_notif
