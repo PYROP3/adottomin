@@ -6,6 +6,7 @@ import bot_utils
 import botlogger
 import emoter
 import db
+import moderation
 
 em = emoter.Emoter()
 
@@ -31,10 +32,11 @@ AGE_MAX = 40
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql: db.database, utils: bot_utils.utils, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql: db.database, utils: bot_utils.utils, mod: moderation.ModerationCore, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
         self.utils = utils
+        self.mod = mod
         self.valid_role_ids = valid_role_ids
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
 
@@ -53,18 +55,6 @@ class age_handler:
         self.greeting_channel = greeting_channel
         self.tally_channel = tally_channel
         self.log_channel = log_channel
-
-    async def generate_log_embed(self, isBan: bool, user: discord.Member, reason: str):
-        embed = discord.Embed(
-            colour=discord.Colour.red() if isBan else discord.Colour.yellow(),
-            timestamp=datetime.datetime.now()
-        )
-        embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Moderator", value=self.bot.user.mention, inline=True)
-        embed.add_field(name="Reason", value=reason, inline=True)
-        embed.set_footer(text=f'ID: {user.id}')
-        embed.set_author(name=f"{'Ban' if isBan else 'Kick'} | {user.name}", icon_url=user.avatar and user.avatar.url)
-        return embed
 
     async def handle_age(self, msg: discord.Message):
         if len(msg.content) == 0: return
@@ -132,15 +122,13 @@ class age_handler:
         self.sql.cache_age(member.id, age)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{self.greeting_channel}] {member} Will ban user (force={force_ban})")
-            await self.do_ban(member, reason=reason)
+            await self.mod.core_ban(member, self.greeting_channel, reason_notif=reason, reason_log=f"{reason} ({age})")
             self.sql.remove_kick(member.id)
-            await self.log_channel.send(embed=await self.generate_log_embed(True, member, f"{reason} ({age})"))
 
         else:
             self.logger.debug(f"[{self.greeting_channel}] {member} User was NOT previously kicked")
-            await self.do_kick(member, reason=reason)
+            await self.mod.core_kick(member, self.greeting_channel, reason_notif=reason)
             self.sql.create_kick(member.id)
-            await self.log_channel.send(embed=await self.generate_log_embed(False, member, reason))
 
         greeting = self.sql.delete_entry(member.id)
         await self.try_delete_greeting(greeting)
@@ -185,28 +173,6 @@ class age_handler:
             await self.tally_channel.send(f"x")
         except Exception as e:
             self.logger.error(f"Failed to tally! {e}")
-
-    async def do_ban(self, user, reason=REASON_MINOR, tally=True):
-        try:
-            await self.greeting_channel.guild.ban(user, reason=reason.capitalize())
-            await self.greeting_channel.send(f"{user.mention} was banned cuz {reason}")
-            if tally:
-                await self.do_tally()
-        except discord.NotFound:
-            self.logger.debug(f"User id {user} already left!")
-        except:
-            self.logger.error(f"Failed to ban user id {user}!")
-            # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
-
-    async def do_kick(self, user, reason=REASON_TIMEOUT):
-        try:
-            await self.greeting_channel.guild.kick(user, reason=reason.capitalize())
-            await self.greeting_channel.send(f"{user.mention} was kicked cuz {reason}")
-        except discord.NotFound:
-            self.logger.debug(f"User id {user} already left!")
-        except:
-            self.logger.error(f"Failed to kick user id {user}!")
-            # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
 
     async def do_age_check(self, channel, member, is_reminder=False):
         leniency = self.sql.get_leniency(member.id)

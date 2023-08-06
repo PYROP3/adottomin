@@ -89,6 +89,8 @@ class HandlerIgnoreException(HandlerException):
 invite_prog = re.compile(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(.+)")
 
 class utils:
+    time_regex = re.compile(r"([1-9][0-9]*)([smhdw]?)")
+
     def __init__(self, bot: commands.Bot, database: db.database, mhm: msg_handler_manager.HandlerManager, chatting_roles_allowlist=[], chatting_servicename: str=None):
         self.database = database
         self.bot = bot
@@ -780,3 +782,19 @@ class utils:
         embed.set_author(name=f'Sent by {message.author}', icon_url=message.author.avatar.url)
 
         return (embed, pinAttachmentFile)
+    
+def extract_timedelta(msg: str):
+    print(f"extract_timedelta: {msg}")
+    time = utils.time_regex.match(msg)
+    if time:
+        val, unit = time.groups()
+        unit = unit or 'm'
+        conv = {
+            's': 'seconds',
+            'm': 'minutes',
+            'h': 'hours',
+            'd': 'days',
+            'w': 'weeks'
+        }
+        return timedelta(**{conv[unit]: int(val)})
+    return None

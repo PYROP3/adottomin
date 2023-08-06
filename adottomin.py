@@ -27,6 +27,7 @@ import graphlytics
 import kinks
 import memes
 import mistletoe
+import moderation
 import modnotes
 import msg_handler_manager
 import propervider as p
@@ -162,7 +163,8 @@ logger.info(f"Tallly channel IDs = {tally_channel}")
 mhm = msg_handler_manager.HandlerManager(admin_id, bot)
 sql = db.database(LENIENCY_COUNT)
 utils = bot_utils.utils(bot, sql, mhm, [divine_role_id, secretary_role_id], chatbot_service)
-age_handler = age_handling.age_handler(bot, sql, utils, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
+mod = moderation.ModerationCore(bot, sql, utils, mhm, secretary_role_id)
+age_handler = age_handling.age_handler(bot, sql, utils, mod, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
@@ -216,6 +218,7 @@ async def on_ready():
     age_handler.inject(main_channel, bot.get_channel(tally_channel), bot.get_channel(log_channel))
     ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
     nohorny_handler.inject(main_channel)
+    mod.inject(bot.get_channel(log_channel))
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
@@ -1862,6 +1865,25 @@ async def purgemessages(interaction: discord.Interaction, user: typing.Optional[
     # msg = await interaction.original_response()
     # await msg.edit(content=f"Purge of user <@{userid}> completed, boss!")
     await interaction.edit_original_response(content=f"Purge of user <@{userid}> completed, boss!")
+
+@bot.tree.command(description='Ban a user')
+@discord.app_commands.describe(user='Who to ban', reason='Reason for the ban')
+async def ban(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
+    await mod.core_ban(user, interaction, reason_notif=reason)
+
+@bot.tree.command(description='Kick a user')
+@discord.app_commands.describe(user='Who to kick', reason='Reason for the kick')
+async def kick(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
+    await mod.core_kick(user, interaction, reason_notif=reason)
+
+@bot.tree.command(description='Mute a user')
+@discord.app_commands.describe(user='Who to mute', duration='How long to mute (e.g. 5m, 2h)', reason='Reason for the mute')
+async def mute(interaction: discord.Interaction, user: discord.Member, duration: str, reason: typing.Optional[str]=None):
+    until = bot_utils.extract_timedelta(duration)
+    if not until:
+        await utils.safe_send(interaction, content="You must provide a valid time value, dummy! like 5m or 2h or whatever", ephemeral=True)
+        return
+    await mod.core_mute(user, until, interaction, reason_notif=reason)
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
