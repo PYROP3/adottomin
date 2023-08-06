@@ -1734,10 +1734,10 @@ async def searchid(interaction: discord.Interaction, user: str):
 #     await utils.safe_send(interaction, content=f"Here's your timestamp~\n```{ts}```And here's how it's going to look like: {ts}", ephemeral=True)
 
 @bot.tree.command(description='Advertise your commissions')
-async def advertise(interaction: discord.Interaction):
-    log_info(interaction, f"{interaction.user} is requesting to create an AD")
+async def advertise(interaction: discord.Interaction, attachment: typing.Optional[discord.Attachment] = None):
+    log_info(interaction, f"{interaction.user} is requesting to create an AD: {attachment}")
     
-    await ad_handler.create_advertisement(interaction)
+    await ad_handler.create_advertisement(interaction, attachment=attachment)
 
 @bot.tree.command(description='[MOD] Allow a user to post in cork-board')
 async def allowad(interaction: discord.Interaction, user: discord.Member):

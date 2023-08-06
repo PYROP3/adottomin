@@ -9,12 +9,12 @@ import botlogger
 import db
 
 class AdvertisementWindowModal(discord.ui.Modal, title="Commission info editor"):
-    def __init__(self, interaction: discord.Interaction, handler):
+    def __init__(self, interaction: discord.Interaction, handler, attachment: typing.Optional[discord.Attachment]=None):
         super().__init__()
         self.interaction = interaction
         self.handler = handler
         self._content_text = discord.ui.TextInput(label="Commission info", style=discord.TextStyle.paragraph, required=False)
-        self._reference_text = discord.ui.TextInput(label="Reference image (URL) - optional", style=discord.TextStyle.short, required=False)
+        self._reference_text = discord.ui.TextInput(label="Reference image (URL) - optional", style=discord.TextStyle.short, required=False, default=str(attachment) if attachment else None, placeholder="https://...")
         self.add_item(self._content_text)
         self.add_item(self._reference_text)
 
@@ -84,7 +84,7 @@ class advert_handler:
             return True
         return False
 
-    async def create_advertisement(self, interaction: discord.Interaction):
+    async def create_advertisement(self, interaction: discord.Interaction, attachment: typing.Optional[discord.Attachment]=None):
         ad_data = self.sql.get_existing_advertisement(interaction.user.id)
         if ad_data:
             message_id, created_at = int(ad_data[0]), self.utils.db2datetime(ad_data[1])
@@ -92,7 +92,7 @@ class advert_handler:
             if (created_at + self.advertisement_slowmode) > datetime.datetime.now():
                 return await self.utils.safe_send(interaction, content=f"You must wait a while before advertising your commissions again~", ephemeral=True)
         
-        window = AdvertisementWindowModal(interaction, self)
+        window = AdvertisementWindowModal(interaction, self, attachment=attachment)
         return await interaction.response.send_modal(window)
 
     async def _finish_creating_advertisement(self, embed: discord.Embed, user_id: int):
