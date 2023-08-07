@@ -32,6 +32,7 @@ import modnotes
 import msg_handler_manager
 import propervider as p
 import shipper
+import ticketing
 import nohorny
 
 from word_blocklist import blocklist
@@ -123,6 +124,7 @@ gatekeep_perms = {'send_messages': False}
 ignore_prefixes = ('$')
 
 advertisement_slowmode = datetime.timedelta(seconds=30)
+ticket_slowmode = datetime.timedelta(seconds=30)
 
 file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
 
@@ -166,6 +168,9 @@ utils = bot_utils.utils(bot, sql, mhm, [divine_role_id, secretary_role_id], chat
 mod = moderation.ModerationCore(bot, sql, utils, mhm, secretary_role_id)
 age_handler = age_handling.age_handler(bot, sql, utils, mod, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
+ticket_handler = None
+if p.pint("TICKET_CHANNEL_ID", required=False) is not None:
+    ticket_handler = ticketing.ticket_creation_handler(bot, ticket_slowmode, sql, utils)
 emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
 nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
 mistletoe_handler = mistletoe.mistletoe_handler(mhm)
@@ -219,6 +224,7 @@ async def on_ready():
     ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
     nohorny_handler.inject(main_channel)
     mod.inject(bot.get_channel(log_channel))
+    if ticket_handler: await ticket_handler.on_bot_ready()
 
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
@@ -1892,6 +1898,10 @@ bot.tree.add_command(graphlytics.Analytics(utils))
 bot.tree.add_command(shipper.Relationship(sql, utils))
 bot.tree.add_command(modnotes.Modnotes(sql, utils))
 bot.tree.add_command(ghostpings.Ghostpings(sql, utils))
+if ticket_handler:
+    bot.tree.add_command(ticketing.Ticket(sql, utils, ticket_handler))
+else:
+    logger.info("Ticketing feature disabled (missing TICKET_CHANNEL_ID)")
 
 @bot.tree.command(description='Find explanations for specific kinks')
 async def kinktionary(interaction: discord.Interaction):

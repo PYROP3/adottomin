@@ -59,6 +59,8 @@ jails_version = 1
 jails_db_file = _dbfile('jails', jails_version)
 modnotes_version = 1
 modnotes_db_file = _dbfile('modnotes', modnotes_version)
+tickets_version = 1
+tickets_db_file = _dbfile('tickets', tickets_version)
 
 sql_files = [
     validations_db_file,
@@ -82,7 +84,8 @@ sql_files = [
     advertisements_db_file,
     relationships_db_file,
     jails_db_file,
-    modnotes_db_file
+    modnotes_db_file,
+    tickets_db_file
 ]
 
 class once_alerts(enum.Enum):
@@ -308,6 +311,24 @@ schemas = {
                 moderator int NOT NULL,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user, revision)
+            );'''],
+    tickets_db_file: ['''
+            CREATE TABLE tickets (
+                ticket_id INTEGER PRIMARY KEY,
+                message_id int NOT NULL,
+                creator int NOT NULL,
+                anonymous int NOT NULL,
+                content TEXT NOT NULL,
+                evidence TEXT, 
+                created_at TIMESTAMP NOT NULL
+            );''',
+            '''
+            CREATE TABLE edits (
+                ticket_id int NOT NULL,
+                moderator int NOT NULL,
+                resolution TEXT,
+                created_at TIMESTAMP NOT NULL,
+                FOREIGN KEY(ticket_id) REFERENCES tickets(ticket_id)
             );'''],
 }
 
@@ -1359,6 +1380,73 @@ class database:
 
         con.close()
         return result_data
+    
+    def create_ticket(self, user: int, content: str, is_anon: bool, evidence: str=""):
+        now = datetime.datetime.now()
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+                # ticket_id INTEGER PRIMARY KEY,
+                # message_id int NOT NULL,
+                # creator int NOT NULL,
+                # anonymous int NOT NULL,
+                # content TEXT NOT NULL,
+                # evidence TEXT, 
+                # created_at TIMESTAMP NOT NULL
+        cur.execute("INSERT INTO tickets VALUES (?, ?, ?, ?, ?, ?, ?)", [None, 0, user, is_anon, content, evidence, now])
+        ticket_id = cur.lastrowid
+        con.commit()
+        con.close()
+        return ticket_id
+    
+    def update_ticket_message_id(self, ticket_id: int, message_id: int):
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+        cur.execute("UPDATE tickets SET message_id=:message_id WHERE ticket_id=:ticket_id", {'message_id': message_id, 'ticket_id': ticket_id})
+        con.commit()
+        con.close()
+    
+    def get_tickets(self, unresolved_only: bool=True):
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+        if unresolved_only:
+            tickets = cur.execute("SELECT * FROM tickets LEFT JOIN edits ON tickets.ticket_id = edits.ticket_id WHERE ticket_id NOT IN (SELECT ticket_id FROM edits GROUP BY ticket_id) ORDER BY created_at").fetchall()
+        else:
+            tickets = cur.execute("SELECT * FROM tickets LEFT JOIN edits ON tickets.ticket_id = edits.ticket_id ORDER BY created_at").fetchall()
+        con.close()
+        return tickets
+    
+    def get_ticket(self, ticket_id: int):
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+        ticket = cur.execute("SELECT * FROM tickets WHERE ticket_id=:ticket_id", {'ticket_id': ticket_id}).fetchone()
+        con.close()
+        return ticket
+    
+    def get_latest_ticket(self, user_id: int):
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+        ticket = cur.execute("SELECT created_at FROM tickets WHERE creator=:creator ORDER BY created_at DESC", {'creator': user_id}).fetchone()
+        con.close()
+        return ticket
+    
+    def resolve_ticket(self, ticket_id: int, resolution: str, mod: int):
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+                # ticket_id int NOT NULL,
+                # moderator int NOT NULL,
+                # resolution TEXT,
+                # created_at TIMESTAMP NOT NULL
+        try:
+            cur.execute("INSERT INTO edits VALUES (?, ?, ?, ?)", [ticket_id, mod, resolution, datetime.datetime.now()])
+            con.commit()
+            message_id = cur.execute("SELECT message_id FROM tickets WHERE ticket_id=:ticket_id", {'ticket_id': ticket_id}).fetchone()[0]
+            con.commit()
+            con.close()
+            return int(message_id)
+        except sqlite3.DatabaseError:
+            self.logger.debug(f"resolve_ticket: Foreign key {ticket_id} not found")
+            con.close()
+            return None
 
     def db2datetime(self, when: str):
         return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")
