@@ -112,7 +112,7 @@ poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
 pendelton_mode = False
 
-ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id])
+ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id, friends_role_ids[0]])
 
 usernames_blocked = [
     "pendelton",
