@@ -142,95 +142,98 @@ class ticket_creation_handler:
         return False
 
 # ===================================================== TICKET NAVIGATION =====================================================
-# class DirectionalButton(discord.ui.Button):
-#     def __init__(self, offset: int, parent, **kwargs):
-#         super().__init__(**kwargs)
-#         self.offset = offset
-#         self.parent = parent
-#         self.logger = botlogger.get_logger(f"{__name__}::DirectionalButton")
-#         self.logger.setLevel("INFO")
 
-#     async def callback(self, interaction: discord.Interaction):
-#         self.logger.debug(f"{interaction.user}({interaction.user.id}) clicked on {self.offset}")
-#         await self.parent._on_button_callback(interaction, self.offset)
-#         await _silent_reply(interaction)
+class FunctionalButton(discord.ui.Button):
+    def __init__(self, callback: typing.Callable, **kwargs):
+        super().__init__(**kwargs)
+        self._cb = callback
+        self.logger = botlogger.get_logger(f"{__name__}::FunctionalButton")
+        self.logger.setLevel("INFO")
 
-# class TicketsBrowseView(discord.ui.View):
-#     def __init__(self, interaction: discord.Interaction, user: discord.Member, revision: int, sql: db.database, utils: bot_utils.utils):
-#         super().__init__()
-#         self.logger = botlogger.get_logger(f"{__name__}::TicketsBrowseView")
-#         self.logger.setLevel("INFO")
-#         self.interaction = interaction
-#         self.target_user = user
-#         self.current_revision = revision
-#         self.max_revision = revision
-#         self.sql = sql
-#         self.utils = utils
+    async def callback(self, interaction: discord.Interaction):
+        self.logger.debug(f"{interaction.user}({interaction.user.id}) clicked on {self}")
+        await self._cb(interaction)
 
-#         self.creator = interaction.user
+class TicketsBrowseView(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction, user: discord.Member, ticket: int, sql: db.database, utils: bot_utils.utils):
+        super().__init__()
+        self.logger = botlogger.get_logger(f"{__name__}::TicketsBrowseView")
+        self.logger.setLevel("INFO")
+        self.interaction = interaction
+        self.target_user = user
+        self.current_ticket = ticket
+        self.sql = sql
+        self.utils = utils
 
-#         self.previous_button = DirectionalButton(-1, self, emoji="⬅️")
-#         self.next_button     = DirectionalButton(+1, self, emoji="➡️")
+        self.creator = interaction.user
 
-#         self._enable_disable_buttons()
-#         self.content_text = self._get_content()
+        self.previous_button = FunctionalButton(lambda interaction: self._directional_callback(interaction, -1), self, emoji="⬅️")
+        # self.resolve_button  = FunctionalButton(lambda interaction: (), emoji="✅") # TODO
+        self.next_button     = FunctionalButton(lambda interaction: self._directional_callback(interaction, +1), self, emoji="➡️")
+
+        self._enable_disable_buttons()
+        self.content_text = self._get_content()
         
-#         self.add_item(self.previous_button)
-#         self.add_item(self.next_button)
+        self.add_item(self.previous_button)
+        # self.add_item(self.resolve_button)
+        self.add_item(self.next_button)
 
-#     def _enable_disable_buttons(self):
-#         self.previous_button.disabled = self.current_revision <= 1
-#         self.next_button.disabled     = self.current_revision >= self.max_revision
+    def _enable_disable_buttons(self):
+        self.previous_button.disabled = self.current_revision <= 1
+        self.next_button.disabled     = self.current_revision >= self.max_revision
 
-#     def _get_content(self):
-#         raw_data = self.sql.get_modnote(self.target_user.id, self.current_revision)
-#         if not raw_data:
-#             return "No data found"
-#         actual_revision, content, mod_id, updated_at = raw_data
-#         return f"{content}\n\n> v{actual_revision} by <@{mod_id}> on {self.utils.timestamp(when=updated_at)}"
+    def _get_content(self):
+        raw_data = self.sql.get_ticket(self.current_ticket)
+        if not raw_data:
+            return "No data found"
+        actual_revision, content, mod_id, updated_at = raw_data
+        return f"{content}\n\n> v{actual_revision} by <@{mod_id}> on {self.utils.timestamp(when=updated_at)}"
     
-#     async def _get_content_as_embed(self):
-#         raw_data = self.sql.get_modnote(self.target_user.id, self.current_revision)
-#         # TODO do we really need to handle non-existing data here?
+    async def _get_content_as_embed(self):
+        raw_data = self.sql.get_modnote(self.target_user.id, self.current_revision)
+        # TODO do we really need to handle non-existing data here?
 
-#         actual_revision, content, mod_id, updated_at = raw_data
+        actual_revision, content, mod_id, updated_at = raw_data
 
-#         embed = discord.Embed(
-#             colour=random.choice(bot_utils.EMBED_COLORS),
-#             timestamp=datetime.datetime.now()
-#         )
+        embed = discord.Embed(
+            colour=random.choice(bot_utils.EMBED_COLORS),
+            timestamp=datetime.datetime.now()
+        )
 
-#         moderator = mod_id and await self.interaction.guild.fetch_member(mod_id)
+        moderator = mod_id and await self.interaction.guild.fetch_member(mod_id)
 
-#         embed.set_author(name=f'{self.target_user}\'s mod tickets', icon_url=self.target_user.avatar.url)
-#         embed.add_field(name="Content", value=content, inline=False)
-#         embed.set_footer(text=f"v{actual_revision} submitted by {moderator} on {updated_at.astimezone(datetime.timezone.utc)}")
+        embed.set_author(name=f'{self.target_user}\'s mod tickets', icon_url=self.target_user.avatar.url)
+        embed.add_field(name="Content", value=content, inline=False)
+        embed.set_footer(text=f"v{actual_revision} submitted by {moderator} on {updated_at.astimezone(datetime.timezone.utc)}")
 
-#         return embed
+        return embed
     
-#     async def _update_view(self):
-#         return await self.interaction.edit_original_response(embed=await self._get_content_as_embed(), view=self)
-#         # return await self.interaction.edit_original_response(content=self.content_text, view=self)
+    async def _update_view(self):
+        return await self.interaction.edit_original_response(embed=await self._get_content_as_embed(), view=self)
+        # return await self.interaction.edit_original_response(content=self.content_text, view=self)
 
-#     async def _on_button_callback(self, interaction: discord.Interaction, direction: int):
-#         if direction < 0 and self.current_revision <= 1:
-#             self.logger.warning("Already on leftmost revision")
-#             await _silent_reply(interaction)
-#             await self._update_view()
-#             return
+    async def _directional_callback(self, interaction: discord.Interaction, direction: int):
+        if direction < 0 and self.current_revision <= 1:
+            self.logger.warning("Already on leftmost revision")
+            await _silent_reply(interaction)
+            await self._update_view()
+            await _silent_reply(interaction)
+            return
         
-#         if direction > 0 and self.current_revision >= self.max_revision:
-#             self.logger.warning("Already on rightmost revision")
-#             await _silent_reply(interaction)
-#             await self._update_view()
-#             return
+        if direction > 0 and self.current_revision >= self.max_revision:
+            self.logger.warning("Already on rightmost revision")
+            await _silent_reply(interaction)
+            await self._update_view()
+            await _silent_reply(interaction)
+            return
         
-#         self.current_revision += direction
+        self.current_revision += direction
 
-#         self._enable_disable_buttons()
-#         self.content_text = self._get_content()
+        self._enable_disable_buttons()
+        self.content_text = self._get_content()
 
-#         await self._update_view()
+        await self._update_view()
+        await _silent_reply(interaction)
 
 # class TicketsWindowModal(discord.ui.Modal, title="User tickets editor"):
 #     def __init__(self, interaction: discord.Interaction, handler, user: discord.Member, revision: int, content: str, moderator: discord.Member, updated_at: datetime.datetime):

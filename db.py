@@ -1422,6 +1422,16 @@ class database:
         con.close()
         return ticket
     
+    def get_ticket_offset(self, ticket_id: int, offset: int):
+        con = sqlite3.connect(tickets_db_file)
+        cur = con.cursor()
+        if offset > 0:
+            ticket = cur.execute("SELECT * FROM tickets WHERE ticket_id>:ticket_id ORDER BY ticket_id", {'ticket_id': ticket_id}).fetchone()
+        else:
+            ticket = cur.execute("SELECT * FROM tickets WHERE ticket_id<:ticket_id ORDER BY ticket_id", {'ticket_id': ticket_id}).fetchone()
+        con.close()
+        return ticket
+    
     def get_latest_ticket(self, user_id: int):
         con = sqlite3.connect(tickets_db_file)
         cur = con.cursor()
