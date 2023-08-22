@@ -178,9 +178,10 @@ class utils:
         self.logger.debug(f"Injected {len(pois)} pois")
         self.pois = pois
 
-    def inject_guild(self, guild: discord.Guild):
+    async def inject_guild(self, guild: discord.Guild):
         self.logger.debug(f"Injected guild {guild}")
         self.guild = guild
+        self.mbot = await guild.fetch_member(self.bot.user.id)
         
     async def on_utils_setup(self):
         self.horny_channel = await self.guild.fetch_channel(horny_channel_id)
@@ -599,6 +600,24 @@ class utils:
                     kwargs['content'] = f"{interaction.user.mention} used `/{_name}`"
                 return await interaction.channel.send(**kwargs)
             
+    async def give_returnee_roles(self, userid: int):
+        member = await self.guild.fetch_member(userid)
+        if member.bot:
+            return False, set()
+        
+        role_ids = self.database.get_roles(userid)
+        if role_ids:
+            roles = set([self.guild.get_role(role_id) for role_id in role_ids])
+            assignable_roles = set([role for role in roles if self.is_assignable(role)])
+
+            self.logger.debug(f"Adding {assignable_roles} to returning {member}")
+            try:
+                await member.add_roles(*assignable_roles, reason="Returning fur-iend!")
+                return True, roles.difference(assignable_roles)
+            except:
+                self.logger.warning(f"Failed to give roles to {userid}")
+        return False, set()
+            
     async def purge_user_from_channel(self, channel: discord.TextChannel, userid: int, reason: str, complete: bool=False, mod: discord.Member=None):
         total_messages = 0
         total_purged = 0
@@ -782,6 +801,9 @@ class utils:
         embed.set_author(name=f'Sent by {message.author}', icon_url=message.author.avatar.url)
 
         return (embed, pinAttachmentFile)
+    
+    def is_assignable(self, role: discord.Role):
+        return not role.is_default() and not role.managed and (self.mbot.top_role > role or self.bot.user.id == role.guild.owner_id)
     
 def extract_timedelta(msg: str):
     print(f"extract_timedelta: {msg}")

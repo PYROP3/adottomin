@@ -3,6 +3,7 @@ import enum
 import os
 import sqlite3
 import diff_match_patch as dmp_module
+import typing
 
 import botlogger
 
@@ -59,6 +60,8 @@ jails_version = 1
 jails_db_file = _dbfile('jails', jails_version)
 modnotes_version = 1
 modnotes_db_file = _dbfile('modnotes', modnotes_version)
+roles_version = 1
+roles_db_file = _dbfile('roles', roles_version)
 
 sql_files = [
     validations_db_file,
@@ -82,7 +85,8 @@ sql_files = [
     advertisements_db_file,
     relationships_db_file,
     jails_db_file,
-    modnotes_db_file
+    modnotes_db_file,
+    roles_db_file,
 ]
 
 class once_alerts(enum.Enum):
@@ -308,6 +312,13 @@ schemas = {
                 moderator int NOT NULL,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user, revision)
+            );'''],
+    roles_db_file: ['''
+            CREATE TABLE roles (
+                user int NOT NULL,
+                role int NOT NULL,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user, role)
             );'''],
 }
 
@@ -1359,6 +1370,57 @@ class database:
 
         con.close()
         return result_data
+    
+    def add_role(self, user: int, role: int):
+        con = sqlite3.connect(roles_db_file)
+        try:
+            cur = con.cursor()
+            cur.execute("INSERT INTO roles VALUES (?, ?, ?)", [user, role, datetime.datetime.now()])
+            con.commit()
+        except:
+            self.logger.warning(f"Duplicated role {role} for {user}")
+        con.close()
+    
+    def add_roles(self, user: int, roles: typing.List[int]):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        now = datetime.datetime.now()
+        cur.executemany("INSERT OR IGNORE INTO roles VALUES (?, ?, ?)", [(user, role, now) for role in roles])
+        con.commit()
+        con.close()
+    
+    def redo_roles(self, user: int, roles: typing.List[int]):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        now = datetime.datetime.now()
+        cur.execute("DELETE FROM roles WHERE user=:user", {'user': user})
+        cur.executemany("INSERT OR IGNORE INTO roles VALUES (?, ?, ?)", [(user, role, now) for role in roles])
+        con.commit()
+        con.close()
+    
+    def remove_role(self, user: int, role: int):
+        con = sqlite3.connect(roles_db_file)
+        try:
+            cur = con.cursor()
+            cur.execute("DELETE FROM roles WHERE user=:user AND role=:role", {'user': user, 'role': role})
+            con.commit()
+        except:
+            pass
+        con.close()
+    
+    def remove_roles(self, user: int, roles: typing.List[int]):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        cur.executemany("DELETE FROM roles WHERE user=? AND role=?", [(user, role) for role in roles])
+        con.commit()
+        con.close()
+    
+    def get_roles(self, user: int):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        data = cur.execute("SELECT role FROM roles WHERE user=:user", {'user': user}).fetchall()
+        con.close()
+        return [l[0] for l in data]
 
     def db2datetime(self, when: str):
         return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")

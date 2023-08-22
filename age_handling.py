@@ -26,6 +26,8 @@ MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you
 MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! " + MSG_APPEND
 MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
 MSG_AGE_IN_DMS = f"{'{}'} told me their age in DMs and they're chill! :sunglasses:"
+MSG_ROLES_RETURNED = f"Also just cuz I dig your vibes, imma give your old roles, {'{}'}! Welcome back, furiend~"
+MSG_MISSING_ROLES = f"\nUnfortunately I can't give ya {'{}'}, but ig you can ask someone else lol"
 
 AGE_MAX = 40
 
@@ -105,6 +107,15 @@ class age_handler:
                     if isinstance(msg.channel, discord.DMChannel):
                         self.logger.debug(f"Message sent in DMchannel")
                         await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
+
+                    gave_roles, missing_roles = await self.utils.give_returnee_roles(msg.author.id)
+                    if gave_roles:
+                        self.logger.debug(f"Success giving returnee roles to {msg.author}")
+                        content = MSG_ROLES_RETURNED.format(msg.author.mention)
+                        if missing_roles:
+                            content += MSG_MISSING_ROLES.format(", ".join([role.mention for role in missing_roles]))
+                        await self.greeting_channel.send(content, allowed_mentions=discord.AllowedMentions.none())
+
                     return
 
         if leniency > 0:
@@ -203,6 +214,7 @@ class age_handler:
                 else:
                     self.logger.debug(f"[{channel}] {member} Found age role: {age_role}")
                     self.sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
+                    await self.utils.give_returnee_roles(member.id)
                     must_continue = False
 
             except discord.NotFound:

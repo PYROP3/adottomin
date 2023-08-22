@@ -56,6 +56,7 @@ WARNINGS_BEFORE_BAN = 3
 
 REDO_ALL_PINS = False
 REDO_ALL_ALIASES = False
+REDO_ALL_ROLES = False
 
 assert (LENIENCY_REMINDER_TIME_S is None) or (LENIENCY_REMINDER_TIME_S < LENIENCY_TIME_S), "Reminder time must be smaller than total time"
 assert (LENIENCY_REMINDER is None) or (LENIENCY_REMINDER < LENIENCY_COUNT), "Reminder count must be smaller than total leniency"
@@ -110,6 +111,8 @@ _aux = os.getenv('POI_USER_IDS')
 poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
 pendelton_mode = False
+
+ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id])
 
 usernames_blocked = [
     "pendelton",
@@ -213,7 +216,7 @@ async def on_ready():
     utils.inject_admin(bot.get_user(admin_id))
     utils.inject_pois([bot.get_user(id) for id in poi_user_ids])
     guild = await bot.fetch_guild(GUILD_ID)
-    utils.inject_guild(guild)
+    await utils.inject_guild(guild)
     await utils.on_utils_setup()
     age_handler.inject(main_channel, bot.get_channel(tally_channel), bot.get_channel(log_channel))
     ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
@@ -223,10 +226,20 @@ async def on_ready():
     if REDO_ALL_PINS:
         for channel in bot.get_all_channels():
             await on_guild_channel_pins_update(channel, None)
+
+    all_roles = await guild.fetch_roles()
+    for role in all_roles:
+        # Ignore roles if the bot cannot assign (or if they are bot roles)
+        if (role.is_integration()) or (role.name == "@everyone"):
+            ignore_roles_for_database.add(role.id)
+    logger.info(f"Updated list of ignored roles: {[guild.get_role(role) for role in ignore_roles_for_database]}")
         
-    if REDO_ALL_ALIASES:
+    if REDO_ALL_ALIASES or REDO_ALL_ROLES:
         async for member in guild.fetch_members():
-            await _handle_new_alias(None, member)
+            if REDO_ALL_ALIASES:
+                await _handle_new_alias(None, member)
+            if REDO_ALL_ROLES:
+                sql.redo_roles(member.id, set([role.id for role in member.roles]).difference(ignore_roles_for_database))
 
     logger.info(f"Finished on_ready setup")
 
@@ -338,6 +351,22 @@ async def _handle_minor_role_added(before: discord.Member, after: discord.Member
     await notif.send(content=f"{after.mention} caught the bait~")
     await age_handler.kick_or_ban(after, age=minor_role_id, force_update_age=True, reason="Chose minor age role", force_ban=True)
 
+async def _handle_user_role_database(before: discord.Member, after: discord.Member):
+    if before.bot: return
+
+    after_roles = set([role.id for role in after.roles])
+    before_roles = set([role.id for role in before.roles])
+
+    added_roles = after_roles.difference(before_roles, ignore_roles_for_database)
+    removed_roles = before_roles.difference(after_roles, ignore_roles_for_database)
+    logger.debug(f"Added {added_roles} for {after}")
+    logger.debug(f"Removed {removed_roles} for {after}")
+
+    if added_roles:
+        sql.add_roles(after.id, added_roles)
+    if removed_roles:
+        sql.remove_role(after.id, removed_roles)
+
 async def _handle_new_alias(before: typing.Optional[discord.Member], after: discord.Member):
     if before is not None and after.display_name == before.display_name:
         # logger.debug(f"{after} did not change alias")
@@ -353,6 +382,7 @@ member_update_handlers = [
     _handle_nsfw_added,
     _handle_minor_role_added,
     _handle_new_alias,
+    _handle_user_role_database,
     lambda before, after: nohorny_handler.handle_horny_role_toggle(
         before,
         after,
