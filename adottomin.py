@@ -112,7 +112,7 @@ poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
 pendelton_mode = False
 
-ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id, friends_role_ids[0]])
+ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id, friends_role_ids[0]]).difference(set([None, 0]))
 
 usernames_blocked = [
     "pendelton",
@@ -232,7 +232,8 @@ async def on_ready():
         # Ignore roles if the bot cannot assign (or if they are bot roles)
         if (role.is_integration()) or (role.name == "@everyone"):
             ignore_roles_for_database.add(role.id)
-    logger.info(f"Updated list of ignored roles: {[guild.get_role(role) for role in ignore_roles_for_database]}")
+    ignore_roles_for_database.difference_update(set([None, 0]))
+    logger.info(f"Updated list of ignored roles: {[guild.get_role(role) for role in ignore_roles_for_database]} / {ignore_roles_for_database}")
         
     if REDO_ALL_ALIASES or REDO_ALL_ROLES:
         async for member in guild.fetch_members():
