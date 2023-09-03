@@ -1513,7 +1513,7 @@ _raw_fortunes = [
 ]
 _fortunes = " ".join(_raw_fortunes)
 
-markov_state_size = 1
+markov_state_size = 2
 
 fortunes_generator = markovify.combine(
     [
