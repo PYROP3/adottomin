@@ -1513,10 +1513,12 @@ _raw_fortunes = [
 ]
 _fortunes = " ".join(_raw_fortunes)
 
+markov_state_size = 1
+
 fortunes_generator = markovify.combine(
     [
-        markovify.Text(_quotes),
-        markovify.Text(_fortunes)
+        markovify.Text(_quotes, state_size=markov_state_size),
+        markovify.Text(_fortunes, state_size=markov_state_size)
     ],
     [   
         len(_raw_quotes),
