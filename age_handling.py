@@ -93,7 +93,7 @@ class age_handler:
                     if (prev_age := self.sql.get_previous_age(msg.author.id)) and prev_age != age:
                         sent_already = True
                         if prev_age + 1 == age:
-                            await msg.channel.send(MSG_DIFFERENT_AGE_BIRTHDAY.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
+                            await msg.channel.send(MSG_DIFFERENT_AGE_BIRTHDAY.format(prev_age, msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
                         else:    
                             await msg.channel.send(MSG_DIFFERENT_AGE.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
                 
