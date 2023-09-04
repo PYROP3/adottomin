@@ -2,10 +2,8 @@ import propervider as p
 import typing
 import botlogger
 
-# min_words=5, tries=20
-_mode = p.pstr("FORTUNE_GENERATOR_MODEL").lower()
-
 logger = botlogger.get_logger(__name__)
+logger.setLevel(p.pstr("FORTUNE_LOG_LEVEL", default="INFO"))
 
 class BaseFortuneGen:
     pass

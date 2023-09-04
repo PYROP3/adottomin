@@ -15,12 +15,14 @@ import matplotlib.pyplot as plt
 import seaborn as sn
 import string
 import os
+import propervider as p
 
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 from pathlib import Path
 
 logger = botlogger.get_logger(__name__)
+logger.setLevel(p.pstr("KINKS_LOG_LEVEL", default="INFO"))
 emoji_font = Path('./fonts/noto_emoji/static/NotoEmoji-Regular.ttf')
 
 kinklist = {
