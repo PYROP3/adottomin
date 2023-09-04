@@ -133,12 +133,12 @@ class age_handler:
         self.sql.cache_age(member.id, age)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{self.greeting_channel}] {member} Will ban user (force={force_ban})")
-            await self.mod.core_ban(member, self.greeting_channel, reason_notif=reason, reason_log=f"{reason} ({age})")
+            await self.mod.core_ban(member, self.greeting_channel, reason_notif=reason, reason_log=f"{reason} ({age})", moderator=self.bot.user)
             self.sql.remove_kick(member.id)
 
         else:
             self.logger.debug(f"[{self.greeting_channel}] {member} User was NOT previously kicked")
-            await self.mod.core_kick(member, self.greeting_channel, reason_notif=reason)
+            await self.mod.core_kick(member, self.greeting_channel, reason_notif=reason, moderator=self.bot.user)
             self.sql.create_kick(member.id)
 
         greeting = self.sql.delete_entry(member.id)

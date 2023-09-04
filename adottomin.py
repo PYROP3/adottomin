@@ -1904,12 +1904,12 @@ async def purgemessages(interaction: discord.Interaction, user: typing.Optional[
 @bot.tree.command(description='Ban a user')
 @discord.app_commands.describe(user='Who to ban', reason='Reason for the ban')
 async def ban(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
-    await mod.core_ban(user, interaction, reason_notif=reason)
+    await mod.core_ban(user, interaction, reason_notif=reason, moderator=interaction.user)
 
 @bot.tree.command(description='Kick a user')
 @discord.app_commands.describe(user='Who to kick', reason='Reason for the kick')
 async def kick(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
-    await mod.core_kick(user, interaction, reason_notif=reason)
+    await mod.core_kick(user, interaction, reason_notif=reason, moderator=interaction.user)
 
 @bot.tree.command(description='Mute a user')
 @discord.app_commands.describe(user='Who to mute', duration='How long to mute (e.g. 5m, 2h)', reason='Reason for the mute')
@@ -1918,7 +1918,7 @@ async def mute(interaction: discord.Interaction, user: discord.Member, duration:
     if not until:
         await utils.safe_send(interaction, content="You must provide a valid time value, dummy! like 5m or 2h or whatever", ephemeral=True)
         return
-    await mod.core_mute(user, until, interaction, reason_notif=reason)
+    await mod.core_mute(user, until, interaction, reason_notif=reason, moderator=interaction.user)
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))

@@ -54,13 +54,13 @@ class ModerationCore:
     def inject(self, log_channel: discord.TextChannel):
         self.log_channel = log_channel
 
-    async def generate_log_embed(self, action: actions, user: discord.Member, reason: str, duration: typing.Optional[timedelta] = None):
+    async def generate_log_embed(self, action: actions, user: discord.Member, reason: str, moderator: discord.Member, duration: typing.Optional[timedelta] = None):
         embed = discord.Embed(
             colour=action.value.embed_color,
             timestamp=datetime.now()
         )
         embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Moderator", value=self.bot.user.mention, inline=True)
+        embed.add_field(name="Moderator", value=moderator.mention, inline=True)
         embed.add_field(name="Reason", value=reason or "<not given>", inline=True)
         if duration:
             embed.add_field(name="Duration", value=str(duration), inline=True)
@@ -68,14 +68,14 @@ class ModerationCore:
         embed.set_author(name=f"{action.value.verb.capitalize()} | {user.name}", icon_url=user.avatar and user.avatar.url)
         return embed
 
-    async def core_ban(self, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None):
-        return await self._do_generic(actions.Ban, user, repliable, reason_notif=reason_notif, reason_log=reason_log)
+    async def core_ban(self, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None, moderator: typing.Optional[discord.Member] = None):
+        return await self._do_generic(actions.Ban, user, repliable, reason_notif=reason_notif, reason_log=reason_log, moderator=moderator)
 
-    async def core_kick(self, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None):
-        return await self._do_generic(actions.Kick, user, repliable, reason_notif=reason_notif, reason_log=reason_log)
+    async def core_kick(self, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None, moderator: typing.Optional[discord.Member] = None):
+        return await self._do_generic(actions.Kick, user, repliable, reason_notif=reason_notif, reason_log=reason_log, moderator=moderator)
 
-    async def core_mute(self, user: discord.Member, until: typing.Optional[typing.Union[timedelta, datetime]], repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None):
-        return await self._do_generic(actions.Mute, user, repliable, reason_notif=reason_notif, reason_log=reason_log, until=until)
+    async def core_mute(self, user: discord.Member, until: typing.Optional[typing.Union[timedelta, datetime]], repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None, moderator: typing.Optional[discord.Member] = None):
+        return await self._do_generic(actions.Mute, user, repliable, reason_notif=reason_notif, reason_log=reason_log, moderator=moderator, until=until)
     
     async def handle_mod_message(self, msg: discord.Message):
         await self.utils._enforce_not_dms(msg)
@@ -105,7 +105,7 @@ class ModerationCore:
             return
         
         self.database.register_command(msg.author.id, cmd, msg.channel.id, args=' '.join(content[1:]))
-        await self._do_generic(action, target, msg, **params)
+        await self._do_generic(action, target, msg, moderator=msg.author, **params)
     
     async def _do_reply(self, repliable: typing.Union[discord.Interaction, discord.Message, discord.TextChannel], content=str, ephemeral: bool=False):
         if isinstance(repliable, discord.Interaction):
@@ -115,7 +115,7 @@ class ModerationCore:
         else:
             await repliable.send(content=content)
     
-    async def _do_generic(self, action: actions, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None, **extras):
+    async def _do_generic(self, action: actions, user: discord.Member, repliable: typing.Union[discord.Interaction, discord.TextChannel], reason_notif: typing.Optional[str] = None, reason_log: typing.Optional[str] = None, moderator: typing.Optional[discord.Member] = None, **extras):
         reason_log = reason_log or reason_notif
         extras.update(reason=reason_log)
         self.logger.debug(f"_do_generic {action} for {user}: {reason_notif} ({extras})")
@@ -136,7 +136,8 @@ class ModerationCore:
             if reason_notif:
                 reply_content += f" cuz {reason_notif}"
             await self._do_reply(repliable, reply_content)
-            await self.log_channel.send(embed=await self.generate_log_embed(action, user, reason_log, duration=duration))
+            moderator = moderator or self.bot.user
+            await self.log_channel.send(embed=await self.generate_log_embed(action, user, reason_log, moderator, duration=duration))
             return True
         except discord.NotFound:
             self.logger.debug(f"User id {user} already left!")
