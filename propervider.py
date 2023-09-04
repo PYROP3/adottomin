@@ -15,8 +15,8 @@ def plist(property:str, required:bool=True):
         raise RuntimeError(f"Missing required env variable {property}")
     return [] if not aux else [elem and int(elem) for elem in aux.split('.')]
 
-def pstr(property:str, required:bool=True):
+def pstr(property:str, required:bool=True, default:str=""):
     prop = os.getenv(property)
     if required and not prop:
         raise RuntimeError(f"Missing required env variable {property}")
-    return prop
+    return prop or default

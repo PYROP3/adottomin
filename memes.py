@@ -190,5 +190,5 @@ def get_formatted_definition(contents):
     return (word_txt, meaning_txt, example_txt)
 
 fortune_generator = fortune.fortunes_generator
-def generate_fortune():
-    return fortune_generator.make_sentence(min_words=5, tries=20)
+def generate_fortune(model: str):
+    return fortune_generator.generate(model)

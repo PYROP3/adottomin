@@ -1,4 +1,14 @@
-import markovify
+import propervider as p
+import typing
+import botlogger
+
+# min_words=5, tries=20
+_mode = p.pstr("FORTUNE_GENERATOR_MODEL").lower()
+
+logger = botlogger.get_logger(__name__)
+
+class BaseFortuneGen:
+    pass
 
 _raw_quotes = [
     "If you want to achieve greatness stop asking for permission.",
@@ -1513,15 +1523,105 @@ _raw_fortunes = [
 ]
 _fortunes = " ".join(_raw_fortunes)
 
-markov_state_size = 2
+import markovify
 
-fortunes_generator = markovify.combine(
-    [
-        markovify.Text(_quotes, state_size=markov_state_size),
-        markovify.Text(_fortunes, state_size=markov_state_size)
-    ],
-    [   
-        len(_raw_quotes),
-        len(_raw_fortunes)
-    ]
-)
+class MarkovFortuneGen(BaseFortuneGen):
+    def __init__(self, corpus: typing.List[str], state_size: int):
+        self.model = markovify.combine([markovify.Text(c, state_size=state_size) for c in corpus])
+
+    def generate(self, min_words: int, max_words: int, tries: int, *args, **kwargs):
+        return self.model.make_sentence(min_words=min_words, max_words=max_words, tries=tries, *args, **kwargs)
+
+import nltk
+from nltk import word_tokenize
+from nltk.util import ngrams
+from collections import defaultdict, Counter
+import random
+
+# nltk.download('punkt')
+
+class NltkFortuneGen(BaseFortuneGen):
+    def __init__(self, corpus: typing.List[str], state_size: int):
+        corpus = ". ".join(corpus).lower()
+
+        self.starts = set()
+        for sentence in corpus.split('.'):
+            if not sentence: continue
+            split = sentence.lstrip().split()
+            if len(split) < 2: continue
+            self.starts.add(" ".join(split[:2]))
+
+        self.starts = list(self.starts)
+        random.shuffle(self.starts)
+        logger.debug(f"starts = {self.starts}")
+        
+        self._tokens = word_tokenize(corpus)
+        _ngrams = list(ngrams(self._tokens, state_size))
+        logger.debug(f"ngrams = {_ngrams}")
+        self.model = defaultdict(Counter)
+
+        for _ngram in _ngrams:
+            self.model[(_ngram[0], _ngram[1])][_ngram[2]] += 1
+
+    def generate(self, min_words: int, max_words: int, tries: int, seps: typing.List[str], *args, **kwargs):
+        # sentence = random.choices(self._tokens, k=2)
+        # sentence = ['you', 'will']
+        # Rotate
+        for attempt in range(tries):
+            try:
+                sentence = self.starts[0].split()
+                self.starts = self.starts[1:] + [self.starts[0]]
+
+                words = random.choice(list(range(min_words, max_words)))
+                logger.debug(f"Generating {words} words starting with {sentence}")
+                # logger.debug(f"test: {self.starts}")
+                
+                for _ in range(words):
+                    most_common = self.model[tuple(sentence[-2:])].most_common()
+                    logger.debug(f"most_common={most_common}")
+                    next_word = random.choices([x[0] for x in most_common], weights=[x[1] for x in most_common])[0]
+                    sentence.append(next_word)
+
+                logger.debug(f"sentence={sentence}")
+                sentence.reverse()
+                for sep in seps:
+                    idx = sentence.index(sep)
+                    logger.debug(f"sep={sep}, idx={len(sentence) - idx}")
+                    if len(sentence) - idx >= min_words: 
+                        if idx > 0:
+                            joined = ' '.join(sentence[:idx-1:-1])
+                        else:
+                            joined = ' '.join(sentence[::-1])
+                        separators_order = [item for item in sentence if item in seps]
+                        for ssep in seps:
+                            joined = joined.replace(ssep, ".")
+                        return "{}".join([p.lstrip().capitalize() for p in joined.split(" .")]).format(*[f"{x} " for x in separators_order]).replace(" n't", "n't")
+                        # for ssep in seps:
+                        #     logger.debug(f"[{ssep}] joined={joined}")
+                        #     joined = f"{ssep} ".join([phrase.lstrip().capitalize() for phrase in joined.split(ssep)]).replace(f" {ssep}", ssep)
+                        # joined = ", ".join([phrase.lstrip() for phrase in joined.split(",")]).replace(f" ,", ",")
+                        # return joined
+                logger.debug(f"Sentence too short with all separators: {sentence}")
+                
+            except:
+                logger.debug(f"Error generating sentence ({attempt})")
+        return "None :c"
+    
+# TODO Keras model https://stackabuse.com/python-for-nlp-deep-learning-text-generation-with-keras/
+
+class GenManager:
+    def __init__(self, models: typing.Dict[str, typing.Tuple[BaseFortuneGen, typing.Dict[str, typing.Any]]]):
+        self.models = {}
+        self.model_args = {}
+        for model in models:
+            self.models[model] = models[model][0]
+            self.model_args[model] = models[model][1]
+
+    def generate(self, model):
+        if model not in self.models: return "None :c"
+        return self.models[model].generate(**self.model_args[model])
+    
+fortunes_generator = GenManager({
+    "markov": (MarkovFortuneGen([_quotes, _fortunes], 2), {"min_words":5, "max_words":20, "tries":20}),
+    "nltk": (NltkFortuneGen([_quotes, _fortunes], 3), {"min_words":5, "max_words":25, "tries":30, "seps":[".", "?", "!"]}),
+})

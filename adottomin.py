@@ -849,8 +849,12 @@ async def randomcitizens(interaction: discord.Interaction, amount: int):
     await _meme(interaction, "random_citizen", msg=f"Get pinged, {member_mentions}~")
 
 @bot.tree.command(description='Get a random fortune!')
-async def fortune(interaction: discord.Interaction):
-    fortune = memes.generate_fortune()
+@discord.app_commands.describe(model='How to generate your fortune')
+@discord.app_commands.choices(model=[discord.app_commands.Choice(name="markov", value="markov"), discord.app_commands.Choice(name="nltk", value="nltk")])
+async def fortune(interaction: discord.Interaction, model: typing.Optional[discord.app_commands.Choice[str]]="nltk"):
+    if not isinstance(model, str):
+        model = model.value
+    fortune = memes.generate_fortune(model)
     random.seed(hash(memes.prepared_content(str(interaction.user.id))))
     total_nums = list(range(100))
     random.shuffle(total_nums)
