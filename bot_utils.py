@@ -277,7 +277,7 @@ class utils:
         await self._enforce_not_dms(msg)
         member_list = [msg.guild.get_member(id) for id in ghostpings.get_everyone_allowlist(self.database)] if msg.mention_everyone else msg.mentions
         # self.logger.debug(f"handle_offline_mentions: {member_list}")
-        additional = " (using @everyone)" if msg.mention_everyone else ""
+        who = "@everyone" if msg.mention_everyone else "you"
         for member in member_list:
             if not member: continue
             will_send = not self._is_self_mention(msg, member) and ghostpings.compute_user_bitmask(member, self.database) and msg.channel.permissions_for(member).view_channel
@@ -286,9 +286,9 @@ class utils:
             fmt_msg_chain = await self._format_msg_chain(member, msg)
 
             if msg.author.bot:
-                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you{self._interaction_detail(msg.interaction)} in {msg.channel.name}{additional} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
+                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged {who}{self._interaction_detail(msg.interaction)} in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
             else:
-                content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name}{additional} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
+                content = f"Hi {member.name}! {msg.author.mention} pinged {who} in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
             if not self.database.is_alert_registered(member.id, db.once_alerts.offline_pings):
                 content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
                 self.database.register_alert(member.id, db.once_alerts.offline_pings)
