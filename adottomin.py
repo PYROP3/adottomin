@@ -1925,7 +1925,7 @@ bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
 bot.tree.add_command(graphlytics.Analytics(utils))
 bot.tree.add_command(shipper.Relationship(sql, utils))
-bot.tree.add_command(modnotes.Modnotes(sql, utils))
+bot.tree.add_command(modnotes.Modnotes(sql, utils, bot))
 bot.tree.add_command(ghostpings.Ghostpings(sql, utils))
 
 @bot.tree.command(description='Find explanations for specific kinks')

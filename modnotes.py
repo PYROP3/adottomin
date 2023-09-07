@@ -144,9 +144,10 @@ class NotesWindowModal(discord.ui.Modal, title="User notes editor"):
         self.handler._cb_on_free(self.user_id)
 
 class modnotes_handler:
-    def __init__(self, sql: db.database, utils: bot_utils.utils):
+    def __init__(self, sql: db.database, utils: bot_utils.utils, bot: discord.Client):
         self.sql = sql
         self.utils = utils
+        self.bot = bot
         self.locks = {}
 
         self.logger = botlogger.get_logger(f"{__name__}::modnotes_handler")
@@ -162,8 +163,12 @@ class modnotes_handler:
         self.locks[user.id] = interaction.user.id
         
         latest_revision, content, mod_id, updated_at = self.sql.get_modnote(user.id) or (0, '', None, None)
+        self.logger.debug(f"edit_modnote: mod_id={mod_id}")
 
-        moderator = mod_id and await interaction.guild.fetch_member(mod_id)
+        try:
+            moderator = mod_id and await interaction.guild.fetch_member(mod_id)
+        except discord.errors.NotFound:
+            moderator = await self.bot.fetch_user(mod_id)
         
         window = NotesWindowModal(interaction, self, user, latest_revision, content, moderator, updated_at)
         return await interaction.response.send_modal(window)
@@ -173,11 +178,12 @@ class modnotes_handler:
 
 @discord.app_commands.guild_only()
 class Modnotes(discord.app_commands.Group):
-    def __init__(self, database: db.database, utils: bot_utils.utils):
+    def __init__(self, database: db.database, utils: bot_utils.utils, bot: discord.Client):
         super().__init__()
         self.database = database
         self.utils = utils
-        self.handler = modnotes_handler(database, utils)
+        self.bot = bot
+        self.handler = modnotes_handler(database, utils, bot)
 
         self.logger = botlogger.get_logger(f"{__name__}::Modnotes")
     
@@ -186,11 +192,17 @@ class Modnotes(discord.app_commands.Group):
         self.logger.info(f"{interaction.user} requested modnotes edit: {user}")
         await self.handler.edit_modnote(interaction, user)
     
-    @discord.app_commands.command(description='Fetch a user\'s mod note')
-    @discord.app_commands.describe(revision='Which version of the note to retrieve (will retrieve latest by default)')
-    async def get(self, interaction: discord.Interaction, user: discord.Member, revision: typing.Optional[int]=None):
-        self.logger.info(f"{interaction.user} requested modnotes get: {user}")
+    @discord.app_commands.command(description='Create or edit a user\'s mod note (be aware this can be seen by the entire mod team)')
+    async def editalt(self, interaction: discord.Interaction, user_id: str):
+        self.logger.info(f"{interaction.user} requested modnotes edit alt: {user_id}")
+        try:
+            user = await self.bot.fetch_user(user_id)
+        except:
+            await self.utils.safe_send(interaction, content=f"I couldn't find that user... :c", ephemeral=True)
+            return
+        await self.handler.edit_modnote(interaction, user)
 
+    async def get_modnote(self, interaction: discord.Interaction, user: discord.Member, revision: typing.Optional[int]=None):
         raw_data = self.database.get_modnote(user.id, revision=revision)
         if not raw_data:
             await self.utils.safe_send(interaction, content=f"I couldn't find notes for that user...", ephemeral=True)
@@ -209,11 +221,25 @@ class Modnotes(discord.app_commands.Group):
         embed.set_footer(text=f"v{actual_revision} submitted by {moderator} on {self.utils.timestamp(when=updated_at.astimezone(datetime.timezone.utc))}")
 
         await self.utils.safe_send(interaction, embed=embed, ephemeral=True)
+    
+    @discord.app_commands.command(description='Fetch a user\'s mod note')
+    @discord.app_commands.describe(revision='Which version of the note to retrieve (will retrieve latest by default)')
+    async def get(self, interaction: discord.Interaction, user: discord.Member, revision: typing.Optional[int]=None):
+        self.logger.info(f"{interaction.user} requested modnotes get: {user}")
+        await self.get_modnote(interaction, user, revision=revision)
+    
+    @discord.app_commands.command(description='Fetch a user\'s mod note')
+    @discord.app_commands.describe(revision='Which version of the note to retrieve (will retrieve latest by default)')
+    async def getalt(self, interaction: discord.Interaction, user_id: str, revision: typing.Optional[int]=None):
+        self.logger.info(f"{interaction.user} requested modnotes get alt: {user_id}")
+        try:
+            user = await self.bot.fetch_user(user_id)
+        except:
+            await self.utils.safe_send(interaction, content=f"I couldn't find that user... :c", ephemeral=True)
+            return
+        await self.get_modnote(interaction, user, revision=revision)
 
-    @discord.app_commands.command(description='Fetch a user\'s browsable mod note')
-    async def browse(self, interaction: discord.Interaction, user: discord.Member):
-        self.logger.info(f"{interaction.user} requested modnotes browse: {user}")
-
+    async def browse_modnotes(self, interaction: discord.Interaction, user: discord.Member):
         if not await self.utils.ensure_secretary(interaction): return
 
         raw_data = self.database.get_modnote(user.id)
@@ -231,4 +257,19 @@ class Modnotes(discord.app_commands.Group):
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none())
             # content=browse_view.content_text, 
+
+    @discord.app_commands.command(description='Fetch a user\'s browsable mod note')
+    async def browse(self, interaction: discord.Interaction, user: discord.Member):
+        self.logger.info(f"{interaction.user} requested modnotes browse: {user}")
+        await self.browse_modnotes(interaction, user)
+
+    @discord.app_commands.command(description='Fetch a user\'s browsable mod note')
+    async def browsealt(self, interaction: discord.Interaction, user_id: str):
+        self.logger.info(f"{interaction.user} requested modnotes browse: {user_id}")
+        try:
+            user = await self.bot.fetch_user(user_id)
+        except:
+            await self.utils.safe_send(interaction, content=f"I couldn't find that user... :c", ephemeral=True)
+            return
+        await self.browse_modnotes(interaction, user)
 
