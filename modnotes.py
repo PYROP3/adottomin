@@ -34,7 +34,7 @@ class DirectionalButton(discord.ui.Button):
 
 class NotesBrowseView(discord.ui.View):
 
-    def __init__(self, interaction: discord.Interaction, user: discord.Member, revision: int, sql: db.database, utils: bot_utils.utils):
+    def __init__(self, interaction: discord.Interaction, user: discord.Member, revision: int, sql: db.database, utils: bot_utils.utils, bot: discord.Client):
         super().__init__()
         self.logger = botlogger.get_logger(f"{__name__}::NotesBrowseView")
         self.logger.setLevel("INFO")
@@ -44,6 +44,7 @@ class NotesBrowseView(discord.ui.View):
         self.max_revision = revision
         self.sql = sql
         self.utils = utils
+        self.bot = bot
 
         self.creator = interaction.user
 
@@ -78,7 +79,10 @@ class NotesBrowseView(discord.ui.View):
             timestamp=datetime.datetime.now()
         )
 
-        moderator = mod_id and await self.interaction.guild.fetch_member(mod_id)
+        try:
+            moderator = mod_id and await self.interaction.guild.fetch_member(mod_id)
+        except discord.errors.NotFound:
+            moderator = await self.bot.fetch_user(mod_id)
 
         embed.set_author(name=f'{self.target_user}\'s mod notes', icon_url=self.target_user.avatar.url)
         embed.add_field(name="Content", value=content, inline=False)
@@ -249,7 +253,7 @@ class Modnotes(discord.app_commands.Group):
         
         actual_revision, content, _, _ = raw_data
 
-        browse_view = NotesBrowseView(interaction, user, actual_revision, self.database, self.utils)
+        browse_view = NotesBrowseView(interaction, user, actual_revision, self.database, self.utils, self.bot)
 
         await self.utils.safe_send(interaction, 
             embed=await browse_view._get_content_as_embed(),
