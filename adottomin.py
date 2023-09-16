@@ -801,6 +801,7 @@ user_meme_cmds = {
     'peace': ('peace', 'Good for you'),
     'silence': ('silence', 'Bzzoooommmm!'),
     'neat': ('neat', "I just think they're neat!"),
+    'woaaaa': ('woaaaa', 'So cooool...'),
 }
 
 for cmd in user_meme_cmds:
