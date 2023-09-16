@@ -74,9 +74,9 @@ def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox:
 def paste_centered(icon, ic_size, base, pos, rot):
     if icon is None: return
     with Image.open(icon) as ic:
-        ic = ic.resize(ic_size)
+        ic = ic.resize(ic_size).convert('RGBA')
         if rot:
-            ic = ic.convert('RGBA').rotate(rot, expand=True)
+            ic = ic.rotate(rot, expand=True)
             # aux = ic.convert('RGBA')
             # ro = aux.rotate(rot, expand=True)
             # mask = Image.new('RGBA', ro.size, (255,255,255,255))
