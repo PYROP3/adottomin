@@ -799,7 +799,8 @@ user_meme_cmds = {
     'walt': ('walt', 'Put it away'),
     'simpcard': ('simpcard', 'Officially recognized'),
     'peace': ('peace', 'Good for you'),
-    'silence': ('silence', 'Bzzoooommmm!')
+    'silence': ('silence', 'Bzzoooommmm!'),
+    'neat': ('neat', "I just think they're neat!"),
 }
 
 for cmd in user_meme_cmds:

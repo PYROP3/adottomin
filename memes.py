@@ -136,6 +136,7 @@ def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
                     for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
         if id == "mistletoe": return[_args_text(f"Next {text} people to talk", (700, 80), (400, 50)), _args_text(f"have to kiss~", (700, 80), (400, 550))]
         if id == "silence": return[_args_text(text, (300, 80), (463, 50), fill=(255,255,255,255)), _args_icon(icon, (115, 115), (100, 380), rotation=30.)]
+        if id == "neat": return[_args_icon(icon, (165, 165), (107, 189))]
 
 def create_meme(id: str, author_icon: str=None, icon: str=None, text: str=None):
     return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, author_icon=author_icon, icon=icon, text=text))
