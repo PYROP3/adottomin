@@ -41,6 +41,7 @@ class age_handler:
         self.mod = mod
         self.valid_role_ids = valid_role_ids
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
+        self.returning_users = set()
 
         self.logger = botlogger.get_logger(__name__)
         
@@ -57,6 +58,9 @@ class age_handler:
         self.greeting_channel = greeting_channel
         self.tally_channel = tally_channel
         self.log_channel = log_channel
+
+    def on_returning_user(self, user: discord.Member):
+        self.returning_users.add(user.id)
 
     async def handle_age(self, msg: discord.Message):
         if len(msg.content) == 0: return
@@ -108,13 +112,15 @@ class age_handler:
                         self.logger.debug(f"Message sent in DMchannel")
                         await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
 
-                    gave_roles, missing_roles = await self.utils.give_returnee_roles(msg.author.id)
-                    if gave_roles:
-                        self.logger.debug(f"Success giving returnee roles to {msg.author}")
-                        content = MSG_ROLES_RETURNED.format(msg.author.mention)
-                        if missing_roles:
-                            content += MSG_MISSING_ROLES.format(", ".join([role.mention for role in missing_roles]))
-                        await self.greeting_channel.send(content, allowed_mentions=discord.AllowedMentions.none())
+                    if msg.author.id in self.returning_users:
+                        gave_roles, missing_roles = await self.utils.give_returnee_roles(msg.author.id)
+                        if gave_roles:
+                            self.logger.debug(f"Success giving returnee roles to {msg.author}")
+                            content = MSG_ROLES_RETURNED.format(msg.author.mention)
+                            if missing_roles:
+                                content += MSG_MISSING_ROLES.format(", ".join([role.mention for role in missing_roles]))
+                            await self.greeting_channel.send(content, allowed_mentions=discord.AllowedMentions.none())
+                        self.returning_users.remove(msg.author.id)
 
                     return
 

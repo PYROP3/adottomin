@@ -559,6 +559,7 @@ async def on_member_join(member: discord.Member):
         try:
             old_aliases = utils.get_unique_aliases(member)
             if len(old_aliases) > 0: # Returning user
+                age_handler.on_returning_user(member)
                 if member.display_name not in old_aliases: # New display name
                     exclusive_aliases = [f" Or should I say, {alias}?" for alias in old_aliases if alias != member.display_name]
                 else: # Same display name
