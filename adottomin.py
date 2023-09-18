@@ -873,7 +873,7 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
         await utils.safe_send(interaction, content=f"No selfcest, {interaction.user.mention}!")
         return
 
-    if (user.id == bot.user.id):
+    if (user.id == bot.user.id) and (interaction.user.id != admin_id):
         await utils.safe_send(interaction, content=f"I'm not shipping myself with you, {interaction.user.mention}~")
         return
 
@@ -881,9 +881,14 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
         await utils.safe_send(interaction, content=f"{user} requested not to be shipped~", ephemeral=True)
         return
 
-    smaller = min(int(user.id), int(interaction.user.id))
-    bigger = max(int(user.id), int(interaction.user.id))
-    pct, nice = memes.percent_from(f"ship/{smaller}/{bigger}")
+    if (user.id == bot.user.id) and (user.id == admin_id):
+        pct, nice = 100, ""
+        user_mention = "me"
+    else:
+        smaller = min(int(user.id), int(interaction.user.id))
+        bigger = max(int(user.id), int(interaction.user.id))
+        pct, nice = memes.percent_from(f"ship/{smaller}/{bigger}")
+        user_mention = user.mention
 
     if pct == 69:
         emote = ":sunglasses:"
@@ -896,7 +901,7 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
     else:
         emote = ":revolving_hearts:"
 
-    await utils.safe_send(interaction, content=f"The ship compatibility between {interaction.user.mention} and {user.mention} today is {emote} {pct}%{nice} :3", send_anyway=True)
+    await utils.safe_send(interaction, content=f"The ship compatibility between {interaction.user.mention} and {user_mention} today is {emote} {pct}%{nice} :3", send_anyway=True)
 
 @bot.tree.command(description='Ship yourself with people!')
 @discord.app_commands.describe(user1='Who to ship you with', user2='Who else to ship you with')
