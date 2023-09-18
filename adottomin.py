@@ -1909,6 +1909,59 @@ async def purgemessages(interaction: discord.Interaction, user: typing.Optional[
     # await msg.edit(content=f"Purge of user <@{userid}> completed, boss!")
     await interaction.edit_original_response(content=f"Purge of user <@{userid}> completed, boss!")
 
+@bot.tree.context_menu(name="Find sauce")
+async def sauce(interaction: discord.Interaction, msg: discord.Message):
+    log_info(interaction, f"{interaction.user} is requesting sauce for image in {msg.id}")
+
+    amount = len(msg.attachments)
+    if amount < 1:
+        await utils.safe_send(interaction, content="There are no images in that message, silly~", ephemeral=True)
+        return
+    if amount > 1:
+        await utils.safe_send(interaction, content="There are multiple images in that message, idk which one you want silly~", ephemeral=True)
+        return
+    
+    result = utils.core_find_sauce(msg.attachments[0].url)
+
+    if result is None:
+        await utils.safe_send(interaction, content="I couldn't get the sauce :c", ephemeral=True)
+        return
+
+    if len(result) == 0:
+        await utils.safe_send(interaction, content="I couldn't find a sauce for that :c", ephemeral=True)
+        return
+    
+    msg = '\n'.join([f'- {res}' for res in result])
+    link = 'link' if len(result) == 1 else 'links'
+    await utils.safe_send(interaction, content=f"I found the following {link} for your pic:\n{msg}", ephemeral=True)
+
+@bot.tree.command(description='Find the sauce for an image (from an URL)')
+@discord.app_commands.describe(url='Link to image (right click, copy link)', file='Upload an image to find sauce')
+async def sauce(interaction: discord.Interaction, url: typing.Optional[str], file: typing.Optional[discord.Attachment]):
+    log_info(interaction, f"{interaction.user} is requesting sauce for {url}/{file}")
+    if not url and not file:
+        await utils.safe_send(interaction, content="Please give either a URL or upload a file~", ephemeral=True)
+        return
+    
+    if url and file:
+        await utils.safe_send(interaction, content="You can't give BOTH a URL and a file, silly~", ephemeral=True)
+        return
+    
+    url = url if url else file.url
+    result = utils.core_find_sauce(url)
+
+    if result is None:
+        await utils.safe_send(interaction, content="I couldn't get the sauce :c", ephemeral=True)
+        return
+
+    if len(result) == 0:
+        await utils.safe_send(interaction, content="I couldn't find a sauce for that :c", ephemeral=True)
+        return
+    
+    msg = '\n'.join([f'- {res}' for res in result])
+    link = 'link' if len(result) == 1 else 'links'
+    await utils.safe_send(interaction, content=f"I found the following {link} for your pic:\n{msg}", ephemeral=True)
+
 @bot.tree.command(description='Ban a user')
 @discord.app_commands.describe(user='Who to ban', reason='Reason for the ban')
 async def ban(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):

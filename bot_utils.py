@@ -7,6 +7,7 @@ import msg_handler_manager
 import queue
 import random
 import re
+import requests
 import string
 import subprocess
 import time
@@ -20,12 +21,14 @@ import propervider as p
 
 from datetime import datetime, timedelta
 from discord.ext import commands
+from bs4 import BeautifulSoup
 try:
     from ipcqueue import sysvmq
 except ImportError:
     sysvmq = None
 
 AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
+SAUCENAO_URL = 'https://saucenao.com/search.php'
 
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 
@@ -313,6 +316,18 @@ class utils:
         except Exception as e:
             self.logger.error(f"Error while trying to get avatar: {e}\n{traceback.format_exc()}")
             return None
+        
+    def core_find_sauce(self, url: str):
+        def _iterate_valid(results):
+            for result in results:
+                if 'hidden' in result['class']: continue
+                links = result.find_all('a')
+                if links:
+                    yield links[1]['href']
+        response = requests.post(SAUCENAO_URL, {'file': '(binary)', 'url': url})
+        if response.status_code != 200: return None
+        soup = BeautifulSoup(response.text, 'html.parser')
+        return list(_iterate_valid(soup.find_all('div', {'class':'result'})))
 
     def _get_display_name(self, user: typing.Optional[discord.Member]):
         if user is None: return None
