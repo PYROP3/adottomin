@@ -322,7 +322,7 @@ class utils:
             for result in results:
                 if 'hidden' in result['class']: continue
                 links = result.find_all('a')
-                if links:
+                if links and len(links) > 1:
                     yield links[1]['href']
         response = requests.post(SAUCENAO_URL, {'file': '(binary)', 'url': url})
         if response.status_code != 200: return None
