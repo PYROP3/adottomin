@@ -1980,13 +1980,19 @@ async def mute(interaction: discord.Interaction, user: discord.Member, duration:
         await utils.safe_send(interaction, content="You must provide a valid time value, dummy! like 5m or 2h or whatever", ephemeral=True)
         return
     await mod.core_mute(user, until, interaction, reason_notif=reason, moderator=interaction.user)
+    
+modnotes_handler = modnotes.Modnotes(sql, utils, bot)
+@bot.tree.context_menu(name="Edit modnotes")
+async def context_edit_modnotes(interaction: discord.Interaction, user: discord.Member):
+    logger.info(f"{interaction.user} requested modnotes edit: {user}")
+    await modnotes_handler.handler.edit_modnote(interaction, user)
 
 bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
 bot.tree.add_command(kinks.Kinklist(sql, utils))
 bot.tree.add_command(games.Game(utils, bot))
 bot.tree.add_command(graphlytics.Analytics(utils))
 bot.tree.add_command(shipper.Relationship(sql, utils))
-bot.tree.add_command(modnotes.Modnotes(sql, utils, bot))
+bot.tree.add_command(modnotes_handler)
 bot.tree.add_command(ghostpings.Ghostpings(sql, utils))
 
 @bot.tree.command(description='Find explanations for specific kinks')

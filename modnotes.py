@@ -190,7 +190,7 @@ class Modnotes(discord.app_commands.Group):
         self.handler = modnotes_handler(database, utils, bot)
 
         self.logger = botlogger.get_logger(f"{__name__}::Modnotes")
-    
+
     @discord.app_commands.command(description='Create or edit a user\'s mod note (be aware this can be seen by the entire mod team)')
     async def edit(self, interaction: discord.Interaction, user: discord.Member):
         self.logger.info(f"{interaction.user} requested modnotes edit: {user}")
