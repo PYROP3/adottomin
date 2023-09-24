@@ -140,6 +140,7 @@ class age_handler:
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{self.greeting_channel}] {member} Will ban user (force={force_ban})")
             await self.mod.core_ban(member, self.greeting_channel, reason_notif=reason, reason_log=f"{reason} ({age})", moderator=self.bot.user)
+            await self.do_tally()
             self.sql.remove_kick(member.id)
 
         else:
