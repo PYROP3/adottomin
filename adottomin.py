@@ -881,7 +881,7 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
         await utils.safe_send(interaction, content=f"{user} requested not to be shipped~", ephemeral=True)
         return
 
-    if (user.id == bot.user.id) and (user.id == admin_id):
+    if (user.id == bot.user.id) and (interaction.user.id == admin_id):
         pct, nice = 100, ""
         user_mention = "me"
     else:
