@@ -126,7 +126,7 @@ class utils:
     async def _enforce_not_dms(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.channel.type == discord.ChannelType.private: raise e()
 
-    async def _enforce_has_role(self, msg, roles: set[int], e: HandlerException=HandlerIgnoreException):
+    async def _enforce_has_role(self, msg: discord.Message, roles: set[int], e: HandlerException=HandlerIgnoreException):
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
@@ -141,6 +141,18 @@ class utils:
         author_roles = await self.get_roles(msg.author.id, e=e)
         # self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
+
+    # async def check_has_role(self, user: discord.Member, role: int):
+    #     if self.guild is None:
+    #         self.logger.warning(f"Utils guild link is still not ready")
+    #         return False
+        
+    #     try:
+    #         author_roles = await self.get_roles(user.id)
+    #         # self.logger.debug(f"Comparing user {author_roles} to {roles}")
+    #         return role in set([role.id for role in author_roles])
+    #     except:
+    #         return False
 
     async def get_roles(self, author_id: int, e: HandlerException=HandlerIgnoreException):
         if self.guild is None:

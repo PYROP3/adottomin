@@ -1629,7 +1629,7 @@ async def hornyjail(interaction: discord.Interaction, user: discord.Member, mess
 async def hornyprison(interaction: discord.Interaction, user: discord.Member):
     duration = 3 * 60
     log_info(interaction, f"{interaction.user} is imprisoning {user} for {duration} minutes")
-    if not await utils.ensure_queen(interaction): return
+    #if not await utils.ensure_queen(interaction): return
 
     await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
@@ -1637,7 +1637,7 @@ async def hornyprison(interaction: discord.Interaction, user: discord.Member):
 @discord.app_commands.describe(user='User to unjail') #, duration='How long to jail them for, in minutes (default is 5)')
 async def hornyunjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
     log_info(interaction, f"{interaction.user} is unjailing {user}")
-    if not await utils.ensure_queen(interaction): return
+    #if not await utils.ensure_queen(interaction): return
 
     success = sql.jail_register_unjailing(user.id, interaction.user.id)
 
@@ -1900,6 +1900,11 @@ async def purgemessages(interaction: discord.Interaction, user: typing.Optional[
     except:
         await utils.safe_send(interaction, content="That's not a valid user id...", ephemeral=True)
         return
+    
+    # if userid != interaction.user.id:
+    #     if not await utils.check_has_role(interaction.user, secretary_role_id):
+    #         await utils.safe_send(interaction, content="You may only purge your own messages, silly! Ask a mod to purge someone else's message if necessary", ephemeral=True)
+    #         return
 
     await utils.safe_send(interaction, content=f"Purge in progress for user <@{userid}>...", ephemeral=True)
 
