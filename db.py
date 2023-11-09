@@ -32,8 +32,8 @@ aliases_version = 1
 aliases_db_file = _dbfile('aliases', aliases_version)
 worldmap_version = 1
 worldmap_db_file = _dbfile('worldmap', worldmap_version)
-nnn_2022_version = 1
-nnn_2022_db_file = _dbfile('nnn_2022', nnn_2022_version)
+nnn_2023_version = 1
+nnn_2023_db_file = _dbfile('nnn_2023', nnn_2023_version)
 nuts_version = 1
 nuts_db_file = _dbfile('nuts', nuts_version)
 attachments_version = 2
@@ -72,7 +72,7 @@ sql_files = [
     pins_archive_db_file,
     aliases_db_file,
     worldmap_db_file,
-    nnn_2022_db_file,
+    nnn_2023_db_file,
     nuts_db_file,
     attachments_db_file,
     kinks_db_file,
@@ -166,7 +166,7 @@ schemas = {
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
-    nnn_2022_db_file: ['''
+    nnn_2023_db_file: ['''
             CREATE TABLE users (
                 user int NOT NULL,
                 wager int,
@@ -774,7 +774,7 @@ class database:
     
     def nnn_join(self, user, wager=False):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             cur.execute("INSERT INTO users VALUES (?, ?, ?)", [user, 1 if wager else 0, datetime.datetime.now()])
             con.commit()
@@ -785,7 +785,7 @@ class database:
 
     def nnn_status(self, user):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             res = cur.execute("SELECT * FROM users WHERE user=:id", {"id": user}).fetchone()
             con.commit()
@@ -796,7 +796,7 @@ class database:
     
     def nnn_fail(self, user):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             cur.execute("INSERT INTO failed VALUES (?, ?)", [user, datetime.datetime.now()])
             con.commit()
@@ -807,7 +807,7 @@ class database:
 
     def nnn_count(self):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             res1 = cur.execute("SELECT count(*) FROM users").fetchone()
             res2 = cur.execute("SELECT count(*) FROM failed").fetchone()
