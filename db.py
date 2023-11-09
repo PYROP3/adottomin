@@ -90,7 +90,7 @@ sql_files = [
 ]
 
 class once_alerts(enum.Enum):
-    offline_pings=1
+    offline_pings=2
 
 schemas = {
     validations_db_file: ['''
