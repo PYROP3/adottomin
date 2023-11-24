@@ -1195,27 +1195,30 @@ async def agealt(interaction: discord.Interaction, user_id: str):
     log_debug(interaction, f"{msg}")
     await utils.safe_send(interaction, content=msg, ephemeral=True, is_followup=True)
 
-@bot.tree.command(description='Generate a copy pasta')
-@discord.app_commands.describe(pasta='Copy pasta', name='Who your pasta is about', pronouns='Which pronouns to use')
-@discord.app_commands.choices(
-    pasta=[discord.app_commands.Choice(name=p, value=p) for p in copypasta_utils.AVAILABLE_PASTAS],
-    pronouns=[discord.app_commands.Choice(name=p, value=p) for p in copypasta_utils.PRON_OPTS]
-)
-async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Choice[str], name: str, pronouns: discord.app_commands.Choice[str]):
-    _pasta = pasta.value
-    _pronouns = pronouns.value
-    log_info(interaction, f"{interaction.user} requested copypasta: {_pasta} for {name} ({_pronouns})")
+if copypasta_utils.AVAILABLE_PASTAS:
+    @bot.tree.command(description='Generate a copy pasta')
+    @discord.app_commands.describe(pasta='Copy pasta', name='Who your pasta is about', pronouns='Which pronouns to use')
+    @discord.app_commands.choices(
+        pasta=[discord.app_commands.Choice(name=p, value=p) for p in copypasta_utils.AVAILABLE_PASTAS],
+        pronouns=[discord.app_commands.Choice(name=p, value=p) for p in copypasta_utils.PRON_OPTS]
+    )
+    async def pasta(interaction: discord.Interaction, pasta: discord.app_commands.Choice[str], name: str, pronouns: discord.app_commands.Choice[str]):
+        _pasta = pasta.value
+        _pronouns = pronouns.value
+        log_info(interaction, f"{interaction.user} requested copypasta: {_pasta} for {name} ({_pronouns})")
 
-    if "botto" in name.lower():
-        await utils.safe_send(interaction, content=f"I'm not gonna write myself into your copypasta, {interaction.user.mention}~")
-        return
+        if "botto" in name.lower():
+            await utils.safe_send(interaction, content=f"I'm not gonna write myself into your copypasta, {interaction.user.mention}~")
+            return
 
-    try:
-        msg = f"{interaction.user.mention} says: \"" + copypasta_utils.fill_copypasta(_pasta, name, _pronouns) + "\""
-    except KeyError:
-        msg = "Hmm I can't fill that pasta with the data you provided..."
+        try:
+            msg = f"{interaction.user.mention} says: \"" + copypasta_utils.fill_copypasta(_pasta, name, _pronouns) + "\""
+        except KeyError:
+            msg = "Hmm I can't fill that pasta with the data you provided..."
 
-    await utils.safe_send(interaction, content=msg)
+        await utils.safe_send(interaction, content=msg)
+else:
+    logger.warning(f"No available copypasta data")
 
 @bot.tree.command(description='Start simping for someone!')
 @discord.app_commands.describe(user='Who you wanna simp for')
@@ -1533,7 +1536,7 @@ async def worldmapcount(interaction: discord.Interaction):
 async def joinnnn(interaction: discord.Interaction):#, wager: typing.Optional[bool]):
     log_info(interaction, f"{interaction.user} is joining NNN 2023")
 
-    joined = sql.nnn_join(interaction.user.id, wager or False)
+    joined = sql.nnn_join(interaction.user.id, False)
 
     if joined:
         content = f"Thank you for signing up for NNN 2023, {interaction.user.mention}! GLHF~"
