@@ -20,3 +20,6 @@ def pstr(property:str, required:bool=True, default:str=None):
     if required and not prop and not default:
         raise RuntimeError(f"Missing required env variable {property}")
     return prop or default
+
+def pbool(property:str):
+    return os.getenv(property) == 'y'

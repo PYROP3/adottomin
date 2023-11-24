@@ -1,14 +1,11 @@
 import asyncio
 import datetime
 import sqlite3
-from dateutil import tz
 import discord
 import os
 import random
 import re
-import string
 import traceback
-import time
 import typing
 import urllib.parse
 
@@ -78,16 +75,35 @@ bot_home = os.getenv("BOT_HOME") or os.getcwd()
 GUILD_ID = p.pstr('GUILD_ID')
 GUILD_OBJ = discord.Object(id=GUILD_ID)
 
+FEATURE_ENABLE_WORLDMAP = p.pbool('FEATURE_ENABLE_WORLDMAP')
+FEATURE_ENABLE_SIMPS = p.pbool('FEATURE_ENABLE_SIMPS')
+FEATURE_ENABLE_RELATIONSHIPS = p.pbool('FEATURE_ENABLE_RELATIONSHIPS')
+FEATURE_ENABLE_KINKLIST = p.pbool('FEATURE_ENABLE_KINKLIST')
+FEATURE_ENABLE_GAMES = p.pbool('FEATURE_ENABLE_GAMES')
+FEATURE_ENABLE_GHOSTPINGS = p.pbool('FEATURE_ENABLE_GHOSTPINGS')
+FEATURE_ENABLE_EMOJI_CHAT = p.pbool('FEATURE_ENABLE_EMOJI_CHAT')
+FEATURE_ENABLE_CORKBOARD = p.pbool('FEATURE_ENABLE_CORKBOARD')
+FEATURE_ENABLE_HORNYJAIL = p.pbool('FEATURE_ENABLE_HORNYJAIL')
+FEATURE_ENABLE_TIERS = p.pbool('FEATURE_ENABLE_TIERS')
+FEATURE_ENABLE_MOON = p.pbool('FEATURE_ENABLE_MOON')
+FEATURE_ENABLE_MODERATION = p.pbool('FEATURE_ENABLE_MODERATION')
+FEATURE_ENABLE_PIN_ARCHIVE = p.pbool('FEATURE_ENABLE_PIN_ARCHIVE')
+
 channel_ids = p.plist('CHANNEL_IDS')
 role_ids = p.plist('AGE_ROLE_IDS')
-tally_channel = p.pint('TALLY_CHANNEL_ID')
 nohorny_channels = p.plist('NOHORNY_CHANNEL_IDS', required=False)
 log_channel = p.pint('LOG_CHANNEL_ID')
-ad_channel = p.pint('AD_CHANNEL_ID')
-emojionly_channel = p.pint('EMOJI_CHANNEL_ID')
 chats_home = os.getenv('CHATS_HOME')
 purgeable_channels = p.plist('PURGEABLE_CHANNEL_IDS', required=False)
 chatbot_service = os.getenv('CHATBOT_SERVICE')
+
+tally_channel = p.pint('TALLY_CHANNEL_ID', required=False)
+
+if FEATURE_ENABLE_CORKBOARD:
+    ad_channel = p.pint('AD_CHANNEL_ID')
+
+if FEATURE_ENABLE_EMOJI_CHAT:
+    emojionly_channel = p.pint('EMOJI_CHANNEL_ID')
 
 queen_role_id = p.pint('QUEEN_ROLE_ID')
 owner_role_id = p.pint('OWNER_ROLE_ID')
@@ -95,16 +111,17 @@ divine_role_id = p.pint('DIVINE_ROLE_ID')
 secretary_role_id = p.pint('SECRETARY_ROLE_ID')
 dogretary_role_id = p.pint('DOGRETARY_ROLE_ID')
 nsfw_role_id = p.pint('NSFW_ROLE_ID')
-jail_role_id = p.pint('JAIL_ROLE_ID')
+jail_role_id = p.pint('JAIL_ROLE_ID') if FEATURE_ENABLE_HORNYJAIL else None
 minor_role_id = p.pint('MINOR_ROLE_ID', required=False)
-friends_role_ids = p.plist('FRIENDS_ROLE_IDS')
+friends_role_ids = p.plist('FRIENDS_ROLE_IDS') if FEATURE_ENABLE_TIERS else None
 moon_role_id = p.pint('MOON_ROLE_ID', required=False)
-ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID')
+ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID') if FEATURE_ENABLE_CORKBOARD else None
 
 game_channel_ids = p.plist('GAME_CHANNEL_IDS')
 
-pin_archive_channel_id = p.pint('PIN_ARCHIVE_CHANNEL_ID')
-pin_archive_blocklist_ids = p.plist('PIN_ARCHIVE_BLOCKLIST_IDS')
+if FEATURE_ENABLE_PIN_ARCHIVE:
+    pin_archive_channel_id = p.pint('PIN_ARCHIVE_CHANNEL_ID')
+    pin_archive_blocklist_ids = p.plist('PIN_ARCHIVE_BLOCKLIST_IDS')
 
 admin_id = p.pint('ADMIN_ID')
 _aux = os.getenv('POI_USER_IDS')
@@ -112,7 +129,8 @@ poi_user_ids = [int(id) for id in _aux.split('.') if id != ""]
 
 pendelton_mode = False
 
-ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id, friends_role_ids[0]]).difference(set([None, 0]))
+_first_tier_role = friends_role_ids[0] if friends_role_ids else None
+ignore_roles_for_database = set([jail_role_id, minor_role_id, ad_poster_role_id, _first_tier_role]).difference(set([None, 0]))
 
 usernames_blocked = [
     "pendelton",
@@ -161,16 +179,23 @@ def log_error(interaction: discord.Interaction, msg: str):
 logger.info(f"Channel ID = {channel_ids[0]}")
 logger.info(f"Guild ID = {GUILD_ID}")
 logger.info(f"Role IDs = {role_ids}")
-logger.info(f"Tallly channel IDs = {tally_channel}")
+logger.info(f"Tallly channel ID = {tally_channel}")
 
 mhm = msg_handler_manager.HandlerManager(admin_id, bot)
 sql = db.database(LENIENCY_COUNT)
 utils = bot_utils.utils(bot, sql, mhm, [divine_role_id, secretary_role_id], chatbot_service)
 mod = moderation.ModerationCore(bot, sql, utils, mhm, secretary_role_id)
 age_handler = age_handling.age_handler(bot, sql, utils, mod, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
-ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
-emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
-nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
+
+if FEATURE_ENABLE_CORKBOARD:
+    ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
+
+if FEATURE_ENABLE_EMOJI_CHAT:
+    emojionly_handler = emojionly.emojionly_handler(bot, sql, emojionly_channel)
+
+if FEATURE_ENABLE_HORNYJAIL:
+    nohorny_handler = nohorny.horny_handler(bot, utils, sql, nohorny_channels, jail_role_id)
+
 mistletoe_handler = mistletoe.mistletoe_handler(mhm)
 
 def is_raid_mode():
@@ -219,8 +244,13 @@ async def on_ready():
     await utils.inject_guild(guild)
     await utils.on_utils_setup()
     age_handler.inject(main_channel, bot.get_channel(tally_channel), bot.get_channel(log_channel))
-    ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
-    nohorny_handler.inject(main_channel)
+
+    if FEATURE_ENABLE_CORKBOARD:
+        ad_handler.inject_ad_channel(bot.get_channel(ad_channel))
+
+    if FEATURE_ENABLE_HORNYJAIL:
+        nohorny_handler.inject(main_channel)
+
     mod.inject(bot.get_channel(log_channel))
 
     if REDO_ALL_PINS:
@@ -383,14 +413,18 @@ member_update_handlers = [
     _handle_nsfw_added,
     _handle_minor_role_added,
     _handle_new_alias,
-    _handle_user_role_database,
-    lambda before, after: nohorny_handler.handle_horny_role_toggle(
-        before,
-        after,
-        lambda: mhm.create_dyn_lock(nohorny_handler.handle_horny, before.id),
-        lambda: mhm.remove_dyn_lock(nohorny_handler.handle_horny, before.id)),
-    nohorny_handler.handle_member_remove_horny
+    _handle_user_role_database
 ]
+
+if FEATURE_ENABLE_HORNYJAIL:
+    member_update_handlers += [
+        nohorny_handler.handle_member_remove_horny,
+        lambda before, after: nohorny_handler.handle_horny_role_toggle(
+            before,
+            after,
+            lambda: mhm.create_dyn_lock(nohorny_handler.handle_horny, before.id),
+            lambda: mhm.remove_dyn_lock(nohorny_handler.handle_horny, before.id))
+    ]
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
@@ -418,16 +452,20 @@ mhm.register_static_list([
     utils.handle_failed_command,
     # utils.handle_binary, # has not been needed in a while
     utils.handle_puppeteering,
-    emojionly_handler.handle_emoji_chat
 ])
 
-mhm.register_dynamic(age_handler.handle_age)
-mhm.register_dynamic(nohorny_handler.handle_horny)
-mhm.register_dynamic(utils.handle_cork_board_post)
+message_edit_handlers = []
 
-message_edit_handlers = [
-    emojionly_handler.handle_emoji_chat_edit
-]
+if FEATURE_ENABLE_EMOJI_CHAT:
+    mhm.register_static(emojionly_handler.handle_emoji_chat)
+    message_edit_handlers += [emojionly_handler.handle_emoji_chat_edit]
+
+mhm.register_dynamic(age_handler.handle_age)
+
+if FEATURE_ENABLE_HORNYJAIL:
+    mhm.register_dynamic(nohorny_handler.handle_horny)
+
+mhm.register_dynamic(utils.handle_cork_board_post)
 
 async def execute_handlers(msg: discord.Message, handlers: typing.List[typing.Callable]):
     for handle in handlers:
@@ -475,7 +513,8 @@ async def on_message(msg: discord.Message):
             logger.error(f"[{msg.channel}] Forbidden from deleting blocked word warning")
         return
 
-    await execute_handlers(msg, [utils.handle_offline_mentions])
+    if FEATURE_ENABLE_GHOSTPINGS:
+        await execute_handlers(msg, [utils.handle_offline_mentions])
 
     if msg.author.id == bot.user.id: return
 
@@ -575,11 +614,12 @@ async def on_member_join(member: discord.Member):
             logger.error(f"[{channel}] Error during on_member_join::_handle_new_alias: {e}\n{traceback.format_exc()}")
             await _dm_log_error(f"[{channel}] [reminder] _handle_new_alias\n{e}\n{traceback.format_exc()}")
 
-        try:
-            await member.add_roles(member.guild.get_role(friends_role_ids[0]), reason='Just joined (ty Botto)!')
-        except Exception as e:
-            logger.error(f"[{channel}] Error during on_member_join::add_roles: {e}\n{traceback.format_exc()}")
-            await _dm_log_error(f"[{channel}] [reminder] add_roles\n{e}\n{traceback.format_exc()}")
+        if friends_role_ids:
+            try:
+                await member.add_roles(member.guild.get_role(friends_role_ids[0]), reason='Just joined (ty Botto)!')
+            except Exception as e:
+                logger.error(f"[{channel}] Error during on_member_join::add_roles: {e}\n{traceback.format_exc()}")
+                await _dm_log_error(f"[{channel}] [reminder] add_roles\n{e}\n{traceback.format_exc()}")
 
         must_continue = True
         if (LENIENCY_REMINDER_TIME_S is not None):
@@ -618,52 +658,54 @@ async def on_member_remove(member: discord.Member):
     logger.info(f"{member} exit the guild")
 
     # Remove advertisement (if it exists)
-    await ad_handler.try_remove_advertisement(member.id)
+    if FEATURE_ENABLE_CORKBOARD:
+        await ad_handler.try_remove_advertisement(member.id)
     
     sql.register_leaver(member.id)
 
     for channel_id in purgeable_channels:
         await utils.purge_user_from_channel(bot.get_channel(channel_id), member.id, "User left the server")
 
-@bot.event
-async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):
-    if channel.id in pin_archive_blocklist_ids:
-        logger.debug(f"Ignoring pin update in {channel}")
-        return
+if FEATURE_ENABLE_PIN_ARCHIVE:
+    @bot.event
+    async def on_guild_channel_pins_update(channel: typing.Union[discord.abc.GuildChannel, discord.Thread], last_pin: typing.Optional[datetime.datetime]):
+        if channel.id in pin_archive_blocklist_ids:
+            logger.debug(f"Ignoring pin update in {channel}")
+            return
 
-    try:
         try:
-            all_pins = await channel.pins()
-        except AttributeError:
-            logger.debug(f"{channel} does not have pins")
-            return
-
-        # updated = False
-        
-        pin_channel = await bot.fetch_channel(pin_archive_channel_id)
-        if pin_channel is None:
-            logger.error(f"Pin channel {pin_archive_channel_id} does not exist")
-            await channel.send("I couldn't find the pin archive channels... :c")
-            return
-
-        for pin in all_pins:
             try:
-                if sql.is_pinned(pin.id):
-                    return
-                
-                logger.info(f"Pinning message {pin.id} from channel {channel}")
-                pinEmbed, pinAttachmentFile = await utils.core_message_as_embed(pin, add_jump=True)
-                archived = await pin_channel.send(file=pinAttachmentFile, embed=pinEmbed)
+                all_pins = await channel.pins()
+            except AttributeError:
+                logger.debug(f"{channel} does not have pins")
+                return
 
-                sql.register_pin(pin.id, archived.id)
+            # updated = False
+            
+            pin_channel = await bot.fetch_channel(pin_archive_channel_id)
+            if pin_channel is None:
+                logger.error(f"Pin channel {pin_archive_channel_id} does not exist")
+                await channel.send("I couldn't find the pin archive channels... :c")
+                return
 
-                # if pinAttachmentFile:
-                #     os.remove("trash/" + icon_name)
-            except Exception as e:
-                logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
+            for pin in all_pins:
+                try:
+                    if sql.is_pinned(pin.id):
+                        return
+                    
+                    logger.info(f"Pinning message {pin.id} from channel {channel}")
+                    pinEmbed, pinAttachmentFile = await utils.core_message_as_embed(pin, add_jump=True)
+                    archived = await pin_channel.send(file=pinAttachmentFile, embed=pinEmbed)
 
-    except Exception as e:
-        logger.error(f"Exception while trying to handle pin updates: {e}\n{traceback.format_exc()}")
+                    sql.register_pin(pin.id, archived.id)
+
+                    # if pinAttachmentFile:
+                    #     os.remove("trash/" + icon_name)
+                except Exception as e:
+                    logger.error(f"Exception while trying to handle pin {pin.id}: {e}\n{traceback.format_exc()}")
+
+        except Exception as e:
+            logger.error(f"Exception while trying to handle pin updates: {e}\n{traceback.format_exc()}")
 
 @bot.tree.command(description='Turn raid mode on or off (auto kick or ban)')
 @discord.app_commands.describe(enable='Whether to turn raid mode on or off')
@@ -688,61 +730,62 @@ async def raidmode(interaction: discord.Interaction, enable: discord.app_command
 
     log_debug(interaction, f"raidmode state => {is_raid_mode()}")
 
-@bot.tree.command(description='Turn gatekeep mode on or off (prevent t1 from using chats)')
-@discord.app_commands.describe(enable='Whether to turn gatekeep mode on or off')
-@discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
-async def gatekeep(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
-    await utils.safe_defer(interaction)
+if friends_role_ids:
+    @bot.tree.command(description='Turn gatekeep mode on or off (prevent t1 from using chats)')
+    @discord.app_commands.describe(enable='Whether to turn gatekeep mode on or off')
+    @discord.app_commands.choices(enable=[discord.app_commands.Choice(name="on", value="on"), discord.app_commands.Choice(name="off", value="off")])
+    async def gatekeep(interaction: discord.Interaction, enable: discord.app_commands.Choice[str]):
+        await utils.safe_defer(interaction)
 
-    if enable.value == "on":
-        log_info(interaction, f"{interaction.user} enabled gatekeep")
+        if enable.value == "on":
+            log_info(interaction, f"{interaction.user} enabled gatekeep")
 
-        t1 = interaction.guild.get_role(friends_role_ids[0])
-        newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
-        newperms.update(
-            send_messages=False, 
-            send_messages_in_threads=False, 
-            create_public_threads=False,
-            embed_links=False,
-            attach_files=False,
-            add_reactions=False,
-            use_external_emojis=False,
-            use_external_stickers=False,
-            use_application_commands=False
-        )
-        
-        # log_debug(interaction, f"t1={t1.id} ({t1})")
-        # log_debug(interaction, f"old_perms={t1.permissions}")
-        # log_debug(interaction, f"newperms={newperms}")
-        try:
-            await t1.edit(permissions=newperms)
-            await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_ON.format(interaction.user.mention), is_followup=True, send_anyway=True)
-        except discord.errors.Forbidden:
-            await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
-    else:
-        log_info(interaction, f"{interaction.user} disabled gatekeep")
+            t1 = interaction.guild.get_role(friends_role_ids[0])
+            newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
+            newperms.update(
+                send_messages=False, 
+                send_messages_in_threads=False, 
+                create_public_threads=False,
+                embed_links=False,
+                attach_files=False,
+                add_reactions=False,
+                use_external_emojis=False,
+                use_external_stickers=False,
+                use_application_commands=False
+            )
+            
+            # log_debug(interaction, f"t1={t1.id} ({t1})")
+            # log_debug(interaction, f"old_perms={t1.permissions}")
+            # log_debug(interaction, f"newperms={newperms}")
+            try:
+                await t1.edit(permissions=newperms)
+                await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_ON.format(interaction.user.mention), is_followup=True, send_anyway=True)
+            except discord.errors.Forbidden:
+                await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
+        else:
+            log_info(interaction, f"{interaction.user} disabled gatekeep")
 
-        t1 = interaction.guild.get_role(friends_role_ids[0])
-        newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
-        newperms.update(
-            send_messages=True, 
-            send_messages_in_threads=True, 
-            create_public_threads=True,
-            embed_links=True,
-            attach_files=True,
-            add_reactions=True,
-            use_external_emojis=True,
-            use_external_stickers=True,
-            use_application_commands=True
-        )
-        # log_debug(interaction, f"t1={t1.id} ({t1})")
-        # log_debug(interaction, f"old_perms={t1.permissions}")
-        # log_debug(interaction, f"newperms={newperms}")
-        try:
-            await t1.edit(permissions=newperms)
-            await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_OFF.format(interaction.user.mention), is_followup=True, send_anyway=True)
-        except discord.errors.Forbidden:
-            await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
+            t1 = interaction.guild.get_role(friends_role_ids[0])
+            newperms = discord.permissions.Permissions(permissions=t1.permissions.value)
+            newperms.update(
+                send_messages=True, 
+                send_messages_in_threads=True, 
+                create_public_threads=True,
+                embed_links=True,
+                attach_files=True,
+                add_reactions=True,
+                use_external_emojis=True,
+                use_external_stickers=True,
+                use_application_commands=True
+            )
+            # log_debug(interaction, f"t1={t1.id} ({t1})")
+            # log_debug(interaction, f"old_perms={t1.permissions}")
+            # log_debug(interaction, f"newperms={newperms}")
+            try:
+                await t1.edit(permissions=newperms)
+                await utils.safe_send(interaction, content=MSG_GATEKEEP_MODE_OFF.format(interaction.user.mention), is_followup=True, send_anyway=True)
+            except discord.errors.Forbidden:
+                await utils.safe_send(interaction, content="Forbidden error on editing role...", is_followup=True, send_anyway=True)
 
 async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.Optional[discord.Member]=None, text: str=None, msg=""):
     if not await utils.safe_defer(interaction): return
@@ -1103,59 +1146,61 @@ async def getstrikes(interaction: discord.Interaction, user: discord.Member, all
 
     await utils.safe_send(interaction, content=msg)
 
-@bot.tree.command(description='Promote a user to the next tier')
-@discord.app_commands.describe(user='User to promote')
-async def promote(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} requested promotion for {user}")
-    if not await utils.ensure_secretary(interaction): return
+if FEATURE_ENABLE_TIERS:
+    @bot.tree.command(description='Promote a user to the next tier')
+    @discord.app_commands.describe(user='User to promote')
+    async def promote(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} requested promotion for {user}")
+        if not await utils.ensure_secretary(interaction): return
 
-    _user_roles = [role.id for role in user.roles]
-    if friends_role_ids[2] in _user_roles:
-        log_debug(interaction, f"{user} already at max tier")
-        await utils.safe_send(interaction, content=MSG_USER_ALREADY_MAXED, ephemeral=True)
-        return
+        _user_roles = [role.id for role in user.roles]
+        if friends_role_ids[2] in _user_roles:
+            log_debug(interaction, f"{user} already at max tier")
+            await utils.safe_send(interaction, content=MSG_USER_ALREADY_MAXED, ephemeral=True)
+            return
 
-    if friends_role_ids[1] in _user_roles:
-        if not await utils._ensure_roles(interaction, divine_role_id, dogretary_role_id): return
-        msg = f"{user.mention} Congraitiualtionon tier3"
-        new_role_id = friends_role_ids[2]
-        
-    else:
-        log_debug(interaction, f"{user} will be promoted to tier 2")
-        msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
-        new_role_id = friends_role_ids[1]
-        
-    try:
-        # member = interaction.guild.get_member(user.id)
-        new_role = interaction.guild.get_role(new_role_id)
-        # await member.add_roles(new_role, reason=f"{interaction.user} said so")
-        await user.add_roles(new_role, reason=f"{interaction.user} said so")
-        await utils.safe_send(interaction, content=msg, send_anyway=True)
-    except discord.HTTPException as e:
-        log_error(interaction, f"Failed to give role {new_role} to {user}")
-        log_debug(interaction, e)
-        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Angie's fault~", ephemeral=True)
+        if friends_role_ids[1] in _user_roles:
+            if not await utils._ensure_roles(interaction, divine_role_id, dogretary_role_id): return
+            msg = f"{user.mention} Congraitiualtionon tier3"
+            new_role_id = friends_role_ids[2]
+            
+        else:
+            log_debug(interaction, f"{user} will be promoted to tier 2")
+            msg = MSG_CONGRATULATIONS_PROMOTION.format(2, user.mention)
+            new_role_id = friends_role_ids[1]
+            
+        try:
+            # member = interaction.guild.get_member(user.id)
+            new_role = interaction.guild.get_role(new_role_id)
+            # await member.add_roles(new_role, reason=f"{interaction.user} said so")
+            await user.add_roles(new_role, reason=f"{interaction.user} said so")
+            await utils.safe_send(interaction, content=msg, send_anyway=True)
+        except discord.HTTPException as e:
+            log_error(interaction, f"Failed to give role {new_role} to {user}")
+            log_debug(interaction, e)
+            await utils.safe_send(interaction, content="I still can't give promotions and it's probably Angie's fault~", ephemeral=True)
 
-@bot.tree.command(description='Promote a user to moon tier')
-@discord.app_commands.describe(user='User to promote')
-async def promoonte(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} requested promotion for {user}")
+if FEATURE_ENABLE_MOON:
+    @bot.tree.command(description='Promote a user to moon tier')
+    @discord.app_commands.describe(user='User to promote')
+    async def promoonte(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} requested promotion for {user}")
 
-    _user_roles = [role.id for role in user.roles]
-    if moon_role_id in _user_roles:
-        log_debug(interaction, f"{user} already a moon furiend")
-        await utils.safe_send(interaction, content=MSG_USER_ALREADY_MOON, ephemeral=True)
-        return
-        
-    try:
-        member = interaction.guild.get_member(user.id)
-        new_role = interaction.guild.get_role(moon_role_id)
-        await member.add_roles(new_role, reason=f"{interaction.user} said so")
-        await utils.safe_send(interaction, content=f"{user.mention} corbobulation in lunar", send_anyway=True)
-    except discord.HTTPException as e:
-        log_error(interaction, f"Failed to give role {new_role} to {user}")
-        log_debug(interaction, e)
-        await utils.safe_send(interaction, content="I still can't give promotions and it's probably Angie's fault~", ephemeral=True)
+        _user_roles = [role.id for role in user.roles]
+        if moon_role_id in _user_roles:
+            log_debug(interaction, f"{user} already a moon furiend")
+            await utils.safe_send(interaction, content=MSG_USER_ALREADY_MOON, ephemeral=True)
+            return
+            
+        try:
+            member = interaction.guild.get_member(user.id)
+            new_role = interaction.guild.get_role(moon_role_id)
+            await member.add_roles(new_role, reason=f"{interaction.user} said so")
+            await utils.safe_send(interaction, content=f"{user.mention} corbobulation in lunar", send_anyway=True)
+        except discord.HTTPException as e:
+            log_error(interaction, f"Failed to give role {new_role} to {user}")
+            log_debug(interaction, e)
+            await utils.safe_send(interaction, content="I still can't give promotions and it's probably Angie's fault~", ephemeral=True)
 
 @bot.tree.command(description='Check a user\'s reported age')
 @discord.app_commands.describe(user='User to check')
@@ -1220,98 +1265,99 @@ if copypasta_utils.AVAILABLE_PASTAS:
 else:
     logger.warning(f"No available copypasta data")
 
-@bot.tree.command(description='Start simping for someone!')
-@discord.app_commands.describe(user='Who you wanna simp for')
-async def simp(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} starting to simp: {user}")
-    if user.id == interaction.user.id:
-        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
-        return
+if FEATURE_ENABLE_SIMPS:
+    @bot.tree.command(description='Start simping for someone!')
+    @discord.app_commands.describe(user='Who you wanna simp for')
+    async def simp(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} starting to simp: {user}")
+        if user.id == interaction.user.id:
+            await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
+            return
 
-    res = sql.start_simping(interaction.user.id, user.id)
-    
-    if res:
-        msg = f"{interaction.user.mention} is simping for {user.mention}~"
-        hidden = False
-    else:
-        msg = f"You're already simping for {user.mention}"
-        hidden = True
-    await utils.safe_send(interaction, content=msg, ephemeral=hidden, send_anyway=True)
+        res = sql.start_simping(interaction.user.id, user.id)
+        
+        if res:
+            msg = f"{interaction.user.mention} is simping for {user.mention}~"
+            hidden = False
+        else:
+            msg = f"You're already simping for {user.mention}"
+            hidden = True
+        await utils.safe_send(interaction, content=msg, ephemeral=hidden, send_anyway=True)
 
-@bot.tree.command(description='Stop simping for someone!')
-@discord.app_commands.describe(user='Who you wanna stop simping for')
-async def nosimp(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} stopping to simp: {user}")
-    if user.id == interaction.user.id:
-        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
-        return
+    @bot.tree.command(description='Stop simping for someone!')
+    @discord.app_commands.describe(user='Who you wanna stop simping for')
+    async def nosimp(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} stopping to simp: {user}")
+        if user.id == interaction.user.id:
+            await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
+            return
 
-    res = sql.stop_simping(interaction.user.id, user.id)
-    if res:
-        msg = f"{interaction.user.mention} is not simping for {user.mention} anymore~"
-        hidden = False
-    else:
-        msg = f"You're not simping for {user.mention}"
-        hidden = True
-    await utils.safe_send(interaction, content=msg, ephemeral=hidden)
+        res = sql.stop_simping(interaction.user.id, user.id)
+        if res:
+            msg = f"{interaction.user.mention} is not simping for {user.mention} anymore~"
+            hidden = False
+        else:
+            msg = f"You're not simping for {user.mention}"
+            hidden = True
+        await utils.safe_send(interaction, content=msg, ephemeral=hidden)
 
-@bot.tree.command(description='Validate your simp\'s affection')
-@discord.app_commands.describe(user='Which simp you want to validate')
-async def validatesimp(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} validating simp: {user}")
-    if user.id == interaction.user.id:
-        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
-        return
+    @bot.tree.command(description='Validate your simp\'s affection')
+    @discord.app_commands.describe(user='Which simp you want to validate')
+    async def validatesimp(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} validating simp: {user}")
+        if user.id == interaction.user.id:
+            await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
+            return
 
-    exists, success = sql.star_simping(user.id, interaction.user.id)
-    if not exists:
-        msg = f"{user.mention} is not simping for you"
-        hidden = True
-    elif not success:
-        msg = f"{user.mention} is already validated"
-        hidden = True
-    else:
-        msg = f"{interaction.user.mention} is validating {user.mention}'s simping~"
-        hidden = False
-    await utils.safe_send(interaction, content=msg, ephemeral=hidden)
+        exists, success = sql.star_simping(user.id, interaction.user.id)
+        if not exists:
+            msg = f"{user.mention} is not simping for you"
+            hidden = True
+        elif not success:
+            msg = f"{user.mention} is already validated"
+            hidden = True
+        else:
+            msg = f"{interaction.user.mention} is validating {user.mention}'s simping~"
+            hidden = False
+        await utils.safe_send(interaction, content=msg, ephemeral=hidden)
 
-@bot.tree.command(description='Invalidate your simp\'s affection')
-@discord.app_commands.describe(user='Which simp you want to invalidate')
-async def invalidatesimp(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} invalidating simp: {user}")
-    if user.id == interaction.user.id:
-        await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
-        return
+    @bot.tree.command(description='Invalidate your simp\'s affection')
+    @discord.app_commands.describe(user='Which simp you want to invalidate')
+    async def invalidatesimp(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} invalidating simp: {user}")
+        if user.id == interaction.user.id:
+            await utils.safe_send(interaction, content="You can't simp for yourself~", ephemeral=True)
+            return
 
-    exists, success = sql.unstar_simping(user.id, interaction.user.id)
-    if not exists:
-        msg = f"{user.mention} is not simping for you"
-        hidden = True
-    elif not success:
-        msg = f"{user.mention} isn't validated"
-        hidden = True
-    else:
-        msg = f"{interaction.user.mention} is not validating {user.mention}'s simping anymore~"
-        hidden = False
-    await utils.safe_send(interaction, content=msg, ephemeral=hidden)
-    
-@bot.tree.command(description='Know who\'s simping for someone!')
-async def simps(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} checking simps: {user}")
-    
-    simps = sql.get_simps(user.id)
-    
-    if simps is None or len(simps) == 0:
-        meme_name = memes.no_simps
-        meme_file = discord.File(meme_name, filename=meme_name)
-        # embed = discord.Embed()
-        # embed.set_image(url=f"attachment://{meme_name}")
-        await utils.safe_send(interaction, file=meme_file, content=f"No simps, {user.mention}?")
-        return
+        exists, success = sql.unstar_simping(user.id, interaction.user.id)
+        if not exists:
+            msg = f"{user.mention} is not simping for you"
+            hidden = True
+        elif not success:
+            msg = f"{user.mention} isn't validated"
+            hidden = True
+        else:
+            msg = f"{interaction.user.mention} is not validating {user.mention}'s simping anymore~"
+            hidden = False
+        await utils.safe_send(interaction, content=msg, ephemeral=hidden)
+        
+    @bot.tree.command(description='Know who\'s simping for someone!')
+    async def simps(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} checking simps: {user}")
+        
+        simps = sql.get_simps(user.id)
+        
+        if simps is None or len(simps) == 0:
+            meme_name = memes.no_simps
+            meme_file = discord.File(meme_name, filename=meme_name)
+            # embed = discord.Embed()
+            # embed.set_image(url=f"attachment://{meme_name}")
+            await utils.safe_send(interaction, file=meme_file, content=f"No simps, {user.mention}?")
+            return
 
-    msg = f"Here are {user.mention}'s simps~\n> "
-    msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
-    await utils.safe_send(interaction, content=msg, allowed_mentions=discord.AllowedMentions(users=[user]))
+        msg = f"Here are {user.mention}'s simps~\n> "
+        msg += ", ".join([f"{':star:' if id[1] == 1 else ''}<@{id[0]}>" for id in simps])
+        await utils.safe_send(interaction, content=msg, allowed_mentions=discord.AllowedMentions(users=[user]))
 
 # opts = [discord_slash.manage_commands.create_option(name="range", description="Max days to fetch", option_type=4, required=False)]
 # opts += [discord_slash.manage_commands.create_option(name="user", description="User to search (will get messages from all users by default)", option_type=6, required=False)]
@@ -1483,53 +1529,54 @@ async def aliasesalt(interaction: discord.Interaction, user_id: int):
         msg = f"I couldn't find {utils.to_mention(str(user_id))} in the database..."
     await utils.safe_send(interaction, content=msg, ephemeral=True)
 
-@bot.tree.command(description='Contribute to the server\'s world (heat) map')
-@discord.app_commands.describe(country='Where you\'re from')
-async def locate(interaction: discord.Interaction, country: str):
-    validated_country = utils.validate_country(country)
+if FEATURE_ENABLE_WORLDMAP:
+    @bot.tree.command(description='Contribute to the server\'s world (heat) map')
+    @discord.app_commands.describe(country='Where you\'re from')
+    async def locate(interaction: discord.Interaction, country: str):
+        validated_country = utils.validate_country(country)
 
-    if validated_country is None:
-        await utils.safe_send(interaction, content=f"I don't know that country... Can you try again, please?", ephemeral=True)
-        return
+        if validated_country is None:
+            await utils.safe_send(interaction, content=f"I don't know that country... Can you try again, please?", ephemeral=True)
+            return
 
-    updated = sql.insert_worldmap(interaction.user.id, validated_country)
+        updated = sql.insert_worldmap(interaction.user.id, validated_country)
 
-    country_flag = utils.country_flag(country)
+        country_flag = utils.country_flag(country)
 
-    if updated:
-        msg = f":airplane::map: Okay, I moved you to {country_flag} {validated_country}/{country}~"
-    else:
-        msg = f":pushpin::map: Okay, I added you to {country_flag} {validated_country}/{country}~"
+        if updated:
+            msg = f":airplane::map: Okay, I moved you to {country_flag} {validated_country}/{country}~"
+        else:
+            msg = f":pushpin::map: Okay, I added you to {country_flag} {validated_country}/{country}~"
 
-    await utils.safe_send(interaction, content=msg, ephemeral=True)
+        await utils.safe_send(interaction, content=msg, ephemeral=True)
 
-# TODO parameterize color scheme (graphlytics.cmaps)
-@bot.tree.command(description='Get a heatmap with the users of the server (contribute with /locate)')
-async def worldmap(interaction: discord.Interaction):
-    if not await utils.safe_defer(interaction): return
+    # TODO parameterize color scheme (graphlytics.cmaps)
+    @bot.tree.command(description='Get a heatmap with the users of the server (contribute with /locate)')
+    async def worldmap(interaction: discord.Interaction):
+        if not await utils.safe_defer(interaction): return
 
-    log_info(interaction, f"{interaction.user} requested worldmap")
+        log_info(interaction, f"{interaction.user} requested worldmap")
 
-    report_name = graphlytics.generate_world_heatmap()
-    log_debug(interaction, f"report_name={report_name}")
-    report_file = discord.File(report_name, filename=f"user_report.png")
+        report_name = graphlytics.generate_world_heatmap()
+        log_debug(interaction, f"report_name={report_name}")
+        report_file = discord.File(report_name, filename=f"user_report.png")
 
-    amount = sql.count_worldmap()
+        amount = sql.count_worldmap()
 
-    await utils.safe_send(interaction, content=f"Here you go!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have `{amount}` registered friends~", file=report_file, is_followup=True, send_anyway=True)
+        await utils.safe_send(interaction, content=f"Here you go!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:\nWe have `{amount}` registered friends~", file=report_file, is_followup=True, send_anyway=True)
 
-    os.remove(report_name)
+        os.remove(report_name)
 
-# TODO parameterize color scheme (graphlytics.cmaps)
-@bot.tree.command(description='How many users contributed to the server heatmap (contribute with /locate)')
-async def worldmapcount(interaction: discord.Interaction):
-    if not await utils.safe_defer(interaction): return
+    # TODO parameterize color scheme (graphlytics.cmaps)
+    @bot.tree.command(description='How many users contributed to the server heatmap (contribute with /locate)')
+    async def worldmapcount(interaction: discord.Interaction):
+        if not await utils.safe_defer(interaction): return
 
-    log_info(interaction, f"{interaction.user} requested worldmapcount")
-    
-    data = sql.count_worldmap()
+        log_info(interaction, f"{interaction.user} requested worldmapcount")
+        
+        data = sql.count_worldmap()
 
-    await utils.safe_send(interaction, content=f"There are {utils.n_em(data)} registered users!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:", is_followup=True, send_anyway=True)
+        await utils.safe_send(interaction, content=f"There are {utils.n_em(data)} registered users!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:", is_followup=True, send_anyway=True)
 
 @bot.tree.command(description='Join NNN 2023! Please be aware you can only join/wager ONCE!')
 #@discord.app_commands.describe(wager='Are you willing to wager one of your roles?')
@@ -1599,58 +1646,59 @@ async def nut(interaction: discord.Interaction):
         content = "\n".join([f"{nut} x {utils.n_em(amount)}" for (nut, amount) in nut_counts])
         await utils.safe_send(interaction, content=content, send_anyway=True)
 
-# Jail a user directly
-@bot.tree.context_menu(name="Horny Jail")
-async def hornyjail(interaction: discord.Interaction, user: discord.Member):
-    duration = 5
-    log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
+if FEATURE_ENABLE_HORNYJAIL:
+    # Jail a user directly
+    @bot.tree.context_menu(name="Horny Jail")
+    async def hornyjail(interaction: discord.Interaction, user: discord.Member):
+        duration = 5
+        log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
 
-    await utils.core_hornyjail(interaction, user, duration, jail_role_id)
+        await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
-# Jail a user from their message
-@bot.tree.context_menu(name="Horny Jail author")
-async def hornyjail(interaction: discord.Interaction, message: discord.Message):
-    duration = 5
-    log_info(interaction, f"{interaction.user} is jailing {message.author} for {duration} minutes")
+    # Jail a user from their message
+    @bot.tree.context_menu(name="Horny Jail author")
+    async def hornyjail(interaction: discord.Interaction, message: discord.Message):
+        duration = 5
+        log_info(interaction, f"{interaction.user} is jailing {message.author} for {duration} minutes")
 
-    await utils.core_hornyjail(interaction, message.author, duration, jail_role_id, message=message)
+        await utils.core_hornyjail(interaction, message.author, duration, jail_role_id, message=message)
 
-@bot.tree.command(description='Send someone to horny jail')
-@discord.app_commands.describe(user='User to jail', message_id='Message to send to the appropriate channel', delete_original='Also delete the original message after posting it to the correct channel') #, duration='How long to jail them for, in minutes (default is 5)')
-async def hornyjail(interaction: discord.Interaction, user: discord.Member, message_id: typing.Optional[int]=None, delete_original: typing.Optional[bool]=False): #, duration: typing.Optional[int]=5):
-    duration = 5
-    log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
-    try:
-        message = await interaction.channel.fetch_message(message_id) if message_id else None
-    except:
-        message = None
+    @bot.tree.command(description='Send someone to horny jail')
+    @discord.app_commands.describe(user='User to jail', message_id='Message to send to the appropriate channel', delete_original='Also delete the original message after posting it to the correct channel') #, duration='How long to jail them for, in minutes (default is 5)')
+    async def hornyjail(interaction: discord.Interaction, user: discord.Member, message_id: typing.Optional[int]=None, delete_original: typing.Optional[bool]=False): #, duration: typing.Optional[int]=5):
+        duration = 5
+        log_info(interaction, f"{interaction.user} is jailing {user} for {duration} minutes")
+        try:
+            message = await interaction.channel.fetch_message(message_id) if message_id else None
+        except:
+            message = None
 
-    await utils.core_hornyjail(interaction, user, duration, jail_role_id, message=message, delete_original=delete_original)
+        await utils.core_hornyjail(interaction, user, duration, jail_role_id, message=message, delete_original=delete_original)
 
-@bot.tree.command(description='Send someone to horny prison')
-@discord.app_commands.describe(user='User to jail')
-async def hornyprison(interaction: discord.Interaction, user: discord.Member):
-    duration = 3 * 60
-    log_info(interaction, f"{interaction.user} is imprisoning {user} for {duration} minutes")
-    #if not await utils.ensure_queen(interaction): return
+    @bot.tree.command(description='Send someone to horny prison')
+    @discord.app_commands.describe(user='User to jail')
+    async def hornyprison(interaction: discord.Interaction, user: discord.Member):
+        duration = 3 * 60
+        log_info(interaction, f"{interaction.user} is imprisoning {user} for {duration} minutes")
+        #if not await utils.ensure_queen(interaction): return
 
-    await utils.core_hornyjail(interaction, user, duration, jail_role_id)
+        await utils.core_hornyjail(interaction, user, duration, jail_role_id)
 
-@bot.tree.command(description='Remove someone from horny jail')
-@discord.app_commands.describe(user='User to unjail') #, duration='How long to jail them for, in minutes (default is 5)')
-async def hornyunjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
-    log_info(interaction, f"{interaction.user} is unjailing {user}")
-    #if not await utils.ensure_queen(interaction): return
+    @bot.tree.command(description='Remove someone from horny jail')
+    @discord.app_commands.describe(user='User to unjail') #, duration='How long to jail them for, in minutes (default is 5)')
+    async def hornyunjail(interaction: discord.Interaction, user: discord.Member): #, duration: typing.Optional[int]=5):
+        log_info(interaction, f"{interaction.user} is unjailing {user}")
+        #if not await utils.ensure_queen(interaction): return
 
-    success = sql.jail_register_unjailing(user.id, interaction.user.id)
+        success = sql.jail_register_unjailing(user.id, interaction.user.id)
 
-    if not success:
-        await utils.safe_send(interaction, content=f"I don't think that user is in jail~", ephemeral=True)
-        return
-    
-    jail_role = interaction.guild.get_role(jail_role_id)
-    await user.remove_roles(jail_role, reason=f'{interaction.user} removed them from jail')
-    await utils.safe_send(interaction, content=f"Fine {user.mention}, I guess you can come out now, but you better be on your best behavior~", send_anyway=True)
+        if not success:
+            await utils.safe_send(interaction, content=f"I don't think that user is in jail~", ephemeral=True)
+            return
+        
+        jail_role = interaction.guild.get_role(jail_role_id)
+        await user.remove_roles(jail_role, reason=f'{interaction.user} removed them from jail')
+        await utils.safe_send(interaction, content=f"Fine {user.mention}, I guess you can come out now, but you better be on your best behavior~", send_anyway=True)
 
 @bot.tree.command(description='When people can\'t be bothered to google stuff for themselves')
 @discord.app_commands.describe(user='Who to ping', query='What they asked for')
@@ -1779,58 +1827,59 @@ async def searchid(interaction: discord.Interaction, user: str):
 
 #     await utils.safe_send(interaction, content=f"Here's your timestamp~\n```{ts}```And here's how it's going to look like: {ts}", ephemeral=True)
 
-@bot.tree.command(description='Advertise your commissions')
-async def advertise(interaction: discord.Interaction, attachment: typing.Optional[discord.Attachment] = None):
-    log_info(interaction, f"{interaction.user} is requesting to create an AD: {attachment}")
-    
-    await ad_handler.create_advertisement(interaction, attachment=attachment)
+if FEATURE_ENABLE_CORKBOARD:
+    @bot.tree.command(description='Advertise your commissions')
+    async def advertise(interaction: discord.Interaction, attachment: typing.Optional[discord.Attachment] = None):
+        log_info(interaction, f"{interaction.user} is requesting to create an AD: {attachment}")
+        
+        await ad_handler.create_advertisement(interaction, attachment=attachment)
 
-@bot.tree.command(description='[MOD] Allow a user to post in cork-board')
-async def allowad(interaction: discord.Interaction, user: discord.Member):
-    log_info(interaction, f"{interaction.user} is requesting to allow an AD for {user}")
-    
-    if user.bot:
-        await utils.safe_send(interaction, content=f"That user is a bot...", ephemeral=True)
-        return
-    
-    if ad_poster_role_id in [role.id for role in user.roles]:
-        await utils.safe_send(interaction, content=f"Seems like they already have the role, but I'll keep watching to remove it after they post it!", ephemeral=True)
+    @bot.tree.command(description='[MOD] Allow a user to post in cork-board')
+    async def allowad(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} is requesting to allow an AD for {user}")
+        
+        if user.bot:
+            await utils.safe_send(interaction, content=f"That user is a bot...", ephemeral=True)
+            return
+        
+        if ad_poster_role_id in [role.id for role in user.roles]:
+            await utils.safe_send(interaction, content=f"Seems like they already have the role, but I'll keep watching to remove it after they post it!", ephemeral=True)
+            mhm.create_dyn_lock(utils.handle_cork_board_post, user.id)
+            return
+
+        ad_role = interaction.guild.get_role(ad_poster_role_id)
+
+        try:
+            await user.add_roles(ad_role, reason=f"{interaction.user} said so")
+            await utils.safe_send(interaction, content=f"Good news, {user.mention}! You can make your post in <#{ad_channel}> now~\nJust make sure you follow the rules at the top, mkay?")
+        except:
+            await utils.safe_send(interaction, content=f"I couldn't give 'em the role, but I'll keep watching to remove it after they post it!", ephemeral=True)
+
         mhm.create_dyn_lock(utils.handle_cork_board_post, user.id)
-        return
 
-    ad_role = interaction.guild.get_role(ad_poster_role_id)
+    @bot.tree.command(description='Remove an unwanted advertisement (e.g. spam)')
+    @discord.app_commands.describe(message='Message to remove (must be an ad)')
+    async def removeadvertisement(interaction: discord.Interaction, message: str):
+        log_info(interaction, f"{interaction.user} is deleting ad {message} history alt")
 
-    try:
-        await user.add_roles(ad_role, reason=f"{interaction.user} said so")
-        await utils.safe_send(interaction, content=f"Good news, {user.mention}! You can make your post in <#{ad_channel}> now~\nJust make sure you follow the rules at the top, mkay?")
-    except:
-        await utils.safe_send(interaction, content=f"I couldn't give 'em the role, but I'll keep watching to remove it after they post it!", ephemeral=True)
+        try:
+            messageid = int(message)
+        except:
+            await utils.safe_send(interaction, content=f"Are you sure that's a valid ID?", ephemeral=True)
+            return
 
-    mhm.create_dyn_lock(utils.handle_cork_board_post, user.id)
+        ad_info = sql.is_advertisement(messageid)
+        if not ad_info:
+            await utils.safe_send(interaction, content=f"That doesn't seem to be an ad...", ephemeral=True)
+            return
 
-@bot.tree.command(description='Remove an unwanted advertisement (e.g. spam)')
-@discord.app_commands.describe(message='Message to remove (must be an ad)')
-async def removeadvertisement(interaction: discord.Interaction, message: str):
-    log_info(interaction, f"{interaction.user} is deleting ad {message} history alt")
+        user = int(ad_info[0])
+        success = await ad_handler.try_remove_advertisement(user)
 
-    try:
-        messageid = int(message)
-    except:
-        await utils.safe_send(interaction, content=f"Are you sure that's a valid ID?", ephemeral=True)
-        return
-
-    ad_info = sql.is_advertisement(messageid)
-    if not ad_info:
-        await utils.safe_send(interaction, content=f"That doesn't seem to be an ad...", ephemeral=True)
-        return
-
-    user = int(ad_info[0])
-    success = await ad_handler.try_remove_advertisement(user)
-
-    if success:
-        await utils.safe_send(interaction, content=f"Ad zapped out of existence!", ephemeral=True)
-    else:
-        await utils.safe_send(interaction, content=f"Something went wrong... are you sure the message is still there?", ephemeral=True)
+        if success:
+            await utils.safe_send(interaction, content=f"Ad zapped out of existence!", ephemeral=True)
+        else:
+            await utils.safe_send(interaction, content=f"Something went wrong... are you sure the message is still there?", ephemeral=True)
 
 @bot.tree.command(description='Mute yourself, put your phone down and go get some eep!')
 @discord.app_commands.describe(duration='Whether you want to eep (longer) or nap (shorter). The default is eep!')
@@ -1970,24 +2019,25 @@ async def sauce(interaction: discord.Interaction, url: typing.Optional[str], fil
     link = 'link' if len(result) == 1 else 'links'
     await utils.safe_send(interaction, content=f"I found the following {link} for your pic:\n{msg}", ephemeral=True)
 
-@bot.tree.command(description='Ban a user')
-@discord.app_commands.describe(user='Who to ban', reason='Reason for the ban')
-async def ban(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
-    await mod.core_ban(user, interaction, reason_notif=reason, moderator=interaction.user)
+if FEATURE_ENABLE_MODERATION:
+    @bot.tree.command(description='Ban a user')
+    @discord.app_commands.describe(user='Who to ban', reason='Reason for the ban')
+    async def ban(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
+        await mod.core_ban(user, interaction, reason_notif=reason, moderator=interaction.user)
 
-@bot.tree.command(description='Kick a user')
-@discord.app_commands.describe(user='Who to kick', reason='Reason for the kick')
-async def kick(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
-    await mod.core_kick(user, interaction, reason_notif=reason, moderator=interaction.user)
+    @bot.tree.command(description='Kick a user')
+    @discord.app_commands.describe(user='Who to kick', reason='Reason for the kick')
+    async def kick(interaction: discord.Interaction, user: discord.Member, reason: typing.Optional[str]=None):
+        await mod.core_kick(user, interaction, reason_notif=reason, moderator=interaction.user)
 
-@bot.tree.command(description='Mute a user')
-@discord.app_commands.describe(user='Who to mute', duration='How long to mute (e.g. 5m, 2h)', reason='Reason for the mute')
-async def mute(interaction: discord.Interaction, user: discord.Member, duration: str, reason: typing.Optional[str]=None):
-    until = bot_utils.extract_timedelta(duration)
-    if not until:
-        await utils.safe_send(interaction, content="You must provide a valid time value, dummy! like 5m or 2h or whatever", ephemeral=True)
-        return
-    await mod.core_mute(user, until, interaction, reason_notif=reason, moderator=interaction.user)
+    @bot.tree.command(description='Mute a user')
+    @discord.app_commands.describe(user='Who to mute', duration='How long to mute (e.g. 5m, 2h)', reason='Reason for the mute')
+    async def mute(interaction: discord.Interaction, user: discord.Member, duration: str, reason: typing.Optional[str]=None):
+        until = bot_utils.extract_timedelta(duration)
+        if not until:
+            await utils.safe_send(interaction, content="You must provide a valid time value, dummy! like 5m or 2h or whatever", ephemeral=True)
+            return
+        await mod.core_mute(user, until, interaction, reason_notif=reason, moderator=interaction.user)
     
 modnotes_handler = modnotes.Modnotes(sql, utils, bot)
 @bot.tree.context_menu(name="Edit modnotes")
@@ -1995,19 +2045,28 @@ async def context_edit_modnotes(interaction: discord.Interaction, user: discord.
     logger.info(f"{interaction.user} requested modnotes edit: {user}")
     await modnotes_handler.handler.edit_modnote(interaction, user)
 
-bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
-bot.tree.add_command(kinks.Kinklist(sql, utils))
-bot.tree.add_command(games.Game(utils, bot))
+if FEATURE_ENABLE_KINKLIST:
+    bot.tree.add_command(kinks.get_kink_cmds(sql, utils))
+    bot.tree.add_command(kinks.Kinklist(sql, utils))
+
+    @bot.tree.command(description='Find explanations for specific kinks')
+    async def kinktionary(interaction: discord.Interaction):
+        log_info(interaction, f"{interaction.user} requested kinktionary")
+
+        await utils.safe_send(interaction, view=kinks.Kinktionary(interaction), ephemeral=True)
+
+if FEATURE_ENABLE_GAMES:
+    bot.tree.add_command(games.Game(utils, bot))
+
 bot.tree.add_command(graphlytics.Analytics(utils))
-bot.tree.add_command(shipper.Relationship(sql, utils))
+
+if FEATURE_ENABLE_RELATIONSHIPS:
+    bot.tree.add_command(shipper.Relationship(sql, utils))
+
 bot.tree.add_command(modnotes_handler)
-bot.tree.add_command(ghostpings.Ghostpings(sql, utils))
 
-@bot.tree.command(description='Find explanations for specific kinks')
-async def kinktionary(interaction: discord.Interaction):
-    log_info(interaction, f"{interaction.user} requested kinktionary")
-
-    await utils.safe_send(interaction, view=kinks.Kinktionary(interaction), ephemeral=True)
+if FEATURE_ENABLE_GHOSTPINGS:
+    bot.tree.add_command(ghostpings.Ghostpings(sql, utils))
 
 def rec_walk(parent, super_cmd=""):
     for cmd in parent.walk_commands():
