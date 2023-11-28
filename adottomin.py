@@ -9,9 +9,6 @@ import traceback
 import typing
 import urllib.parse
 
-from regex import R
-
-import advertisements
 import age_handling
 import botlogger
 import bot_utils
@@ -31,13 +28,19 @@ import propervider as p
 import shipper
 import nohorny
 
-from word_blocklist import blocklist
-
-from flask import Flask
 from dotenv import load_dotenv
+load_dotenv()
+
+logger = botlogger.get_logger("adottomin")
+
+try:
+    from word_blocklist import blocklist
+except:
+    logger.warning(f'No blocklist found, skipping')
+    blocklist = []
+
 from os.path import exists
 
-load_dotenv()
 TOKEN = p.pstr('DISCORD_TOKEN')
 
 RAID_MODE_CTRL = "raid.txt"
@@ -117,7 +120,11 @@ friends_role_ids = p.plist('FRIENDS_ROLE_IDS') if FEATURE_ENABLE_TIERS else None
 moon_role_id = p.pint('MOON_ROLE_ID', required=False)
 ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID') if FEATURE_ENABLE_CORKBOARD else None
 
-game_channel_ids = p.plist('GAME_CHANNEL_IDS')
+try:
+    game_channel_ids = p.plist('GAME_CHANNEL_IDS')
+except:
+    logger.warning(f'No game channel IDs found, skipping')
+    game_channel_ids = []
 
 if FEATURE_ENABLE_PIN_ARCHIVE:
     pin_archive_channel_id = p.pint('PIN_ARCHIVE_CHANNEL_ID')
@@ -146,8 +153,6 @@ ignore_prefixes = ('$')
 advertisement_slowmode = datetime.timedelta(seconds=30)
 
 file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
-
-logger = botlogger.get_logger("adottomin")
 
 class BottoBot(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -188,6 +193,7 @@ mod = moderation.ModerationCore(bot, sql, utils, mhm, secretary_role_id)
 age_handler = age_handling.age_handler(bot, sql, utils, mod, role_ids, LENIENCY_COUNT - LENIENCY_REMINDER)
 
 if FEATURE_ENABLE_CORKBOARD:
+    import advertisements
     ad_handler = advertisements.advert_handler(advertisement_slowmode, ad_channel, sql, utils)
 
 if FEATURE_ENABLE_EMOJI_CHAT:
@@ -494,7 +500,7 @@ async def on_message(msg: discord.Message):
     # if len(msg.content) == 0: return
     # logger.debug(f"[{msg.channel.guild.name} / {msg.channel}] {msg.author} says \"{msg.content}\"")
 
-    blocklist_match = blocklist_prog.search(msg.content.lower())
+    blocklist_match = blocklist_prog.search(msg.content.lower()) if blocklist else None
     if blocklist_match is not None:
         logger.info(f"[{msg.channel}] {msg.author} used blocked word: {blocklist_match.group(0)}")
         try:
@@ -534,7 +540,7 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
     # Reuse code
     msg = after
 
-    blocklist_match = blocklist_prog.search(msg.content.lower())
+    blocklist_match = blocklist_prog.search(msg.content.lower()) if blocklist else None
     if blocklist_match is not None:
         logger.info(f"[{msg.channel}] {msg.author} used blocked word: {blocklist_match.group(0)}")
         try:
