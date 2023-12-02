@@ -91,6 +91,7 @@ FEATURE_ENABLE_TIERS = p.pbool('FEATURE_ENABLE_TIERS')
 FEATURE_ENABLE_MOON = p.pbool('FEATURE_ENABLE_MOON')
 FEATURE_ENABLE_MODERATION = p.pbool('FEATURE_ENABLE_MODERATION')
 FEATURE_ENABLE_PIN_ARCHIVE = p.pbool('FEATURE_ENABLE_PIN_ARCHIVE')
+FEATURE_ENABLE_NNN = p.pbool('FEATURE_ENABLE_NNN')
 
 channel_ids = p.plist('CHANNEL_IDS')
 role_ids = p.plist('AGE_ROLE_IDS')
@@ -107,6 +108,9 @@ if FEATURE_ENABLE_CORKBOARD:
 
 if FEATURE_ENABLE_EMOJI_CHAT:
     emojionly_channel = p.pint('EMOJI_CHANNEL_ID')
+
+if FEATURE_ENABLE_NNN:
+    nnn_year = p.pint('NNN_YEAR')
 
 queen_role_id = p.pint('QUEEN_ROLE_ID')
 owner_role_id = p.pint('OWNER_ROLE_ID')
@@ -1584,54 +1588,61 @@ if FEATURE_ENABLE_WORLDMAP:
 
         await utils.safe_send(interaction, content=f"There are {utils.n_em(data)} registered users!\nAnd if you haven't already, you can add yourself to the map with `/locate` :heart:", is_followup=True, send_anyway=True)
 
-@bot.tree.command(description='Join NNN 2023! Please be aware you can only join/wager ONCE!')
-#@discord.app_commands.describe(wager='Are you willing to wager one of your roles?')
-async def joinnnn(interaction: discord.Interaction):#, wager: typing.Optional[bool]):
-    log_info(interaction, f"{interaction.user} is joining NNN 2023")
+if FEATURE_ENABLE_NNN:
+    @bot.tree.command(description=f'Join NNN {nnn_year}! Please be aware you can only join ONCE!')
+    #@discord.app_commands.describe(wager='Are you willing to wager one of your roles?')
+    async def joinnnn(interaction: discord.Interaction):#, wager: typing.Optional[bool]):
+        log_info(interaction, f"{interaction.user} is joining NNN")
 
-    joined = sql.nnn_join(interaction.user.id, False)
+        joined = sql.nnn_join(interaction.user.id, False)
 
-    if joined:
-        content = f"Thank you for signing up for NNN 2023, {interaction.user.mention}! GLHF~"
-    else:
-        log_info(interaction, f"{interaction.user} already joined NNN 2023")
-        content = f"You've already signed up for NNN 2023, {interaction.user.mention}~"
+        if joined:
+            content = f"Thank you for signing up for NNN {nnn_year}, {interaction.user.mention}! GLHF~"
+        else:
+            log_info(interaction, f"{interaction.user} already joined NNN")
+            content = f"You've already signed up for NNN {nnn_year}, {interaction.user.mention}~"
 
-    await utils.safe_send(interaction, content=content, send_anyway=True)
+        await utils.safe_send(interaction, content=content, send_anyway=True)
 
-@bot.tree.command(description='Admit defeat in NNN 2023! Please be aware you cannot take this back!!!')
-async def failnnn(interaction: discord.Interaction):
-    log_info(interaction, f"{interaction.user} is joining NNN 2023")
+    @bot.tree.command(description=f'Admit defeat in NNN {nnn_year}! Please be aware you cannot take this back!!!')
+    async def failnnn(interaction: discord.Interaction):
+        log_info(interaction, f"{interaction.user} is joining NNN")
 
-    if datetime.datetime.now().month != 11:
-        await utils.safe_send(interaction, content=f"You can't fail NNN if it's not november yet, silly~", ephemeral=True)
-        return
+        if datetime.datetime.now().month != 11:
+            await utils.safe_send(interaction, content=f"You can't fail NNN if it's not november yet, silly~", ephemeral=True)
+            return
 
-    data = sql.nnn_status(interaction.user.id)
-    log_debug(interaction, f"Got status = {data}")
-    if data is None:
-        await utils.safe_send(interaction, content=f"You didn't sign up yet, {interaction.user.mention}! You can do that with `/joinnnn`~", send_anyway=True)
-        return
+        data = sql.nnn_status(interaction.user.id)
+        log_debug(interaction, f"Got status = {data}")
+        if data is None:
+            await utils.safe_send(interaction, content=f"You didn't sign up yet, {interaction.user.mention}! You can do that with `/joinnnn`~", send_anyway=True)
+            return
 
-    failed = sql.nnn_fail(interaction.user.id)
+        failed = sql.nnn_fail(interaction.user.id)
 
-    if failed:
-        content = f"Aww there's always next year, {interaction.user.mention}! Thanks for participating and GG no RE~"
-    else:
-        log_info(interaction, f"{interaction.user} already failed NNN 2023")
-        content = f"You've already failed NNN 2023, {interaction.user.mention}, try again next year~"
+        if failed:
+            content = f"Aww there's always next year, {interaction.user.mention}! Thanks for participating and GG no RE~"
+        else:
+            log_info(interaction, f"{interaction.user} already failed NNN {nnn_year}")
+            content = f"You've already failed NNN {nnn_year}, {interaction.user.mention}, try again next year~"
 
-    await utils.safe_send(interaction, content=content, send_anyway=True)
+        await utils.safe_send(interaction, content=content, send_anyway=True)
 
-@bot.tree.command(description='Check the numbers on NNN 20232')
-async def countnnn(interaction: discord.Interaction):
-    log_info(interaction, f"{interaction.user} is checking NNN 2023")
+    @bot.tree.command(description=f'Check the numbers on NNN {nnn_year}')
+    async def countnnn(interaction: discord.Interaction):
+        log_info(interaction, f"{interaction.user} is checking NNN")
 
-    joined, failed = sql.nnn_count()
+        joined, failed = sql.nnn_count()
 
-    content = f"`{joined}` users have joined, and `{failed}` have failed NNN 2023~"
+        content = f"`{joined}` users have joined, and `{failed}` have failed NNN {nnn_year}~"
 
-    await utils.safe_send(interaction, content=content, send_anyway=True)
+        await utils.safe_send(interaction, content=content, send_anyway=True)
+
+# NNN queries
+# Longer lasting fails: 
+# SELECT users.user, date(users.created_at) as start_date, date(failed.created_at) as fail_date, julianday(failed.created_at) - julianday(users.created_at) AS duration_in_days FROM users INNER JOIN failed on users.user = failed.user ORDER BY duration DESC;
+# Survivors:
+# SELECT users.user, date(users.created_at) FROM users LEFT JOIN failed on users.user = failed.user WHERE failed.user IS NULL;
 
 @bot.tree.command(description='Nut counter!')
 async def nut(interaction: discord.Interaction):

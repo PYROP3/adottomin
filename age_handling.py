@@ -7,6 +7,7 @@ import botlogger
 import emoter
 import db
 import moderation
+import propervider as p
 
 em = emoter.Emoter()
 
@@ -20,7 +21,7 @@ MSG_GREETING = f"{em.e('NekoHi', 'wave')} Hello {'{}'}! May I ask your age, pls?
 MSG_TRY_AGAIN = "Try again, {}"
 MSG_TRY_AGAIN_JOKE = "First time I heard that one... You're a riot, {}!"
 MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
-MSG_APPEND = "Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!\nYou may also try `/ghostpings settings` so I'll notify you whenever people ping you here!"
+MSG_APPEND = f"Tags are in <#{p.pint('ROLES_CHANNEL_ID')}> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!\nYou may also try `/ghostpings settings` so I'll notify you whenever people ping you here!"
 MSG_DIFFERENT_AGE_BIRTHDAY = "Oh, last time you said you were {}... So happy late birthday, {}~! :tada: :birthday: And welcome back to the server! " + MSG_APPEND
 MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you were {}... :thinking: But in any case, welcome back to the server! " + MSG_APPEND
 MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! " + MSG_APPEND
