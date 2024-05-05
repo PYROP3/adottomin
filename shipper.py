@@ -218,12 +218,17 @@ class Relationship(discord.app_commands.Group):
         member_list = {}
         for user in user_list:
             try:
-                member = await interaction.guild.fetch_member(user)
+                member = interaction.guild.get_member(user)
+                if not member:
+                    member = await interaction.guild.fetch_member(user)
                 # logger.debug(f"Fetched member {member}")
                 member_name = member.nick or member.name
                 # Images for graph nodes
                 icon_name = f"trash/{instance_name}/" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)) + ".png"
-                await member.avatar.save(fp=icon_name)
+                if member.guild_avatar:
+                    await member.guild_avatar.save(fp=icon_name)
+                else:
+                    await member.avatar.save(fp=icon_name)
                 # Add member to graph
                 G.add_node(member_name, image=PIL.Image.open(icon_name))
 

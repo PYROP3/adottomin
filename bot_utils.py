@@ -108,6 +108,18 @@ class utils:
 
         self._recreate_queues()
 
+    async def get_cached_user(self, id: int):
+        if user := self.bot.get_user(id):
+            return user
+        user =  await self.bot.fetch_user(id)
+        return user
+
+    async def get_cached_member(self, id: int):
+        if user := self.guild.get_member(id):
+            return user
+        user = await self.guild.fetch_member(id)
+        return user
+
     async def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
         if self.admin is None: 
             self.logger.warning(f"Utils admin link is still not ready")
@@ -130,36 +142,15 @@ class utils:
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
-        # try:
-        #     member = await self.guild.fetch_member(msg.author.id)
-        # except discord.errors.NotFound:
-        #     self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
-        #     raise e()
-        # if member is None: 
-        #     self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
-        #     raise e()
         author_roles = await self.get_roles(msg.author.id, e=e)
-        # self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
-
-    # async def check_has_role(self, user: discord.Member, role: int):
-    #     if self.guild is None:
-    #         self.logger.warning(f"Utils guild link is still not ready")
-    #         return False
-        
-    #     try:
-    #         author_roles = await self.get_roles(user.id)
-    #         # self.logger.debug(f"Comparing user {author_roles} to {roles}")
-    #         return role in set([role.id for role in author_roles])
-    #     except:
-    #         return False
 
     async def get_roles(self, author_id: int, e: HandlerException=HandlerIgnoreException):
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
         try:
-            member = await self.guild.fetch_member(author_id)
+            member = self.guild.get_member(author_id)
         except discord.errors.NotFound:
             self.logger.warning(f"Failed to fetch {author_id} as Member")
             raise e()
@@ -174,7 +165,7 @@ class utils:
             self.logger.warning(f"Utils guild link is still not ready")
             return
         try:
-            member = await self.guild.fetch_member(msg.author.id)
+            member = await self.guild.get_member(msg.author.id)
         except discord.errors.NotFound:
             self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
             return
@@ -410,7 +401,7 @@ class utils:
         if len(msg.content) == 0: return
         target_id = puppeteer_prog.search(msg.content)
         if target_id is None: return
-        target = await self.bot.fetch_user(int(target_id.group(1)))
+        target = await self.get_cached_user(int(target_id.group(1)))
         _crop = len(target_id.group(0)) + 1
         content = msg.content[_crop:]
         self.logger.info(f"Puppeteering message to {target_id.group(1)}/{target}: \"{content}\"")
@@ -628,7 +619,7 @@ class utils:
                 return await interaction.channel.send(**kwargs)
             
     async def give_returnee_roles(self, userid: int):
-        member = await self.guild.fetch_member(userid)
+        member = self.get_cached_member(userid)
         if member.bot:
             return False, set()
         
