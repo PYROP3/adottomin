@@ -150,7 +150,7 @@ class utils:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
         try:
-            member = self.guild.get_member(author_id)
+            member = await self.get_cached_member(author_id)
         except discord.errors.NotFound:
             self.logger.warning(f"Failed to fetch {author_id} as Member")
             raise e()
@@ -165,7 +165,7 @@ class utils:
             self.logger.warning(f"Utils guild link is still not ready")
             return
         try:
-            member = await self.guild.get_member(msg.author.id)
+            member = await self.get_cached_member(msg.author.id)
         except discord.errors.NotFound:
             self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
             return
