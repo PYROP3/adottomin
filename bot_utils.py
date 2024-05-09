@@ -619,7 +619,7 @@ class utils:
                 return await interaction.channel.send(**kwargs)
             
     async def give_returnee_roles(self, userid: int):
-        member = self.get_cached_member(userid)
+        member = await self.get_cached_member(userid)
         if member.bot:
             return False, set()
         
