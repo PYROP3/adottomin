@@ -14,6 +14,7 @@ import fortune
 memes_folder = "meme_stuff"
 
 no_horny = f"{memes_folder}/no_horny.png"
+no_simps = f"{memes_folder}/no_simps.png"
 
 use_pilmoji = False
 if use_pilmoji:
@@ -70,20 +71,27 @@ def draw_text_with_bbox(text: str, font_family: str, center_anchor: tuple, bbox:
     else:
         draw_ctx.text(center_anchor, get_wrapped_text(text, fnt, bbox[0], True), font=fnt, anchor=anchor, fill=fill, align=align)
 
-def paste_centered(icon, ic_size, base, pos):
+def paste_centered(icon, ic_size, base, pos, rot):
     if icon is None: return
     with Image.open(icon) as ic:
-        base.paste(ic.resize(ic_size), (pos[0] - ic_size[0]//2, pos[1] - ic_size[1]//2))
+        ic = ic.resize(ic_size).convert('RGBA')
+        if rot:
+            ic = ic.rotate(rot, expand=True)
+            # aux = ic.convert('RGBA')
+            # ro = aux.rotate(rot, expand=True)
+            # mask = Image.new('RGBA', ro.size, (255,255,255,255))
+            # ic = Image.composite(ro, mask, ro)
+        base.paste(ic, (pos[0] - ic_size[0]//2, pos[1] - ic_size[1]//2), ic)
 
 # icon: icon, size, position
 # text: text, bbox, position
 _baserules = {
-    "icon": lambda image, draw, args: paste_centered(args["icon"], args["size"], image, args["position"]),
+    "icon": lambda image, draw, args: paste_centered(args["icon"], args["size"], image, args["position"], args["rotation"]),
     "text": lambda image, draw, args: draw_text_with_bbox(args["text"], args["font"], args["position"], args["bbox"], draw, image, fill=args["fill"], align=args["align"], anchor=args["anchor"], size=args["size"])
 }
 
-def _args_icon(icon: str, size: tuple[int, int], position: tuple[int, int]):
-    return ("icon", {"icon": icon, "size": size, "position": position})
+def _args_icon(icon: str, size: tuple[int, int], position: tuple[int, int], rotation: float=0.0):
+    return ("icon", {"icon": icon, "size": size, "position": position, "rotation": rotation})
     
 def _args_text(text: str, bbox: tuple[int, int], position: tuple[int, int], fill: tuple[int, int, int, int]=(0,0,0,255), align: str='center', anchor: str='mm', size=None, font='arial.ttf'):
     return ("text", {"text": text, "bbox": bbox, "position": position, "fill": fill, "align": align, "anchor": anchor, "size": size, "font": font})
@@ -126,6 +134,10 @@ def _args_for(id: str, author_icon: str=None, icon: str=None, text: str=None):
         if id == "simpcard": return[_args_icon(icon, (210, 320), (183, 245))]
         if id == "custom_bingo": return [_args_text(f"{text[0]}'s bingo~", (1136, 155), (600, 105))] + [_args_text(f"{thing}", (200, 200), (145 + 227 * (idx % 5), 446 + 227 * (idx // 5))) 
                     for idx, thing in enumerate(text[1:13] + ["Free space~"] + text[13:])] # (1200, 1499)
+        if id == "mistletoe": return[_args_text(f"Next {text} people to talk", (700, 80), (400, 50)), _args_text(f"have to kiss~", (700, 80), (400, 550))]
+        if id == "silence": return[_args_text(text, (300, 80), (463, 50), fill=(255,255,255,255)), _args_icon(icon, (115, 115), (100, 380), rotation=30.)]
+        if id == "neat": return[_args_icon(icon, (165, 165), (107, 189))]
+        if id == "woaaaa": return[_args_text(text + ",,,,", (220, 106), (122, 60)), _args_icon(icon, (254, 254), (496, 584))]
 
 def create_meme(id: str, author_icon: str=None, icon: str=None, text: str=None):
     return automeme(f"{memes_folder}/{id}_template.png", _args_for(id, author_icon=author_icon, icon=icon, text=text))
@@ -180,5 +192,5 @@ def get_formatted_definition(contents):
     return (word_txt, meaning_txt, example_txt)
 
 fortune_generator = fortune.fortunes_generator
-def generate_fortune():
-    return fortune_generator.make_sentence(min_words=5, tries=20)
+def generate_fortune(model: str):
+    return fortune_generator.generate(model)

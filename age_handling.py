@@ -6,6 +6,8 @@ import bot_utils
 import botlogger
 import emoter
 import db
+import moderation
+import propervider as p
 
 em = emoter.Emoter()
 
@@ -19,22 +21,28 @@ MSG_GREETING = f"{em.e('NekoHi', 'wave')} Hello {'{}'}! May I ask your age, pls?
 MSG_TRY_AGAIN = "Try again, {}"
 MSG_TRY_AGAIN_JOKE = "First time I heard that one... You're a riot, {}!"
 MSG_GREETING_REMINDER = f"{em.e('NekoGun', 'wave')} Hey {'{}'}! Could you tell me your age? Or I'll have to do something drastic~"
-MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you were {}... :thinking: But in any case, welcome back to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
-MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! Tags are in <#1005395967429836851> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
-MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!"
+MSG_APPEND = f"Tags are in <#{p.pint('ROLES_CHANNEL_ID')}> if you want ^^\nYou may also create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!\nYou may also try `/ghostpings settings` so I'll notify you whenever people ping you here!"
+MSG_DIFFERENT_AGE_BIRTHDAY = "Oh, last time you said you were {}... So happy late birthday, {}~! :tada: :birthday: And welcome back to the server! " + MSG_APPEND
+MSG_DIFFERENT_AGE = "Are you sure, {}? Cuz last time you were here, you said you were {}... :thinking: But in any case, welcome back to the server! " + MSG_APPEND
+MSG_WELCOME = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server! " + MSG_APPEND
+MSG_WELCOME_NO_TAGS = f"Thank you {'{}'}! {em.e('NekoPat', 'space_invader')} Welcome to the server!\nYou may create your f-list here with `/kink`, or contribute to the server worldmap with `/locate`!\nYou may also try `/ghostpings settings` so I'll notify you whenever people ping you here!"
 MSG_AGE_IN_DMS = f"{'{}'} told me their age in DMs and they're chill! :sunglasses:"
+MSG_ROLES_RETURNED = f"Also just cuz I dig your vibes, imma give your old roles, {'{}'}! Welcome back, furiend~"
+MSG_MISSING_ROLES = f"\nUnfortunately I can't give ya {'{}'}, but ig you can ask someone else lol"
 
 AGE_MAX = 40
 
 DELETE_GREETINGS = False
 
 class age_handler:
-    def __init__(self, bot, sql: db.database, utils: bot_utils.utils, valid_role_ids, leniency_reminder=None):
+    def __init__(self, bot, sql: db.database, utils: bot_utils.utils, mod: moderation.ModerationCore, valid_role_ids, leniency_reminder=None):
         self.bot = bot
         self.sql = sql
         self.utils = utils
+        self.mod = mod
         self.valid_role_ids = valid_role_ids
         self.leniency_reminder = leniency_reminder + 1 if leniency_reminder is not None else None
+        self.returning_users = set()
 
         self.logger = botlogger.get_logger(__name__)
         
@@ -52,17 +60,8 @@ class age_handler:
         self.tally_channel = tally_channel
         self.log_channel = log_channel
 
-    async def generate_log_embed(self, isBan: bool, user: discord.Member, reason: str):
-        embed = discord.Embed(
-            colour=discord.Colour.red() if isBan else discord.Colour.yellow(),
-            timestamp=datetime.datetime.now()
-        )
-        embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Moderator", value=self.bot.user.mention, inline=True)
-        embed.add_field(name="Reason", value=reason, inline=True)
-        embed.set_footer(text=f'ID: {user.id}')
-        embed.set_author(name=f"{'Ban' if isBan else 'Kick'} | {user.name}", icon_url=user.avatar and user.avatar.url)
-        return embed
+    def on_returning_user(self, user: discord.Member):
+        self.returning_users.add(user.id)
 
     async def handle_age(self, msg: discord.Message):
         if len(msg.content) == 0: return
@@ -98,7 +97,10 @@ class age_handler:
                     sent_already = False
                     if (prev_age := self.sql.get_previous_age(msg.author.id)) and prev_age != age:
                         sent_already = True
-                        await msg.channel.send(MSG_DIFFERENT_AGE.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
+                        if prev_age + 1 == age:
+                            await msg.channel.send(MSG_DIFFERENT_AGE_BIRTHDAY.format(prev_age, msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
+                        else:    
+                            await msg.channel.send(MSG_DIFFERENT_AGE.format(msg.author.mention, prev_age), allowed_mentions=discord.AllowedMentions.none())
                 
                     self.sql.delete_entry(msg.author.id)
                     self.sql.set_age(msg.author.id, age, force=True)
@@ -110,6 +112,17 @@ class age_handler:
                     if isinstance(msg.channel, discord.DMChannel):
                         self.logger.debug(f"Message sent in DMchannel")
                         await self.greeting_channel.send(MSG_AGE_IN_DMS.format(msg.author.mention), allowed_mentions=discord.AllowedMentions.none())
+
+                    if msg.author.id in self.returning_users:
+                        gave_roles, missing_roles = await self.utils.give_returnee_roles(msg.author.id)
+                        if gave_roles:
+                            self.logger.debug(f"Success giving returnee roles to {msg.author}")
+                            content = MSG_ROLES_RETURNED.format(msg.author.mention)
+                            if missing_roles:
+                                content += MSG_MISSING_ROLES.format(", ".join([role.mention for role in missing_roles]))
+                            await self.greeting_channel.send(content, allowed_mentions=discord.AllowedMentions.none())
+                        self.returning_users.remove(msg.author.id)
+
                     return
 
         if leniency > 0:
@@ -127,15 +140,14 @@ class age_handler:
         self.sql.cache_age(member.id, age)
         if force_ban or self.sql.is_kicked(member.id):
             self.logger.debug(f"[{self.greeting_channel}] {member} Will ban user (force={force_ban})")
-            await self.do_ban(member, reason=reason)
+            await self.mod.core_ban(member, self.greeting_channel, reason_notif=reason, reason_log=f"{reason} ({age})", moderator=self.bot.user)
+            await self.do_tally()
             self.sql.remove_kick(member.id)
-            await self.log_channel.send(embed=await self.generate_log_embed(True, member, f"{reason} ({age})"))
 
         else:
             self.logger.debug(f"[{self.greeting_channel}] {member} User was NOT previously kicked")
-            await self.do_kick(member, reason=reason)
+            await self.mod.core_kick(member, self.greeting_channel, reason_notif=reason, moderator=self.bot.user)
             self.sql.create_kick(member.id)
-            await self.log_channel.send(embed=await self.generate_log_embed(False, member, reason))
 
         greeting = self.sql.delete_entry(member.id)
         await self.try_delete_greeting(greeting)
@@ -181,28 +193,6 @@ class age_handler:
         except Exception as e:
             self.logger.error(f"Failed to tally! {e}")
 
-    async def do_ban(self, user, reason=REASON_MINOR, tally=True):
-        try:
-            await self.greeting_channel.guild.ban(user, reason=reason.capitalize())
-            await self.greeting_channel.send(f"{user.mention} was banned cuz {reason}")
-            if tally:
-                await self.do_tally()
-        except discord.NotFound:
-            self.logger.debug(f"User id {user} already left!")
-        except:
-            self.logger.error(f"Failed to ban user id {user}!")
-            # await channel.send(f"Failed to ban user {user.mention} | {reason.capitalize()}")
-
-    async def do_kick(self, user, reason=REASON_TIMEOUT):
-        try:
-            await self.greeting_channel.guild.kick(user, reason=reason.capitalize())
-            await self.greeting_channel.send(f"{user.mention} was kicked cuz {reason}")
-        except discord.NotFound:
-            self.logger.debug(f"User id {user} already left!")
-        except:
-            self.logger.error(f"Failed to kick user id {user}!")
-            # await channel.send(f"Failed to kick user {user.mention} | {reason.capitalize()}")
-
     async def do_age_check(self, channel, member, is_reminder=False):
         leniency = self.sql.get_leniency(member.id)
         must_continue = True
@@ -232,6 +222,7 @@ class age_handler:
                 else:
                     self.logger.debug(f"[{channel}] {member} Found age role: {age_role}")
                     self.sql.set_age(member.id, age_role.id, force=True) # since we don't know the exact age, save the role ID instead
+                    await self.utils.give_returnee_roles(member.id)
                     must_continue = False
 
             except discord.NotFound:

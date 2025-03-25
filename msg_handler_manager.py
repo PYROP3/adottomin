@@ -37,6 +37,12 @@ class HandlerManager:
         if len(self._dyn_handler_locks[handler]) == 0:
             logger.debug(f"deactivate {handler}")
             self._dyn_handlers.discard(handler)
+        
+    def is_lock(self, handler: typing.Callable, lock: int):
+        if handler not in self._dyn_handler_locks:
+            logger.warning(f"handler {handler} not in lock list")
+            return False
+        return lock in self._dyn_handler_locks[handler]
 
     async def on_message(self, msg: discord.Message):
         for handle in self._sta_handlers + list(self._dyn_handlers):

@@ -3,6 +3,7 @@ import enum
 import os
 import sqlite3
 import diff_match_patch as dmp_module
+import typing
 
 import botlogger
 
@@ -15,7 +16,7 @@ validations_version = 1
 validations_db_file = _dbfile('validations', validations_version)
 warnings_version = 2
 warnings_db_file = _dbfile('warnings', warnings_version)
-offline_ping_blocklist_version = 2
+offline_ping_blocklist_version = 3
 offline_ping_blocklist_db_file = _dbfile('offline_ping_blocklist', offline_ping_blocklist_version)
 activity_version = 2
 activity_db_file = _dbfile('activity', activity_version)
@@ -31,8 +32,8 @@ aliases_version = 1
 aliases_db_file = _dbfile('aliases', aliases_version)
 worldmap_version = 1
 worldmap_db_file = _dbfile('worldmap', worldmap_version)
-nnn_2022_version = 1
-nnn_2022_db_file = _dbfile('nnn_2022', nnn_2022_version)
+nnn_2023_version = 1
+nnn_2023_db_file = _dbfile('nnn_2023', nnn_2023_version)
 nuts_version = 1
 nuts_db_file = _dbfile('nuts', nuts_version)
 attachments_version = 2
@@ -59,6 +60,8 @@ jails_version = 1
 jails_db_file = _dbfile('jails', jails_version)
 modnotes_version = 1
 modnotes_db_file = _dbfile('modnotes', modnotes_version)
+roles_version = 1
+roles_db_file = _dbfile('roles', roles_version)
 
 sql_files = [
     validations_db_file,
@@ -69,7 +72,7 @@ sql_files = [
     pins_archive_db_file,
     aliases_db_file,
     worldmap_db_file,
-    nnn_2022_db_file,
+    nnn_2023_db_file,
     nuts_db_file,
     attachments_db_file,
     kinks_db_file,
@@ -82,11 +85,12 @@ sql_files = [
     advertisements_db_file,
     relationships_db_file,
     jails_db_file,
-    modnotes_db_file
+    modnotes_db_file,
+    roles_db_file,
 ]
 
 class once_alerts(enum.Enum):
-    offline_pings=1
+    offline_pings=2
 
 schemas = {
     validations_db_file: ['''
@@ -118,6 +122,7 @@ schemas = {
     offline_ping_blocklist_db_file: ['''
             CREATE TABLE allowlist (
                 user int NOT NULL,
+                bitmask int NOT NULL,
                 PRIMARY KEY (user)
             );'''],
     activity_db_file: ['''
@@ -161,7 +166,7 @@ schemas = {
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
-    nnn_2022_db_file: ['''
+    nnn_2023_db_file: ['''
             CREATE TABLE users (
                 user int NOT NULL,
                 wager int,
@@ -308,6 +313,13 @@ schemas = {
                 created_at TIMESTAMP,
                 PRIMARY KEY (user, revision)
             );'''],
+    roles_db_file: ['''
+            CREATE TABLE roles (
+                user int NOT NULL,
+                role int NOT NULL,
+                created_at TIMESTAMP,
+                PRIMARY KEY (user, role)
+            );'''],
 }
 
 class database:
@@ -452,7 +464,7 @@ class database:
     def create_warning(self, user, moderator, reason="", time_range=None):
         con = sqlite3.connect(warnings_db_file)
         cur = con.cursor()
-        cur.execute("INSERT INTO warnings VALUES (?, ?, ?, ?)", [user, reason, moderator, datetime.datetime.now()])
+        cur.execute("INSERT INTO warnings VALUES (?, ?, ?, ?)", [user, moderator, reason, datetime.datetime.now()])
         con.commit()
         min_date = datetime.datetime.min if time_range is None else datetime.datetime.now() - datetime.timedelta(days=time_range)
         data = cur.execute("SELECT * FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
@@ -466,37 +478,64 @@ class database:
         data = cur.execute("SELECT moderator, reason, date FROM warnings WHERE date > :date AND user = :id", {"id": user, "date": min_date}).fetchall()
         con.close()
         return data
-
-    def add_to_offline_ping_allowlist(self, user):
+    
+    def set_ghost_ping_settings(self, user: int, settings: int):
         con = sqlite3.connect(offline_ping_blocklist_db_file)
         cur = con.cursor()
         try:
-            cur.execute("INSERT INTO allowlist VALUES (?)", [user])
+            cur.execute("INSERT INTO allowlist VALUES (?, ?)", [user, settings])
             con.commit()
         except sqlite3.IntegrityError:
-            self.logger.warning(f"Duplicated user id {user} in allowlist")
+            self.logger.debug(f"Duplicated user id {user} in ghostpings allowlist")
+            cur.execute("UPDATE allowlist SET bitmask=:settings WHERE user=:user", {'user': user, 'settings':settings})
+            con.commit()
         con.close()
 
-    def remove_from_offline_ping_allowlist(self, user):
+    # def add_to_offline_ping_allowlist(self, user):
+    #     con = sqlite3.connect(offline_ping_blocklist_db_file)
+    #     cur = con.cursor()
+    #     try:
+    #         cur.execute("INSERT INTO allowlist VALUES (?)", [user])
+    #         con.commit()
+    #     except sqlite3.IntegrityError:
+    #         self.logger.warning(f"Duplicated user id {user} in allowlist")
+    #     con.close()
+
+    # def remove_from_ghost_ping_allowlist(self, user):
+    #     con = sqlite3.connect(offline_ping_blocklist_db_file)
+    #     cur = con.cursor()
+    #     try:
+    #         cur.execute("DELETE FROM allowlist WHERE user=:id", {"id": user})
+    #         con.commit()
+    #     except:
+    #         pass
+    #     con.close()
+
+    def get_ghost_ping_settings(self, user: int):
         con = sqlite3.connect(offline_ping_blocklist_db_file)
         cur = con.cursor()
-        try:
-            cur.execute("DELETE FROM allowlist WHERE user=:id", {"id": user})
-            con.commit()
-        except:
-            pass
+        bitmask = cur.execute("SELECT bitmask FROM allowlist WHERE user=:user", {'user': user}).fetchone() or [0]
         con.close()
+        return bitmask[0]
+    
+    def get_ghost_ping_users_by_value(self, mask, match_all:bool=True):
+        con = sqlite3.connect(offline_ping_blocklist_db_file)
+        cur = con.cursor()
+        cond = "== :value" if match_all else "!= 0"
+        users = cur.execute("SELECT user FROM allowlist WHERE bitmask & :value " + cond, {'value': mask}).fetchall()
+        con.close()
+        return [int(user[0]) for user in users]
 
-    def is_in_offline_ping_allowlist(self, user):
-        try:
-            con = sqlite3.connect(offline_ping_blocklist_db_file)
-            cur = con.cursor()
-            res = cur.execute("SELECT user FROM allowlist WHERE user = :id", {"id": user}).fetchone()
-            con.commit()
-            con.close()
-            return res is not None
-        except:
-            return False
+    # def is_in_offline_ping_allowlist(self, user):
+    #     try:
+    #         con = sqlite3.connect(offline_ping_blocklist_db_file)
+    #         cur = con.cursor()
+    #         res = cur.execute("SELECT user FROM allowlist WHERE user = :id", {"id": user}).fetchone()
+    #         con.commit()
+    #         con.close()
+    #         return res is not None
+    #     except:
+    #         return False
 
     def register_message(self, user, message_id, channel_id):
         con = sqlite3.connect(activity_db_file)
@@ -651,7 +690,7 @@ class database:
         cur = con.cursor()
         res = self.is_simping(simp, simp_for, cur=cur)
         if res is not None:
-            cur.execute("UPDATE simps SET starred=:new_state WHERE simp=:simp AND simp_for = simp_for", {"simp": simp, "simp_for": simp_for, "new_state": new_state})
+            cur.execute("UPDATE simps SET starred=:new_state WHERE simp=:simp AND simp_for=:simp_for", {"simp": simp, "simp_for": simp_for, "new_state": new_state})
         con.commit()
         con.close()
         self.logger.debug(f"Update_simping: {simp} x {simp_for} - {new_state}: {res}")
@@ -735,7 +774,7 @@ class database:
     
     def nnn_join(self, user, wager=False):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             cur.execute("INSERT INTO users VALUES (?, ?, ?)", [user, 1 if wager else 0, datetime.datetime.now()])
             con.commit()
@@ -746,7 +785,7 @@ class database:
 
     def nnn_status(self, user):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             res = cur.execute("SELECT * FROM users WHERE user=:id", {"id": user}).fetchone()
             con.commit()
@@ -757,7 +796,7 @@ class database:
     
     def nnn_fail(self, user):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             cur.execute("INSERT INTO failed VALUES (?, ?)", [user, datetime.datetime.now()])
             con.commit()
@@ -768,7 +807,7 @@ class database:
 
     def nnn_count(self):
         try:
-            con = sqlite3.connect(nnn_2022_db_file)
+            con = sqlite3.connect(nnn_2023_db_file)
             cur = con.cursor()
             res1 = cur.execute("SELECT count(*) FROM users").fetchone()
             res2 = cur.execute("SELECT count(*) FROM failed").fetchone()
@@ -1331,6 +1370,57 @@ class database:
 
         con.close()
         return result_data
+    
+    def add_role(self, user: int, role: int):
+        con = sqlite3.connect(roles_db_file)
+        try:
+            cur = con.cursor()
+            cur.execute("INSERT INTO roles VALUES (?, ?, ?)", [user, role, datetime.datetime.now()])
+            con.commit()
+        except:
+            self.logger.warning(f"Duplicated role {role} for {user}")
+        con.close()
+    
+    def add_roles(self, user: int, roles: typing.List[int]):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        now = datetime.datetime.now()
+        cur.executemany("INSERT OR IGNORE INTO roles VALUES (?, ?, ?)", [(user, role, now) for role in roles])
+        con.commit()
+        con.close()
+    
+    def redo_roles(self, user: int, roles: typing.List[int]):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        now = datetime.datetime.now()
+        cur.execute("DELETE FROM roles WHERE user=:user", {'user': user})
+        cur.executemany("INSERT OR IGNORE INTO roles VALUES (?, ?, ?)", [(user, role, now) for role in roles])
+        con.commit()
+        con.close()
+    
+    def remove_role(self, user: int, role: int):
+        con = sqlite3.connect(roles_db_file)
+        try:
+            cur = con.cursor()
+            cur.execute("DELETE FROM roles WHERE user=:user AND role=:role", {'user': user, 'role': role})
+            con.commit()
+        except:
+            pass
+        con.close()
+    
+    def remove_roles(self, user: int, roles: typing.List[int]):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        cur.executemany("DELETE FROM roles WHERE user=? AND role=?", [(user, role) for role in roles])
+        con.commit()
+        con.close()
+    
+    def get_roles(self, user: int):
+        con = sqlite3.connect(roles_db_file)
+        cur = con.cursor()
+        data = cur.execute("SELECT role FROM roles WHERE user=:user", {'user': user}).fetchall()
+        con.close()
+        return [l[0] for l in data]
 
     def db2datetime(self, when: str):
         return datetime.datetime.strptime(when, "%Y-%m-%d %H:%M:%S.%f")

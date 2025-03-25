@@ -1,10 +1,13 @@
+import asyncio
 import country_converter as coco
 import discord
 import inspect
 import json
+import msg_handler_manager
 import queue
 import random
 import re
+import requests
 import string
 import subprocess
 import time
@@ -13,17 +16,19 @@ import typing
 
 import botlogger
 import db
+import ghostpings
+import propervider as p
 
 from datetime import datetime, timedelta
 from discord.ext import commands
+from bs4 import BeautifulSoup
 try:
     from ipcqueue import sysvmq
 except ImportError:
     sysvmq = None
 
-VALID_NOTIFY_STATUS = [discord.Status.offline]
-
 AVATAR_CDN_URL = "https://cdn.discordapp.com/avatars/{}/{}.png"
+SAUCENAO_URL = 'https://saucenao.com/search.php'
 
 MSG_NOT_ALLOWED = "You're not allowed to use this command :3"
 
@@ -58,11 +63,17 @@ attachments_channel_ids = [1002078229168922785]
 # attachments_channel_ids = [471017843459358733]
 attachment_save_location = "attachments"
 
+ad_channel = p.pint('AD_CHANNEL_ID')
+ad_poster_role_id = p.pint('AD_POSTER_ROLE_ID')
+horny_channel_id = p.pint('HORNY_CHANNEL_ID')
+log_channel_id = p.pint('LOG_CHANNEL_ID')
+
 puppeteer_prog = re.compile(r"<@([0-9]+)>")
+file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
 
 def quote_each_line(msg: str, additional:str=""):
-    lines = msg.split('\n') + additional.split('\n')
-    return "".join([f"> {line}\n" for line in lines[::-1]])
+    lines = msg.split('\n') + (additional.split('\n') if len(additional) else [])
+    return "".join([f"> {line}\n" for line in lines])
 
 def get_attachments(self, msg: discord.Message):
     extras = {
@@ -81,9 +92,12 @@ class HandlerIgnoreException(HandlerException):
 invite_prog = re.compile(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(.+)")
 
 class utils:
-    def __init__(self, bot: commands.Bot, database: db.database, chatting_roles_allowlist=[], chatting_servicename: str=None):
+    time_regex = re.compile(r"([1-9][0-9]*)([smhdw]?)")
+
+    def __init__(self, bot: commands.Bot, database: db.database, mhm: msg_handler_manager.HandlerManager, chatting_roles_allowlist=[], chatting_servicename: str=None):
         self.database = database
         self.bot = bot
+        self.mhm = mhm
         self.chatting_roles_allowlist = set(chatting_roles_allowlist)
         self.chatting_servicename = chatting_servicename
         self.admin = None
@@ -93,6 +107,18 @@ class utils:
         self.logger = botlogger.get_logger(__name__)
 
         self._recreate_queues()
+
+    async def get_cached_user(self, id: int):
+        if user := self.bot.get_user(id):
+            return user
+        user =  await self.bot.fetch_user(id)
+        return user
+
+    async def get_cached_member(self, id: int):
+        if user := self.guild.get_member(id):
+            return user
+        user = await self.guild.fetch_member(id)
+        return user
 
     async def _enforce_admin_only(self, msg, e: HandlerException=HandlerIgnoreException):
         if self.admin is None: 
@@ -112,20 +138,11 @@ class utils:
     async def _enforce_not_dms(self, msg, e: HandlerException=HandlerIgnoreException):
         if msg.channel.type == discord.ChannelType.private: raise e()
 
-    async def _enforce_has_role(self, msg, roles: set[int], e: HandlerException=HandlerIgnoreException):
+    async def _enforce_has_role(self, msg: discord.Message, roles: set[int], e: HandlerException=HandlerIgnoreException):
         if self.guild is None:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
-        # try:
-        #     member = await self.guild.fetch_member(msg.author.id)
-        # except discord.errors.NotFound:
-        #     self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
-        #     raise e()
-        # if member is None: 
-        #     self.logger.warning(f"Got null when trying to fetch {msg.author.id} as Member")
-        #     raise e()
         author_roles = await self.get_roles(msg.author.id, e=e)
-        # self.logger.debug(f"Comparing user {author_roles} to {roles}")
         if set([role.id for role in author_roles]).intersection(roles) == set(): raise e()
 
     async def get_roles(self, author_id: int, e: HandlerException=HandlerIgnoreException):
@@ -133,7 +150,7 @@ class utils:
             self.logger.warning(f"Utils guild link is still not ready")
             raise e()
         try:
-            member = await self.guild.fetch_member(author_id)
+            member = await self.get_cached_member(author_id)
         except discord.errors.NotFound:
             self.logger.warning(f"Failed to fetch {author_id} as Member")
             raise e()
@@ -148,7 +165,7 @@ class utils:
             self.logger.warning(f"Utils guild link is still not ready")
             return
         try:
-            member = await self.guild.fetch_member(msg.author.id)
+            member = await self.get_cached_member(msg.author.id)
         except discord.errors.NotFound:
             self.logger.warning(f"Failed to fetch {msg.author.id} as Member")
             return
@@ -167,9 +184,14 @@ class utils:
         self.logger.debug(f"Injected {len(pois)} pois")
         self.pois = pois
 
-    def inject_guild(self, guild: discord.Guild):
+    async def inject_guild(self, guild: discord.Guild):
         self.logger.debug(f"Injected guild {guild}")
         self.guild = guild
+        self.mbot = await guild.fetch_member(self.bot.user.id)
+        
+    async def on_utils_setup(self):
+        self.horny_channel = await self.guild.fetch_channel(horny_channel_id)
+        self.log_channel = await self.guild.fetch_channel(log_channel_id)
 
     def _is_chatbot_available(self):
         if self.chatting_servicename is None: return False
@@ -244,20 +266,37 @@ class utils:
     def _is_self_mention(self, msg: discord.Message, member: discord.Member):
         return (member.id == msg.author.id) or (msg.author.bot and msg.interaction != None and msg.interaction.user.id == member.id)
 
+    async def handle_cork_board_post(self, msg: discord.Message):
+        await self._enforce_not_dms(msg)
+        if msg.channel.id != ad_channel: return
+        if not self.mhm.is_lock(self.handle_cork_board_post, msg.author.id): return
+
+        ad_role = msg.guild.get_role(ad_poster_role_id)
+        try:
+            await msg.author.remove_roles(ad_role, reason=f"posted in cork-board")
+        except Exception as e:
+            self.logger.error(f"handle_cork_board_post: {e}\n{traceback.format_exc()}")
+
+        self.mhm.remove_dyn_lock(self.handle_cork_board_post, msg.author.id)
+
     async def handle_offline_mentions(self, msg: discord.Message):
         await self._enforce_not_dms(msg)
-        for member in msg.mentions:
-            will_send = not self._is_self_mention(msg, member) and member.status in VALID_NOTIFY_STATUS and self.database.is_in_offline_ping_allowlist(member.id)
+        member_list = [msg.guild.get_member(id) for id in ghostpings.get_everyone_allowlist(self.database)] if msg.mention_everyone else msg.mentions
+        # self.logger.debug(f"handle_offline_mentions: {member_list}")
+        who = "@everyone" if msg.mention_everyone else "you"
+        for member in member_list:
+            if not member: continue
+            will_send = not self._is_self_mention(msg, member) and ghostpings.compute_user_bitmask(member, self.database) and msg.channel.permissions_for(member).view_channel
             # self.logger.debug(f"[handle_offline_mentions] User {member} status = {member.status} // will_send = {will_send}")
             if not will_send: continue
             fmt_msg_chain = await self._format_msg_chain(member, msg)
 
             if msg.author.bot:
-                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged you{self._interaction_detail(msg.interaction)} in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
+                content = f"Hi {member.name}! {self._bot_name(msg.author)} pinged {who}{self._interaction_detail(msg.interaction)} in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
             else:
-                content = f"Hi {member.name}! {msg.author.mention} pinged you in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
+                content = f"Hi {member.name}! {msg.author.mention} pinged {who} in {msg.channel.name} while you were offline:\n{msg.jump_url}\n{fmt_msg_chain}\n"
             if not self.database.is_alert_registered(member.id, db.once_alerts.offline_pings):
-                content += "You can disable these notifications with `/offlinepings off` in the server if you want!"
+                content += "You can disable these notifications with `/ghostpings settings` in the server if you want!"
                 self.database.register_alert(member.id, db.once_alerts.offline_pings)
             await self._split_dm(content, member)
 
@@ -280,6 +319,18 @@ class utils:
         except Exception as e:
             self.logger.error(f"Error while trying to get avatar: {e}\n{traceback.format_exc()}")
             return None
+        
+    def core_find_sauce(self, url: str):
+        def _iterate_valid(results):
+            for result in results:
+                if 'hidden' in result['class']: continue
+                links = result.find_all('a')
+                if links and len(links) > 1:
+                    yield links[1]['href']
+        response = requests.post(SAUCENAO_URL, {'file': '(binary)', 'url': url})
+        if response.status_code != 200: return None
+        soup = BeautifulSoup(response.text, 'html.parser')
+        return list(_iterate_valid(soup.find_all('div', {'class':'result'})))
 
     def _get_display_name(self, user: typing.Optional[discord.Member]):
         if user is None: return None
@@ -350,7 +401,7 @@ class utils:
         if len(msg.content) == 0: return
         target_id = puppeteer_prog.search(msg.content)
         if target_id is None: return
-        target = await self.bot.fetch_user(int(target_id.group(1)))
+        target = await self.get_cached_user(int(target_id.group(1)))
         _crop = len(target_id.group(0)) + 1
         content = msg.content[_crop:]
         self.logger.info(f"Puppeteering message to {target_id.group(1)}/{target}: \"{content}\"")
@@ -506,7 +557,7 @@ class utils:
     async def ensure_admin(self, interaction):
         if (interaction.user.id != self.admin.id):
             self.logger.debug(f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
-            await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+            await self.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True)
             return False
         return True
 
@@ -514,7 +565,7 @@ class utils:
         _author_roles = self.role_ids(interaction.user)
         if (interaction.user.id != self.admin.id) and set(_author_roles).intersection(roles) == set():
             self.logger.debug(f"{interaction.user} cannot use {inspect.getouterframes(inspect.currentframe(), 2)[1][3]}")
-            await interaction.followup.send(content=MSG_NOT_ALLOWED, ephemeral=True)
+            await self.safe_send(interaction, content=MSG_NOT_ALLOWED, ephemeral=True)
             return False
         return True
 
@@ -566,6 +617,60 @@ class utils:
                 else:
                     kwargs['content'] = f"{interaction.user.mention} used `/{_name}`"
                 return await interaction.channel.send(**kwargs)
+            
+    async def give_returnee_roles(self, userid: int):
+        member = await self.get_cached_member(userid)
+        if member.bot:
+            return False, set()
+        
+        role_ids = self.database.get_roles(userid)
+        if role_ids:
+            roles = set([self.guild.get_role(role_id) for role_id in role_ids])
+            assignable_roles = set([role for role in roles if self.is_assignable(role)])
+
+            self.logger.debug(f"Adding {assignable_roles} to returning {member}")
+            try:
+                await member.add_roles(*assignable_roles, reason="Returning fur-iend!")
+                return True, roles.difference(assignable_roles)
+            except:
+                self.logger.warning(f"Failed to give roles to {userid}")
+        return False, set()
+            
+    async def purge_user_from_channel(self, channel: discord.TextChannel, userid: int, reason: str, complete: bool=False, mod: discord.Member=None):
+        total_messages = 0
+        total_purged = 0
+        total_ignored = 0
+        async for message in channel.history(limit=None):
+            total_messages += 1
+            if message.author.id != userid: continue
+            if (not complete) and (not message.attachments): 
+                total_ignored += 1
+                continue
+            self.logger.info(f"Purging message {message.id} from {channel}")
+            await message.delete()
+            total_purged += 1
+
+        self.logger.info(f"Purged {total_purged}, ignored {total_ignored} out of {total_messages} in {channel}")
+
+        try:
+            user = await self.bot.fetch_user(userid)
+        except:
+            user = None
+
+        mod = mod or self.bot.user
+        purge_embed = discord.Embed(
+                colour=discord.Colour.blurple(),
+                timestamp=datetime.now()
+            )         
+        purge_embed.add_field(name="User", value=f"<@{userid}>", inline=True)
+        purge_embed.add_field(name="Moderator", value=mod.mention, inline=True)
+        purge_embed.add_field(name="Channel", value=channel.mention, inline=True)
+        purge_embed.add_field(name="Reason", value=reason, inline=True)
+        purge_embed.add_field(name="Messages", value=f"{total_purged} purged | {total_ignored} ignored", inline=True)
+        purge_embed.set_footer(text=f'ID: {userid}')
+        av = user or self.bot.user
+        purge_embed.set_author(name=f"Purge | {user.name if user else userid}", icon_url=av.avatar and av.avatar.url)
+        await self.log_channel.send(embed=purge_embed)
 
     def _iterate_dec(self, number:int):
         while number >= 10:
@@ -615,6 +720,47 @@ class utils:
     #     else:
     #         return '%s%ds' % (sign_string, seconds)
 
+    async def core_hornyjail(self, interaction: discord.Interaction, user: discord.Member, duration: int, jail_role_id: int, message: typing.Optional[discord.Message]=None, delete_original: typing.Optional[bool]=False):
+        self.logger.info(f"{interaction.user} is jailing {user} for {duration} minutes")
+
+        if user.bot:
+            await self.safe_send(interaction, content=f"Bots can't get horny, silly~", ephemeral=True)
+            return
+
+        if duration < 1: 
+            await self.safe_send(interaction, content=f"Please input a valid duration (> 0)", ephemeral=True)
+            return
+
+        success = self.database.jail_try_register_jailing(user.id, interaction.user.id, duration)
+
+        if not success:
+            await self.safe_send(interaction, content=f"I think that user is already in jail~", ephemeral=True)
+            return
+        
+        jail_role = interaction.guild.get_role(jail_role_id)
+        await user.add_roles(jail_role, reason=f'{interaction.user} put them in jail')
+        
+        await self.safe_send(interaction, content=f"{user.mention} is now in horny jail for {duration} {self.plural('minute', duration)}! Feel free to continue the conversation in {self.horny_channel.mention}~", send_anyway=True)
+
+        # Send embedded message to an appropriate chat
+        if message:
+            msg_embed, msg_attachments = await self.core_message_as_embed(message, add_jump=False)
+            await self.horny_channel.send(file=msg_attachments, embed=msg_embed)
+            if delete_original:
+                try:
+                    await message.delete()
+                except Exception as e:
+                    self.logger.warning(f"Failed to remove original message : {e} | {traceback.format_exc()}")
+
+        await asyncio.sleep(duration * 60)
+        
+        try:
+            self.logger.debug(f"Unjailing {user} after {duration} minutes")
+            await user.remove_roles(jail_role, reason=f'{duration} minute timer finished')
+            self.logger.debug(f"Success unjailing {user}")
+        except Exception as e:
+            self.logger.debug(f"Failed to remove role : {e} | {traceback.format_exc()}")
+
     async def core_joinhistory(self, interaction: discord.Interaction, userid: int, sql: db.database, username: str=None):
         username = username or userid
         data = sql.get_join_history(userid)
@@ -641,3 +787,54 @@ class utils:
         content += " (" + ("in" if last_action == 'join' else "out") + f" for {self.pretty_time_delta(datetime.now() - last_datetime)} so far)\n"
 
         await self.safe_send(interaction, content=content, send_anyway=True)
+
+    async def core_message_as_embed(self, message: discord.Message, add_jump: bool=True):
+        embed = discord.Embed(
+            description=message.content if len(message.content) > 0 else None,
+            colour=random.choice(EMBED_COLORS),
+            timestamp=datetime.now()
+        )
+
+        attachments = message.attachments
+        pinAttachmentFile = None
+        if len(attachments) >= 1:
+            try:
+                re_file_ext = file_ext_prog.search(attachments[0].filename)
+                file_ext = re_file_ext and re_file_ext.group(1) or "png"
+                icon_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=20)) + "." + file_ext
+                self.logger.debug(f"icon_name=trash/{icon_name}")
+                
+                await attachments[0].save(fp="trash/" + icon_name)
+
+                pinAttachmentFile = discord.File("trash/" + icon_name, filename=icon_name)
+                embed.set_image(url=f"attachment://{icon_name}")
+            except Exception as e:
+                self.logger.error(f"Error while trying to save pin attachment: {e}\n{traceback.format_exc()}")
+
+        if add_jump:
+            embed.add_field(name="Jump", value=message.jump_url, inline=False)
+        
+        embed.set_footer(text=f'Sent in: {message.channel.name} - at: {message.created_at}')
+
+        embed.set_author(name=f'Sent by {message.author}', icon_url=message.author.avatar.url)
+
+        return (embed, pinAttachmentFile)
+    
+    def is_assignable(self, role: discord.Role):
+        return not role.is_default() and not role.managed and (self.mbot.top_role > role or self.bot.user.id == role.guild.owner_id)
+    
+def extract_timedelta(msg: str):
+    print(f"extract_timedelta: {msg}")
+    time = utils.time_regex.match(msg)
+    if time:
+        val, unit = time.groups()
+        unit = unit or 'm'
+        conv = {
+            's': 'seconds',
+            'm': 'minutes',
+            'h': 'hours',
+            'd': 'days',
+            'w': 'weeks'
+        }
+        return timedelta(**{conv[unit]: int(val)})
+    return None

@@ -1,4 +1,12 @@
-import markovify
+import propervider as p
+import typing
+import botlogger
+
+logger = botlogger.get_logger(__name__)
+logger.setLevel(p.pstr("FORTUNE_LOG_LEVEL", default="INFO"))
+
+class BaseFortuneGen:
+    pass
 
 _raw_quotes = [
     "If you want to achieve greatness stop asking for permission.",
@@ -6,7 +14,7 @@ _raw_quotes = [
     "To live a creative life, we must lose our fear of being wrong.",
     "If you are not willing to risk the usual you will have to settle for the ordinary.",
     "Trust because you are willing to accept the risk, not because it's safe or certain.",
-    "Take up one idea. Make that one idea your life - think of it, dream of it, live on that idea. Let the brain, muscles, nerves, every part of your body, be full of that idea, and just leave every other idea alone. This is the way to success.",
+    "Take up one idea. Make that one idea your life, think of it, dream of it, live on that idea. Let the brain, muscles, nerves, every part of your body, be full of that idea, and just leave every other idea alone. This is the way to success.",
     "All our dreams can come true if we have the courage to pursue them.",
     "Good things come to people who wait, but better things come to those who go out and get them.",
     "If you do what you always did, you will get what you always got.",
@@ -49,10 +57,10 @@ _raw_quotes = [
     "Success is the sum of small efforts, repeated day-in and day-out.",
     "If you want to achieve excellence, you can get there today. As of this second, quit doing less-than-excellent work.",
     "All progress takes place outside the comfort zone.",
-    "You may only succeed if you desire succeeding; you may only fail if you do not mind failing.",
-    "Courage is resistance to fear, mastery of fear - not absense of fear.",
+    "You may only succeed if you desire succeeding; you may only fail if you don't mind failing.",
+    "Courage is resistance to fear, mastery of fear, not absence of fear.",
     "Only put off until tomorrow what you are willing to die having left undone.",
-    "People often say that motivation doesn't last. Well, neither does bathing - that's why we recommend it daily.",
+    "People often say that motivation doesn't last. Well, neither does bathing, that's why we recommend it daily.",
     "We become what we think about most of the time, and that's the strangest secret.",
     "The only place where success comes before work is in the dictionary.",
     "The best reason to start an organization is to make meaning; to create a product or service to make the world a better place.",
@@ -65,7 +73,7 @@ _raw_quotes = [
     "A real entrepreneur is somebody who has no safety net underneath them.",
     "The first step toward success is taken when you refuse to be a captive of the environment in which you first find yourself.",
     "People who succeed have momentum. The more they succeed, the more they want to succeed, and the more they find a way to succeed. Similarly, when someone is failing, the tendency is to get on a downward spiral that can even become a self-fulfilling prophecy.",
-    "When I dare to be powerful - to use my strength in the service of my vision, then it becomes less and less important whether I am afraid.",
+    "When I dare to be powerful, to use my strength in the service of my vision, then it becomes less and less important whether I am afraid.",
     "Whenever you find yourself on the side of the majority, it is time to pause and reflect.",
     "The successful warrior is the average man, with laser-like focus.",
     "Take up one idea. Make that one idea your life -- think of it, dream of it, live on that idea. Let the brain, muscles, nerves, every part of your body, be full of that idea, and just leave every other idea alone. This is the way to success.",
@@ -74,7 +82,7 @@ _raw_quotes = [
     "If you genuinely want something, don't wait for it -- teach yourself to be impatient.",
     "Don't let the fear of losing be greater than the excitement of winning.",
     "If you want to make a permanent change, stop focusing on the size of your problems and start focusing on the size of you!",
-    "You can't connect the dots looking forward; you can only connect them looking backwards. So you have to trust that the dots will somehow connect in your future. You have to trust in something - your gut, destiny, life, karma, whatever. This approach has never let me down, and it has made all the difference in my life.",
+    "You can't connect the dots looking forward; you can only connect them looking backwards. So you have to trust that the dots will somehow connect in your future. You have to trust in something, your gut, destiny, life, karma, whatever. This approach has never let me down, and it has made all the difference in my life.",
     "Successful people do what unsuccessful people are not willing to doDon't wish it were easier, wish you were better.",
     "The number one reason people fail in life is because they listen to their friends, family, and neighbors.",
     "The reason most people never reach their goals is that they don't define them, or ever seriously consider them as believable or achievable. Winners can tell you where they are going, what they plan to do along the way, and who will be sharing the adventure with them.",
@@ -190,7 +198,7 @@ _raw_fortunes = [
     "It may be difficult, but it will be worth it in the end.",
     "Happiness may be right under your nose.",
     "You will soon receive a surprise from a lover.",
-    "Don't wait for success to come - go find it!",
+    "Don't wait for success to come, go find it!",
     "Face the truth with dignity.",
     "Work with your destiny. Stop trying to outrun it.",
     "Learn from your mistakes. Try not to make them again.",
@@ -231,7 +239,7 @@ _raw_fortunes = [
     "A person of words and not deeds is like a garden full of weeds.",
     "A pleasant surprise is waiting for you.",
     "A short pencil is usually better than a long memory any day.",
-    "A small donation is call for. It's the right thing to do.",
+    "A small donation is called for. It's the right thing to do.",
     "A smile is your personal welcome mat.",
     "A smooth long journey! Great expectations.",
     "A soft voice may be awfully persuasive.",
@@ -300,8 +308,8 @@ _raw_fortunes = [
     "Everywhere you choose to go, friendly faces will greet you.",
     "Expect much of yourself and little of others.",
     "Failure is the chance to do better next time.",
-    "Failure is the path of lease persistence.",
-    "Fear and desire - two sides of the same coin.",
+    "Failure is the path of least persistence.",
+    "Fear and desire, two sides of the same coin.",
     "Fearless courage is the foundation of victory.",
     "Feeding a cow with roses does not get extra appreciation.",
     "First think of what you want to do; then do what you have to do.",
@@ -311,7 +319,7 @@ _raw_fortunes = [
     "Fortune Not Found: Abort, Retry, Ignore?",
     "From listening comes wisdom and from speaking repentance.",
     "From now on your kindness will lead you to success.",
-    "Get your mind set - confidence will lead you on.",
+    "Get your mind set, confidence will lead you on.",
     "Get your mind set…confidence will lead you on.",
     "Go for the gold today! You'll be the champion of whatever.",
     "Go take a rest; you deserve it.",
@@ -353,7 +361,7 @@ _raw_fortunes = [
     "It's time to get moving. Your spirits will lift accordingly.",
     "Keep your face to the sunshine and you will never see shadows.",
     "Let the world be filled with tranquility and goodwill.",
-    "Like the river flow into the sea. Something are just meant to be.",
+    "Like the river flowing into the sea, some things are just meant to be.",
     "Listen not to vain words of empty tongue.",
     "Listen to everyone. Ideas come from everywhere.",
     "Living with a commitment to excellence shall take you far.",
@@ -363,7 +371,7 @@ _raw_fortunes = [
     "Love lights up the world.",
     "Love truth, but pardon error.",
     "Man is born to live and not prepared to live.",
-    "Man's mind, once stretched by a new idea, never regains it's original dimensions.",
+    "Man's mind, once stretched by a new idea, never regains its original dimensions.",
     "Many will travel to hear you speak.",
     "Meditation with an old enemy is advised.",
     "Miles are covered one step at a time.",
@@ -398,9 +406,9 @@ _raw_fortunes = [
     "Rest has a peaceful effect on your physical and emotional health.",
     "Resting well is as important as working hard.",
     "Romance moves you in a new direction.",
-    "Savor your freedom - it is precious.",
+    "Savor your freedom, it is precious.",
     "Say hello to others. You will have a happier day.",
-    "Self-knowledge is a life long process.",
+    "Self-knowledge is a lifelong process.",
     "Share your joys and sorrows with your family.",
     "Sift through your past to get a better idea of the present.",
     "Sloth makes all things difficult; industry all easy.",
@@ -422,8 +430,8 @@ _raw_fortunes = [
     "Technology is the art of arranging the world so we do not notice it.",
     "The austerity you see around you covers the richness of life like a veil.",
     "The best prediction of future is the past.",
-    "The change you started already have far-reaching effects. Be ready.",
-    "The change you started already have far-reaching effects. Be ready.",
+    "The change you started already has far-reaching effects. Be ready.",
+    "The change you started already has far-reaching effects. Be ready.",
     "The first man gets the oyster, the second man gets the shell.",
     "The greatest achievement in life is to stand up again after falling.",
     "The harder you work, the luckier you get.",
@@ -463,7 +471,7 @@ _raw_fortunes = [
     "What's hidden in an empty box?",
     "What's that in your eye? Oh…it's a sparkle.",
     "What's yours in mine, and what's mine is mine.",
-    "When more become too much. It's same as being not enough.",
+    "When more becomes too much, it's the same as being not enough.",
     "When your heart is pure, your mind is clear.",
     "Wish you happiness.",
     "With age comes wisdom.",
@@ -578,7 +586,7 @@ _raw_fortunes = [
     # https://kitchenauthority.net/fortune-cookie-sayings/
     "Delight the world with compassion, kindness and grace",
     "The early bird gets the worm, but the second mouse gets the cheese.",
-    "Some days you are pigeon, some days you are statue. Today, bring umbrella.",
+    "Some days you are the pigeon, some days you are the statue. Today, bring umbrella.",
     "The fortune you seek is in another cookie.",
     "Be on the alert to recognize your prime at whatever time of your life it may occur.",
     "Your reality check about to bounce.",
@@ -596,7 +604,7 @@ _raw_fortunes = [
     "Patience is your alley at the moment. Don't worry!",
     "Nothing is impossible to a willing heart.",
     "Don't worry about money. The best things in life are free.",
-    "Don't pursue happiness - create it.",
+    "Don't pursue happiness, create it.",
     "If at first you don't succeed, skydiving not for you.",
     "Ninety-nine percent of all lawyers give the rest a bad name.",
     "Easiest way to find lost object is buy replacement.",
@@ -623,9 +631,9 @@ _raw_fortunes = [
     "The real kindness comes from within you.",
     "A ship in harbor is safe, but that's not why ships are built.",
     "Person who eat fortune cookie get lousy dessert.",
-    "Okay to look at past and future. Just don't stare.",
+    "Okay to look at past and future, just don't stare.",
     "Wise person needs either good manners or fast reflexes.",
-    "Soup was secret family recipe made from toad. Hope you liked!",
+    "Soup was a secret family recipe made from toads. Hope you liked it!",
     "You will soon have an out of money experience.",
     "One tequila, two tequila, three tequila, floor.",
     "The older you get, the better you were.",
@@ -659,8 +667,8 @@ _raw_fortunes = [
     "Practice safe eating. Always use condiments.",
     "Person who give self-haircut after rice wine will be buzzed.",
     "Politicians are like diapers: change often, and for same reason.",
-    "Atheism no fun. No holidays.",
-    "Fat person not afraid of heights - afraid of widths.",
+    "Atheism is no fun. No holidays.",
+    "Fat person not afraid of heights, afraid of widths.",
     "You have kleptomania. Take something for it.",
     "When marriage outlawed, only outlaws have in-laws.",
     "Some men dream of fortunes, others dream of cookies.",
@@ -680,7 +688,7 @@ _raw_fortunes = [
     # http://www.fortunecookiemessage.com/archive.php
     "Your ability for accomplishment will follow with success.",
     "You may be hungry soon: order a takeout now.",
-    "Simplicity and clearity should be the theme in your dress.",
+    "Simplicity and clarity should be the theme in your dress.",
     "A very attractive person has a message for you.",
     "Begin your life anew with strength, grace and wonder.",
     "Be most affectionate today.",
@@ -688,7 +696,7 @@ _raw_fortunes = [
     "Tomorrow Morning,Take a Left Turn As Soon As You Leave Home.",
     "Integrity is doing the right thing, even if nobody is watching.",
     "You should be able to undertake and complete anything.",
-    "In evrything there is a piece of truth.But a piece.",
+    "In everything there is a piece of truth.But a piece.",
     "Two small jumps are sometimes better than one big leap.",
     "Did you remember to order your take out also?.",
     "Hope brings about a better future.",
@@ -713,7 +721,7 @@ _raw_fortunes = [
     "You have a fine capacity for the enjoyment of life.",
     "You are vigorous in words and action.",
     "You will travel to many places.",
-    "How can you have a beutiful ending without making beautiful mistakes.",
+    "How can you have a beautiful ending without making beautiful mistakes.",
     "Service is the rent we pay for the privilege of living on this planet.",
     "You can make your own happiness.",
     "A new wardrobe brings great joy and change to your life.",
@@ -721,7 +729,7 @@ _raw_fortunes = [
     "Laughter is the shortest distance between two people.",
     "Bread today is better than cake tomorrow.",
     "I am a bad luck person since I was born.",
-    "There is always a way - if you are committed.",
+    "There is always a way, if you are committed.",
     "A bird in the hand is worth three in the bush!!",
     "How can you have a beautiful ending without making beautiful mistakes?.",
     "Help, I'm prisoner in a Chinese bakery!!!",
@@ -752,7 +760,7 @@ _raw_fortunes = [
     "Bad luck and ill misfortune will infest your pathetic soul for all eternity.",
     "You don't need talent to gain experience.",
     "Give yourself some peace and quiet for at least a few hours.",
-    "Don't bother looking for fault. The reward for finding it is low.",
+    "Don't bother looking for faults, the reward for finding it is low.",
     "Tell them what you really think. Otherwise, nothing will change.",
     "Life  always gets harder near the summit.",
     "Not all closed eye is sleeping nor open eye is seeing.",
@@ -762,14 +770,14 @@ _raw_fortunes = [
     "You will be forced to face fear, but if you do not run, fear will be afraid of you.",
     "Impossible standards just make life difficult.",
     "See if you can learn anything from the children.",
-    "The most important thing in communication is to hear what isn’t being said.",
+    "The most important thing in communication is to hear what isn't being said.",
     "Listen to yourself more often.",
     "All your sorrows will vanish.",
-    "today you should be a passenger. Stay close to a driver for a day.",
+    "Today you should be a passenger. Stay close to a driver for a day.",
     "Finish your work on hand don't be greedy.",
     "You have a flair for adding a fanciful dimension to any story.",
     "Your wish will come true.",
-    "Broke is only temporaryl poor is a state of mind.",
+    "Broke is only temporary, poor is a state of mind.",
     "Help is always needed but not always appreciated. Stay true to your heart and help those in need weather they appreciate it or not.",
     "A stranger, is a friend you have not spoken to yet.",
     "The time is right to make new friends.",
@@ -781,15 +789,15 @@ _raw_fortunes = [
     "Accept your past without regrets. Handle your present with confidence. Face your future without fear.",
     "For success today look first to yourself.",
     "Don't lead if you won't lead.",
-    "There are no limitations to the mind except those we aknowledge.",
+    "There are no limitations to the mind except those we acknowledge.",
     "Your fondest dream will come true within this year.",
-    "Darkness is only succesful when there is no light. Don't forget about light!",
+    "Darkness is only successful when there is no light. Don't forget about light!",
     "There will be a happy romance for you shortly.",
     "Follow your bliss and the Universe will open doors where there were once only walls.",
     "All your fingers can't be of the same length.",
     "Go ask your mom.",
     "All the water in the world can't sink a ship unless it gets inside.",
-    "Everything happens for a reson.",
+    "Everything happens for a reason.",
     "Your ability for accomplishment will be followed by success.",
     "Remember this: duct tape can fix anything, so don't worry about messing things up.",
     "An angry man opens his mouth and shuts up his eyes.",
@@ -805,7 +813,7 @@ _raw_fortunes = [
     "When you can't naturally feel upbeat it can sometimes help you to act as if you did.",
     "The Greatest War Sometimes Isn't On The Battlefield But Against Oneself.",
     "Great works are performed not by strength, but by perseverance.",
-    "An understanding heart warms all that are graced with it's presense.",
+    "An understanding heart warms all that are graced with its presence.",
     "You will always have good luck in your personal affairs.",
     "Those who walk in other's tracks leave no footprints.",
     "Never give up. You're not a failure if you don't give up.",
@@ -813,10 +821,10 @@ _raw_fortunes = [
     "You will soon discover a major truth about the one you love most.",
     "Encourage your peers.",
     "You will discover your hidden talents.",
-    "Your succeess will astonish everyone.",
+    "Your success will astonish everyone.",
     "Your way of doing what other people do their way is what makes you special.",
     "Failure is only the opportunity to begin again more intelligently.",
-    "It takes more then good memory to have good memories.",
+    "It takes more than good memory to have good memories.",
     "A single kind work will keep one warm for years.",
     "Everything will be ok. Don't obsess. Time will prove you right, you must stay where you are.",
     "Good clothes open many doors. Go shopping.",
@@ -842,11 +850,11 @@ _raw_fortunes = [
     "Anyone who dares to be, can never be weak.",
     "When you expect your opponent to yield, you also should avoid hurting him.",
     "Aren't you glad you just had a great meal?.",
-    "Acting is not lying. It is findind someone hiding inside you and letting that person run free.",
+    "Acting is not lying, it is finding someone hiding inside you and letting that person run free.",
     "The wise are aware of their treasure, while fools follow their vanity.",
     "Listen to life, and you will hear the voice of life crying, Be!",
     "Enhance your karma by engaging in various charitable activities.",
-    "Any decision you have to make tomorrow is a good decsion.",
+    "Any decision you have to make tomorrow is a good decision.",
     "A lifetime of happiness is in store for you.",
     "Teamwork: the fuel that allows common people attain uncommon results.",
     "Stop searching forever, happiness is just next to you.",
@@ -858,14 +866,14 @@ _raw_fortunes = [
     "Not all closed eye is sleeping, nor open eye is seeing.",
     "At this very moment you can change the rest of your life.",
     "No distance is too far, if two hearts are tied together.",
-    "You will kiss your crush ohhh lalahh.",
+    "You will kiss your crush.",
     "You will soon witness a miracle.",
     "The important thing is to never stop questioning.",
     "You are the controller of your destiny.",
     "It's a good thing that life is not as serious as it seems to the waiter.",
     "You will be successful in love.",
-    "You have a great capability to break cookies - use it wisely!",
-    "Do not judge a book by it's color.",
+    "You have a great capability to break cookies, use it wisely!",
+    "Do not judge a book by its cover.",
     "All progress occurs because people dare to be different.",
     "Help, I'm being held prisoner in a  Chinese cookie factory.",
     "A virtual fortune cookie will not satisfy your hunger like that of a home made one.",
@@ -893,16 +901,16 @@ _raw_fortunes = [
     "When you can't naturally feel upbeat, it can sometimes help to act a if you did.",
     "A thrilling time is in store for you.",
     "Minor aches today are likely to pay off handsomely tomorrow.",
-    "The man on the top of the mountain did not fall there.",
+    "The man on the top of the mountain didn't fall there.",
     "Someone close to you is waiting for you to call.",
     "It is better to have a hen tomorrow than an egg today.",
     "Love is as necessary to human beings as food and shelter.",
     "You will always be successful in your professional career.",
     "You will be hungry soon, order takeout now.",
     "Your worst enemy has a crush on you!",
-    "TOO MANY PEOPLE VOLUNTEER TO CARRY THE STOOL WHEN ITS TIME TO MOVE THE PIANO.",
+    "Too many people volunteer to move the stool when it's time to move the piano.",
     "Everything will now come your way.",
-    "Cooperate with those who have both know how and integrith.",
+    "Cooperate with those who have both know how and integrity.",
     "Sing and rejoice, fortune is smiling on you.",
     "I'm with you.",
     "Hope is like food. You will starve without it.",
@@ -911,7 +919,7 @@ _raw_fortunes = [
     "Happiness is often a rebound from hard work.",
     "Today it's up to you to create the peacefulness you long for.",
     "Cookie says, You crack me up.",
-    "Meet your opponent half way. You need the exercise.",
+    "Meet your opponent halfway, you need the exercise.",
     "Impossible is a word only to be found in the dictionary of fools.",
     "Traveling this year will bring your life into greater perspective.",
     "Good things take time.",
@@ -926,15 +934,14 @@ _raw_fortunes = [
     "Hard work pays off in the future, laziness pays off now.",
     "Excuses are easy to manufacture, and hard to sell.",
     "Friendship is an ocean that you cannot see bottom.",
-    "The life of every woman or man - the heart of it - is pure and holy joy.",
+    "The life of every woman or man, the heart of it, is pure and holy joy.",
     "You are one of the people who goes places in life.",
     "A merry heart does good like a medicine.",
-    "傷心有多少 在乎就有多少.",
     "He who climbs a ladder must begin at the first step.",
     "Jealousy doesn't open doors, it closes them!",
     "Excellence is the difference between what I do and what I am capable of.",
     "You are offered the dream of a lifetime. Say yes!",
-    "You believe in the goodness of man kind.",
+    "You believe in the goodness of mankind.",
     "Patience is key, a wait short or long will have its reward.",
     "Don't take yourself so seriously, no one else does.",
     "Take control of your life rather than letting things happen just like that!",
@@ -953,7 +960,7 @@ _raw_fortunes = [
     "Be a good friend and a fair enemy.",
     "Fortune favors the brave.",
     "You will always be surrounded by true friends.",
-    "Do not follow where the path may lead.  Go where there is no path...and leave a trail.",
+    "Do not follow where the path may lead.  Go where there is no path and leave a trail.",
     "Never miss a chance to keep your mouth shut.",
     "I think, you ate your fortune while you were eating your cookie.",
     "Our deeds determine us, as much as we determine our deeds.",
@@ -967,11 +974,11 @@ _raw_fortunes = [
     "A cheerful message is on its way to you.",
     "In case of fire, keep calm, pay bill and run.",
     "To forgive others one more time is to create one more blessing for yourself.",
-    "It is much easier to be cirtical than to be correct.",
+    "It is much easier to be critical than to be correct.",
     "You will win success in whatever you adopt.",
     "The finest men like the finest steels have been tempered in the hottest furnace.",
     "Make a wise choice everyday.",
-    "you cant go down the right path with out first discovering the path to go down.",
+    "You can't go down the right path without first discovering the path to go down.",
     "Do not worry, you will have great peace.",
     "Go with the flow will make your transition ever so much easier.",
     "Be on the lookout for coming events; They cast their shadows beforehand.",
@@ -981,7 +988,7 @@ _raw_fortunes = [
     "A feeling is an idea with roots.",
     "Use the force.",
     "You will enjoy good health, you will be surrounded by luxury.",
-    "People in your background will be more co-operative than usual.",
+    "People in your background will be more cooperative than usual.",
     "Integrity is the essence of everything successful.",
     "If you are never patient, you will never get anything done. If you believe you can do it, you will be rewarded with success.",
     "The expanse of your intelligence is a void no universe could ever fill.",
@@ -993,13 +1000,13 @@ _raw_fortunes = [
     "The dream you've been dreaming all your life isn't worth it. Find a new dream, and once you're sure you've found it, fight for it.",
     "Live each day well and wisely.",
     "You are cautious in showing your true self to others.",
-    "Share your hapiness with others today.",
+    "Share your happiness with others today.",
     "It is better to be the hammer then the anvil.",
     "Anything you do, do it well. The last thing you want is to be sorry for what you didn't do.",
     "You will soon be surrounded by good friends and laughter.",
     "Even if the person who appears most wrong, is also quite often right.",
     "When hungry, order more Chinese food.",
-    "The food here taste so good, even a cave man likes it.",
+    "The food here taste so good, even a caveman likes it.",
     "Never give up. Always find a reason to keep trying.",
     "We can't help everyone. But everyone can help someone.",
     "You'll advance for with your abilities.",
@@ -1013,7 +1020,7 @@ _raw_fortunes = [
     "You will overcome difficult times.",
     "Don't worry about the stock market. Invest in family.",
     "Many folks are about as happy as they make up their minds to be.",
-    "A pleasant expeience is ahead:don't pass it by.",
+    "A pleasant experience is ahead:don't pass it by.",
     "We cannot change the direction of the wind, but we can adjust our sails.",
     "You will become great if you believe in yourself.",
     "Soon you will be sitting on top of the world.",
@@ -1046,7 +1053,7 @@ _raw_fortunes = [
     "Treasure what you have.",
     "Benefit by doing things that others give up on.",
     "Next full moon brings an enchanting evening.",
-    "It's all right to have butterflies in your stomach. Just get them to fly in formation.",
+    "It's alright to have butterflies in your stomach. Just get them to fly in formation.",
     "You are very grateful for the small pleasures of life.",
     "If you have something good in your life, don't let it go!",
     "Love Conquers all.",
@@ -1054,7 +1061,7 @@ _raw_fortunes = [
     "You will take a pleasant journey to a place far away.",
     "Enjoy the good luck a companion brings you.",
     "You can never been certain of success, but you can be certain of failure if you never try.",
-    "What ever you're goal is in life, embrace it visualize it, and for it will be yours.",
+    "Whatever your goal is in life, embrace it, visualize it, and for it will be yours.",
     "Today is the tomorrow we worried about yesterday.",
     "When you get something for nothing, you just haven't been billed for it yet.",
     "A well-aimed spear is worth three.",
@@ -1073,7 +1080,7 @@ _raw_fortunes = [
     "Difficulty at the beginning usually means ease at the end.",
     "You will prosper in the field of wacky inventions.",
     "You have an important new business development shaping up.",
-    "Ganerosity will repay itself sooner than you imagine.",
+    "Generosity will repay itself sooner than you imagine.",
     "Use your talents. That's what they are intended for.",
     "If you wish to know the mind of a man, listen to his words.",
     "There is a prospect of a thrilling time ahead for you.",
@@ -1083,14 +1090,14 @@ _raw_fortunes = [
     "Human invented language to satisfy the need to complain.",
     "You are often asked if it is in yet.",
     "You are a person of strong sense of duty.",
-    "It's up to you to clearify.",
+    "It's up to you to clarify.",
     "You will be rewarded for your patience and understanding.",
     "Your secret desire to completely change your life will manifest.",
     "Trust your intuition.",
     "All troubles you have can pass away very quickly.",
     "Enjoy life! It is better to be happy than wise.",
     "Be direct,usually one can accomplish more that way.",
-    "Its amazing how much good you can do if you dont care who gets the credit.",
+    "It's amazing how much good you can do if you don't care who gets the credit.",
     "Let not your hand be stretched out to receive and shut when you should repay.",
     "AT TIMES IT IS BETTER TO KNOW WHEN EXIT THAN ENTER.",
     "A kind word will keep someone warm for years.",
@@ -1139,7 +1146,7 @@ _raw_fortunes = [
     "A new wardrobe brings great joy and change in your life.",
     "The only certainty is that nothing is certain.",
     "The eyes believe themselves; the ears believe other people.",
-    "You will recieve a gift from someone that cares about you.",
+    "You will receive a gift from someone that cares about you.",
     "Don't worry, half the people you know are below average.",
     "A great pleasure in life is doing what others say you can't.",
     "If a person who has caused you pain and suffering has brought you, reconsider that person's value in your life.",
@@ -1148,7 +1155,7 @@ _raw_fortunes = [
     "Action speaks nothing, without the Motive.",
     "Money will come to you when you are doing the right thing.",
     "You have a deep appreciation of the arts and music.",
-    "Lend your money and lose your freind.",
+    "Lend your money and lose your friend.",
     "A human being is a deciding being.",
     "Think of mother's exhortations more.",
     "Everything has beauty but not everyone sees it.",
@@ -1162,8 +1169,8 @@ _raw_fortunes = [
     "Hold on to the past but eventually, let the times go and keep the memories into the present.",
     "Demonstrate refinement in everything you do.",
     "Put your unhappiness aside. Life is beautiful, be happy.",
-    "Alas! The onion you are eating is someone else’s water lily.",
-    "Today is an ideal time to water your parsonal garden.",
+    "Alas! The onion you are eating is someone else's water lily.",
+    "Today is an ideal time to water your personal garden.",
     "You are blessed, today is the day to bless others.",
     "A friend asks only for your time not your money.",
     "The measure of time to your next goal is the measure of your discipline.",
@@ -1172,12 +1179,12 @@ _raw_fortunes = [
     "You are what you are; understand yourself before you react.",
     "You try hard, never to fail. You don't, never to win. .",
     "Intelligence is the door to freedom and alert attention is the mother of intelligence.",
-    "You only need look to your own reflection for inspiration. Because you are Beautiful!",
+    "You only need to look to your own reflection for inspiration. Because you are Beautiful!",
     "You have a deep interest in all that is artistic.",
     "A good way to stay healthy is to eat more Chinese food.",
     "Your golden opportunity is coming shortly.",
     "It is never too late. Just as it is never too early.",
-    "Patience is a virtue, unless its against a brick wall.",
+    "Patience is a virtue, unless it's against a brick wall.",
     "Digital circuits are made from analog parts.",
     "It is now, and in this world, that we must live.",
     "Never upset the driver of the car you're in; they're the master of your destiny until you get home.",
@@ -1193,16 +1200,16 @@ _raw_fortunes = [
     "The object of your desire comes closer.",
     "When the moment comes, take  the top one.",
     "You will plant the smallest seed and it will become the greatest and most mighty tree in the world.",
-    "you will spend old age in confort and material wealth.",
-    "Integrity is the essense of everything successful.",
+    "you will spend old age in comfort and material wealth.",
+    "Integrity is the essence of everything successful.",
     "Don't 'face' reality, let it be the place from which you leap.",
     "It better to be the hammer than the nail.",
     "Seize every second of your life and savor it.",
     "Birds are entangled by their feet and men by their tongues.",
     "To build a better world, start in your community.",
     "Change your thoughts and you change the world.",
-    "Compassion will cure more then condemnation.",
-    "A different world cannot be build by indifferent people.",
+    "Compassion will cure more than condemnation.",
+    "A different world cannot be built by indifferent people.",
     "Be assertive when decisive action is needed.",
     "You will be called in to fulfill a position of high honor and responsibility.",
     "A clear conscience is usually the sign of a bad memory.",
@@ -1210,18 +1217,18 @@ _raw_fortunes = [
     "Failure is not defeat until you stop trying.",
     "You love Chinese food.",
     "Never bring unhappy feelings into your home.",
-    "What's vice today may be virtue tomorow.",
+    "What's vice today may be virtue tomorrow.",
     "You will have a long and wealthy life.",
     "Save the whales. Collect the whole set.",
     "Take it easy.",
     "An admirer is concealing his/her affection for you.",
     "You have a curious smile and a mysterious nature.",
-    "Today is going to be a disasterous day, be prepared!",
+    "Today is going to be a disastrous day, be prepared!",
     "Wise sayings often fall on barren ground, but a kind word is never thrown away.",
     "Conquer your fears or they will conquer you.",
     "You can choose, right now and in every moment, to put your powerful and effective abilities to purposeful use. There is always something you can do, no matter what the situation may be, that will move your life forward.",
     "You are thinking about doing something. Don't do it, it won't help anything.",
-    "love thy neighbour, just don't get caught.",
+    "Love thy neighbor, just don't get caught.",
     "Warning, do not eat your fortune.",
     "Your high-minded principles spell success.",
     "Today you shed your last tear. Tomorrow fortune knocks at your door.",
@@ -1249,10 +1256,10 @@ _raw_fortunes = [
     "Consume less. Share more. Enjoy life.",
     "Now is the time to try something new.",
     "Friends long absent are coming back to you.",
-    "You are a persoon with a good sense of justice, now it's time to act like it.",
+    "You are a person with a good sense of justice, now it's time to act like it.",
     "Life is too short to waste time hating anyone.",
     "Being alone and being lonely are two different things.",
-    "Love Takes Pratice.",
+    "Love takes practice.",
     "Adversity is the parent of virtue.",
     "Put your mind into planning today. Look into the future.",
     "Customer service is like taking a bath you have to keep doing it.",
@@ -1270,7 +1277,7 @@ _raw_fortunes = [
     "The Wheel of Good Fortune is finally turning in your direction!",
     "Judge not according to the appearance.",
     "You are far more influential than you think.",
-    "If u love someone keep fighting for them.",
+    "If you love someone keep fighting for them.",
     "Don't cry.",
     "What breaks in a moment may take years to mend.",
     "In music, one must think with his heart and feel with his brain.",
@@ -1278,14 +1285,14 @@ _raw_fortunes = [
     "You will make many changes before settling down happily.",
     "Use your head, but live in your heart.",
     "To be old and wise, you must first be young and stupid.",
-    "If you don’t do it excellently, don’t do it at all.",
+    "If you don't do it excellently, don't do it at all.",
     "Sometimes the object of the journey is not the end, but the journey itself.",
     "The earth is a school learn in it.",
     "Good health will be yours for a long time.",
     "It is not necessary to show others you have change; the change will be obvious.",
     "Dream your dream and your dream will dream of you.",
     "I hear and I forget. I see and I remember. I do and I understand.",
-    "If you don t give something, you will  not get anything.",
+    "If you don't give something, you will  not get anything.",
     "Dogs have owners, cats have staff.",
     "The human spirit is stronger than anything that can happen to it.",
     "The leader seeks to communicate his vision to his followers.",
@@ -1293,18 +1300,18 @@ _raw_fortunes = [
     "The possibility of a career change is near.",
     "Life is too short to hold grudges.",
     "Your tongue is your ambassador.",
-    "Your father still loves and is in always with you. Remember that.",
+    "Your father still loves and is always with you. Remember that.",
     "You have a quiet and unobtrusive nature.",
     "We all have extraordinary coded within us, waiting to be released.",
     "Go confidently in the direction of your dreams.",
     "Your ability to accomplish tasks will follow with success.",
-    "You're true love will show himself to you under the moonlight.",
+    "Your true love will show themselves to you under the moonlight.",
     "To affirm is to make firm.",
     "Become who you are.",
     "Keep your feet on the ground even though friends flatter you.",
     "You are not judged by your efforts you put in; you are judged on your performance.",
     "Happiness is an activity.",
-    "Be patient! The Great Wall didn't got build in one day.",
+    "Be patient! The Great Wall wasn't built in one day.",
     "Love will lead the way.",
     "Present your best ideas today to an eager and welcoming audience.",
     "Fear is just excitement in need of an attitude adjustment.",
@@ -1316,10 +1323,10 @@ _raw_fortunes = [
     "You believe in the goodness of mankind.",
     "What ends on hope does not end at all.",
     "A man without aim is like a clock without hands, as useless if it turns as if it stands.",
-    "Wow! A secret message from you teeth!",
+    "Wow! A secret message from your teeth!",
     "You are given the chance to take part in an exciting adventure.",
     "Before trying to please others think of what makes you happy.",
-    "Hidden in a valley beside an open stream- This will be the type of place where you will find your dream.",
+    "Hidden in a valley beside an open stream This will be the type of place where you will find your dream.",
     "You like Chinese food.",
     "A pleasant surprise is in store for you tonight.",
     "You will have many happy days soon.",
@@ -1329,7 +1336,7 @@ _raw_fortunes = [
     "I am a fortune. You just broke my little house. Where will i live now?.",
     "Old dreams never die they just get filed away.",
     "You have a strong desire for a home and your family interests come first.",
-    "The time is alway right to do what is right.",
+    "The time is always right to do what is right.",
     "If you refuse to accept anything but the best, you very often get it.",
     "It's never crowded along the extra mile.",
     "You will be selected for a promotion because of your accomplishments.",
@@ -1357,7 +1364,7 @@ _raw_fortunes = [
     "A man is born to live and not prepare to live.",
     "Focus in on the color yellow tomorrow for good luck!",
     "Judge each day not by the harvest you reap but by the seeds you plant.",
-    "An unexpected aquaintance will resurface.",
+    "An unexpected acquaintance will resurface.",
     "Accept something that you cannot change, and you will feel better.",
     "You will achieve all your desires and pleasures.",
     "The dream is within you.",
@@ -1374,10 +1381,10 @@ _raw_fortunes = [
     "Working hard will make you live a happy life.",
     "The early bird gets the worm, but the second mouse gets the cheese.",
     "He who seeks will find.",
-    "Ones always regrets what could have done. Remember for next time.",
+    "One always regrets what could have done. Remember for next time.",
     "Life is like a dogsled team. If you ain't the lead dog, the scenery never changes.",
     "YOUR FAILURES WILL LEAD YOU TO YOUR SUCCESS.",
-    "Open up your heart - it can always be closed again.",
+    "Open up your heart, it can always be closed again.",
     "Trust your intuition. The universe is guiding your life.",
     "The love of your life is sitting across from you.",
     "Your life does not get better by chance, it gets better by change.",
@@ -1390,7 +1397,7 @@ _raw_fortunes = [
     "It takes ten times as many muscles to frown as it does to smile.",
     "You create enthusiasm around you.",
     "When fear hurts you, conquer it and defeat it! .",
-    "You will recieve some high prize or award.",
+    "You will receive some high prize or award.",
     "If you never expect anything you can never be disappointed.",
     "A golden egg of opportunity falls into your lap this month.",
     "You will conquer obstacles to achieve success.",
@@ -1401,12 +1408,12 @@ _raw_fortunes = [
     "A dream you have will come true.",
     "For true love? Send real roses preserved in 24kt gold!",
     "Your passions sweep you away.",
-    "Get off to a new start - come out of your shell.",
+    "Get off to a new start, come out of your shell.",
     "Express yourself: Don't hold back!",
     "Whenever possible, keep it simple.",
     "Punctuality is the politeness of kings and the duty of gentle people everywhere.",
     "Life is a verb.",
-    "Don't pursue happiness - create it.",
+    "Don't pursue happiness, create it.",
     "The best way to give credit is to give it away.",
     "You can still love what you can not have in life.",
     "Never underestimate the power of the human touch.",
@@ -1448,9 +1455,9 @@ _raw_fortunes = [
     "Patience is a key to joy.",
     "If you eat a box of fortune cookies, anything is possible.",
     "Do you believe? Endurance and persistence will be rewarded.",
-    "You will enjoy razon-sharp spiritual vision today.",
+    "You will enjoy razor-sharp spiritual vision today.",
     "You learn from your mistakes... You will learn a lot today.",
-    "Stop procrastinating - starting tomorrow.",
+    "Stop procrastinating, starting tomorrow.",
     "Smile. Tomorrow is another day.",
     "Let your imagination wander.",
     "A metaphor could save your life.",
@@ -1459,7 +1466,7 @@ _raw_fortunes = [
     "If you want the rainbow, you have to tolerate the rain.",
     "Over self-confidence is equal to being blind.",
     "If you feel you are right, stand firmly by your convictions.",
-    "You are admired for your adventuous ways.",
+    "You are admired for your adventurous ways.",
     "Eat something you never tried before.",
     "All comes at the proper time to him who knows how to wait.",
     "Your pain is the breaking of the shell that encloses your understanding.",
@@ -1473,7 +1480,7 @@ _raw_fortunes = [
     "A dream you have will come true.",
     "Being happy is not always being perfect.",
     "Land is always in the mind of the flying birds.",
-    "We could learn a lot from crayons: Some of are sharp, some are pretty, some have weird names, and all are different colors. But they all have to learn to live in the same box.",
+    "We could learn a lot from crayons: Some are sharp, some are pretty, some have weird names, and all are different colors. But they all have to learn to live in the same box.",
     "In God we trust.",
     "Constant grinding can turn an iron nod into a needle.",
     "To effect the quality of the day is no small achievement.",
@@ -1483,14 +1490,14 @@ _raw_fortunes = [
     "Volition, Strength, Languages, Freedom and Power rests in you.",
     "Your happiness is intertwined with your outlook on life.",
     "The one who snores will always fall asleep first.",
-    "Let your heart make your decisions - it does not get as confused as your head.",
+    "Let your heart make your decisions, it does not get as confused as your head.",
     "Happiness is not the absence of conflict, but the ability to cope with it.",
     "People enjoy having you around. Appreciate this.",
     "A big fortune will descend upon you this year.",
     "Take a minute and let it ride, then take a minute to let it breeze.",
     "You cannot love life until you live the life you love.",
     "The harder you try to not be like your parents, the more likely you will become them.",
-    "Human evolution: “wider freeway but narrower viewpoints.",
+    "Human evolution: wider freeways but narrower viewpoints.",
     "A chance meeting opens new doors to success and friendship.",
     "If your desires are not extravagant, they will be rewarded.",
     "It is best to act with confidence, no matter how little right you have to it.",
@@ -1502,25 +1509,179 @@ _raw_fortunes = [
     "The best is yet to come.",
     "Things may come to those who wait, but only the things left by those who hustle.",
     "If you love someone enough and they break your heart, you can't stop yourself from still loving them again even after all that pain.",
-    "The human spirit is stronger then anything that can happen to it.",
+    "The human spirit is stronger than anything that can happen to it.",
     "Be a generous friend and a fair enemy.",
-    "Happinees comes from a good life.",
+    "Happiness comes from a good life.",
     "Your dynamic eyes have attracted a secret admirer.",
     "I have a dream.... Time to go to bed.",
     "Perhaps you've been focusing too much on that one thing..",
     "An unexpected relationship will become permanent.",
     "A truly great person never puts away the simplicity of a child.",
-    "you will think for yourself when you stop letting others think for you."
+    "you will think for yourself when you stop letting others think for you.",
+    "Life will bring good things if you have patience.",
+    "Show love and joy at every opportunity and you will see that peace is born within you.",
+    "Do not make up in anger what you lack in reason.",
+    "Flaws and virtues are just two sides of the same coin.",
+    "The biggest of all towers starts at the ground.",
+    "You don't have to be strong. You have to be flexible.",
+    "Every day you organize your hair, why don't you do the same with your heart?",
+    "There are three things that never come back; the arrow fired, the word spoken and the opportunity lost.",
+    "Youth is not a time of life, it is a state of mind.",
+    "We can choose what to sow, but we are obliged to reap what we sow.",
+    "Give your full attention to the training of your children, especially with good examples from your own life.",
+    "Follow the good ones and learn from them.",
+    "No matter the size of the mountain, it cannot block the sun.",
+    "Common sense is worth more than a lot of knowledge.",
+    "Anyone who wants to pick roses has to be prepared to bear the thorns.",
+    "It is our friends who teach us the most valuable lessons.",
+    "He who cares about the feelings of others is not a fool.",
+    "Adversity is a mirror that reflects the true self.",
+    "Regretting what we don't have is wasting what we already have.",
+    "A beautiful flower is incomplete without its leaves.",
+    "Without the fire of enthusiasm, there is no heat of victory.",
+    "Laughter is the shortest distance between two people.",
+    "Flaws are stronger when love is weak.",
+    "Friendship and Love are things that come together in the blink of an eye.",
+    "Surprising and being surprised is the secret of love.",
+    "Do small things today and greater things will be entrusted to you tomorrow.",
+    "Patience in adversity is a sign of a sensitive heart.",
+    "Fortune favors the well-prepared mind.",
+    "Your vision will become clearer only when you can look into your heart.",
+    "Whoever looks outside dreams, whoever looks inside wakes up.",
+    "People will forget what you said and what you did, but they will never forget how they felt.",
+    "Wait for the wisest of advice: time.",
+    "All things are difficult before they become easy.",
+    "If you feel alone, it's because you built walls instead of bridges.",
+    "Winning is 90 percent sweat and 10 percent ingenuity.",
+    "Love is always closer than you imagine.",
+    "You are the size of your dream.",
+    "Stop searching forever; happiness is right here by your side.",
+    "Knowledge is the only virtue and ignorance is the only vice.",
+    "Our first and last love is self-love.",
+    "Let go of your worries and be happy.",
+    "The will of the people is the best of laws.",
+    "We are what we think.",
+    "The biggest barrier to success is the fear of failure.",
+    "The pessimist sees the difficulty in every opportunity; The optimist sees the opportunity in every difficulty.",
+    "Many of the world's great achievements were made by tired and discouraged men who continued their work.",
+    "Failure is just an opportunity to start over again with more experience.",
+    "Courage is resistance to fear, mastery of fear, not the absence of fear.",
+    "A true man measures his strength when faced with an obstacle.",
+    "Anyone who wants to overcome an obstacle must arm themselves with the strength of the lion and the prudence of the serpent.",
+    "Adversity awakens in us capabilities that, under favorable circumstances, would have remained dormant.",
+    "Motivation is not synonymous with transformation, but a step towards it.",
+    "What impoverishes human beings is not the lack of money, but rather the lack of faith, motivation and creativity.",
+    "Inspiration comes from others. Motivation comes from within us.",
+    "Don't believe in special people anymore, but in special moments with normal people.",
+    "Our life has 4 meanings: Love, Suffer, Fight and Win. Love a lot, suffer little, fight hard and always win!",
+    "Nothing is by chance... Believe in your dreams and your potential... In life, everything is overcome...",
+    "Believe in miracles, but don't depend on them.",
+    "You will always be your best company.",
+    "Perform the obvious, consider the unlikely and conquer the impossible.",
 ]
 _fortunes = " ".join(_raw_fortunes)
 
-fortunes_generator = markovify.combine(
-    [
-        markovify.Text(_quotes),
-        markovify.Text(_fortunes)
-    ],
-    [   
-        len(_raw_quotes),
-        len(_raw_fortunes)
-    ]
-)
+# https://www.listendata.com/2023/03/open-source-chatgpt-models-step-by-step.html
+
+import markovify
+
+class MarkovFortuneGen(BaseFortuneGen):
+    def __init__(self, corpus: typing.List[str], state_size: int):
+        self.model = markovify.combine([markovify.Text(c, state_size=state_size) for c in corpus])
+
+    def generate(self, min_words: int, max_words: int, tries: int, *args, **kwargs):
+        return self.model.make_sentence(min_words=min_words, max_words=max_words, tries=tries, *args, **kwargs)
+
+import nltk
+from nltk import word_tokenize
+from nltk.util import ngrams
+from collections import defaultdict, Counter
+import random
+
+# nltk.download('punkt')
+
+class NltkFortuneGen(BaseFortuneGen):
+    def __init__(self, corpus: typing.List[str], state_size: int):
+        corpus = ". ".join(corpus).lower()
+
+        self.starts = set()
+        for sentence in corpus.split('.'):
+            if not sentence: continue
+            split = sentence.lstrip().split()
+            if len(split) < 2: continue
+            self.starts.add(" ".join(split[:2]))
+
+        self.starts = list(self.starts)
+        random.shuffle(self.starts)
+        logger.debug(f"starts = {self.starts}")
+        
+        self._tokens = word_tokenize(corpus)
+        _ngrams = list(ngrams(self._tokens, state_size))
+        logger.debug(f"ngrams = {_ngrams}")
+        self.model = defaultdict(Counter)
+
+        for _ngram in _ngrams:
+            self.model[(_ngram[0], _ngram[1])][_ngram[2]] += 1
+
+    def generate(self, min_words: int, max_words: int, tries: int, seps: typing.List[str], *args, **kwargs):
+        # sentence = random.choices(self._tokens, k=2)
+        # sentence = ['you', 'will']
+        # Rotate
+        for attempt in range(tries):
+            try:
+                sentence = self.starts[0].split()
+                self.starts = self.starts[1:] + [self.starts[0]]
+
+                words = random.choice(list(range(min_words, max_words)))
+                logger.debug(f"Generating {words} words starting with {sentence}")
+                # logger.debug(f"test: {self.starts}")
+                
+                for _ in range(words):
+                    most_common = self.model[tuple(sentence[-2:])].most_common()
+                    logger.debug(f"most_common={most_common}")
+                    next_word = random.choices([x[0] for x in most_common], weights=[x[1] for x in most_common])[0]
+                    sentence.append(next_word)
+
+                logger.debug(f"sentence={sentence}")
+                sentence.reverse()
+                for sep in seps:
+                    idx = sentence.index(sep)
+                    logger.debug(f"sep={sep}, idx={len(sentence) - idx}")
+                    if len(sentence) - idx >= min_words: 
+                        if idx > 0:
+                            joined = ' '.join(sentence[:idx-1:-1])
+                        else:
+                            joined = ' '.join(sentence[::-1])
+                        separators_order = [item for item in sentence if item in seps]
+                        for ssep in seps:
+                            joined = joined.replace(ssep, ".")
+                        return "{}".join([p.lstrip().capitalize() for p in joined.split(" .")]).format(*[f"{x} " for x in separators_order]).replace(" n't", "n't")
+                        # for ssep in seps:
+                        #     logger.debug(f"[{ssep}] joined={joined}")
+                        #     joined = f"{ssep} ".join([phrase.lstrip().capitalize() for phrase in joined.split(ssep)]).replace(f" {ssep}", ssep)
+                        # joined = ", ".join([phrase.lstrip() for phrase in joined.split(",")]).replace(f" ,", ",")
+                        # return joined
+                logger.debug(f"Sentence too short with all separators: {sentence}")
+                
+            except:
+                logger.debug(f"Error generating sentence ({attempt})")
+        return "None :c"
+    
+# TODO Keras model https://stackabuse.com/python-for-nlp-deep-learning-text-generation-with-keras/
+
+class GenManager:
+    def __init__(self, models: typing.Dict[str, typing.Tuple[BaseFortuneGen, typing.Dict[str, typing.Any]]]):
+        self.models = {}
+        self.model_args = {}
+        for model in models:
+            self.models[model] = models[model][0]
+            self.model_args[model] = models[model][1]
+
+    def generate(self, model):
+        if model not in self.models: return "None :c"
+        return self.models[model].generate(**self.model_args[model])
+    
+fortunes_generator = GenManager({
+    "markov": (MarkovFortuneGen([_quotes, _fortunes], 2), {"min_words":5, "max_words":20, "tries":20}),
+    "nltk": (NltkFortuneGen([_quotes, _fortunes], 3), {"min_words":5, "max_words":25, "tries":30, "seps":[".", "?", "!"]}),
+})
