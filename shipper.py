@@ -14,14 +14,13 @@ import os
 import math
 import re
 
+import aprilfools
+
 from netgraph import Graph
 
 logger = botlogger.get_logger(__name__)
 
 emoji_remover = re.compile("(:[^: ]+:)|(<a?:[^: ]+:[0-9]+>)|((<@[0-9]+>))")
-
-def aprilfools():
-    return "no " + random.choice([':3', 'c:', ':/', ':p', 'uwu', 'owo'])
 
 # Commands
 @discord.app_commands.guild_only()
@@ -36,7 +35,7 @@ class Relationship(discord.app_commands.Group):
     async def create(self, interaction: discord.Interaction, user: discord.Member, relation: str):
         logger.info(f"{interaction.user} requested creation of '{relation}' with {user}")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         if user.id == interaction.user.id:
@@ -73,7 +72,7 @@ class Relationship(discord.app_commands.Group):
     async def approve(self, interaction: discord.Interaction, user: discord.Member):
         logger.info(f"{interaction.user} requested approval of relationship with {user}")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         exists, is_pending, relation = self.database.relationship_is_pending(user.id, interaction.user.id)
@@ -105,7 +104,7 @@ class Relationship(discord.app_commands.Group):
     async def reject(self, interaction: discord.Interaction, user: discord.Member):
         logger.info(f"{interaction.user} requested removal of relationship with {user}")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         exists, is_pending, relation = self.database.relationship_is_pending(user.id, interaction.user.id)
@@ -138,7 +137,7 @@ class Relationship(discord.app_commands.Group):
         user = user or interaction.user
         logger.info(f"{interaction.user} requested display of relationship [{user}]")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         # if format.value == 'complete':
@@ -174,7 +173,7 @@ class Relationship(discord.app_commands.Group):
         logger.info(f"{interaction.user} requested display of whole server")
         if not await self.utils.ensure_secretary(interaction): return
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         # if format.value == 'complete':

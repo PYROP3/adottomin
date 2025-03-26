@@ -28,6 +28,8 @@ import propervider as p
 import shipper
 import nohorny
 
+import aprilfools
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -156,8 +158,7 @@ ignore_prefixes = ('$')
 
 advertisement_slowmode = datetime.timedelta(seconds=30)
 
-def aprilfools():
-    return "no " + random.choice([':3', 'c:', ':/', ':p', 'uwu', 'owo'])
+
 
 file_ext_prog = re.compile(r".+\.([a-zA-Z0-9]+)$", flags=re.IGNORECASE)
 
@@ -805,7 +806,7 @@ async def _meme(interaction: discord.Interaction, meme_code: str, user: typing.O
 
     log_info(interaction, f"{interaction.user} requested {meme_code}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     _icon = await utils.get_icon_default(user)
@@ -891,7 +892,7 @@ async def randomcitizen(interaction: discord.Interaction):
         await utils.safe_send(interaction, content=f"That command only works in a server!", ephemeral=True)
         return
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     member = random.choice([member for member in guild.members if not member.bot])
@@ -919,7 +920,7 @@ async def randomcitizens(interaction: discord.Interaction, amount: int):
 @discord.app_commands.choices(model=[discord.app_commands.Choice(name="markov", value="markov"), discord.app_commands.Choice(name="nltk", value="nltk")])
 async def fortune(interaction: discord.Interaction, model: typing.Optional[discord.app_commands.Choice[str]]="nltk"):
     
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if not isinstance(model, str):
@@ -937,7 +938,7 @@ async def fortune(interaction: discord.Interaction, model: typing.Optional[disco
 async def shipme(interaction: discord.Interaction, user: discord.Member):
     log_info(interaction, f"{interaction.user} requested ship with {user}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if (user.id == interaction.user.id):
@@ -979,7 +980,7 @@ async def shipme(interaction: discord.Interaction, user: discord.Member):
 async def shipus(interaction: discord.Interaction, user1: discord.Member, user2: discord.Member):
     log_info(interaction, f"{interaction.user} requested ship with {user1} and {user2}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if (user1.id == interaction.user.id or user2.id == interaction.user.id):
@@ -1024,7 +1025,7 @@ async def gayrate(interaction: discord.Interaction, user: typing.Optional[discor
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested gayrate for {user}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if (user.id == bot.user.id):
@@ -1041,7 +1042,7 @@ async def hornyrate(interaction: discord.Interaction, user: typing.Optional[disc
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested hornyrate for {user}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if (user.id == bot.user.id):
@@ -1066,7 +1067,7 @@ async def genderrate(interaction: discord.Interaction, user: typing.Optional[dis
     user = user or interaction.user
     log_info(interaction, f"{interaction.user} requested genderrate for {user}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if (user.id == bot.user.id):
@@ -1090,7 +1091,7 @@ async def genderrate(interaction: discord.Interaction, user: typing.Optional[dis
 async def boomersplain(interaction: discord.Interaction, expression: str):
     log_info(interaction, f"{interaction.user} requested definition for {expression}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
 
@@ -1128,7 +1129,7 @@ async def boomersplain(interaction: discord.Interaction, expression: str):
 async def horny(interaction: discord.Interaction, user: typing.Optional[discord.Member]):
     log_info(interaction, f"{interaction.user} requested No Horny for {user}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
 
@@ -1304,7 +1305,7 @@ if copypasta_utils.AVAILABLE_PASTAS:
         _pronouns = pronouns.value
         log_info(interaction, f"{interaction.user} requested copypasta: {_pasta} for {name} ({_pronouns})")
 
-        await utils.safe_send(interaction, content=aprilfools())
+        await utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         if "botto" in name.lower():
@@ -1344,7 +1345,7 @@ if FEATURE_ENABLE_SIMPS:
     async def nosimp(interaction: discord.Interaction, user: discord.Member):
         log_info(interaction, f"{interaction.user} stopping to simp: {user}")
 
-        await utils.safe_send(interaction, content=aprilfools())
+        await utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         if user.id == interaction.user.id:
@@ -1365,7 +1366,7 @@ if FEATURE_ENABLE_SIMPS:
     async def validatesimp(interaction: discord.Interaction, user: discord.Member):
         log_info(interaction, f"{interaction.user} validating simp: {user}")
 
-        await utils.safe_send(interaction, content=aprilfools())
+        await utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         if user.id == interaction.user.id:
@@ -1389,7 +1390,7 @@ if FEATURE_ENABLE_SIMPS:
     async def invalidatesimp(interaction: discord.Interaction, user: discord.Member):
         log_info(interaction, f"{interaction.user} invalidating simp: {user}")
 
-        await utils.safe_send(interaction, content=aprilfools())
+        await utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         if user.id == interaction.user.id:
@@ -1412,7 +1413,7 @@ if FEATURE_ENABLE_SIMPS:
     async def simps(interaction: discord.Interaction, user: discord.Member):
         log_info(interaction, f"{interaction.user} checking simps: {user}")
 
-        await utils.safe_send(interaction, content=aprilfools())
+        await utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
         
         simps = sql.get_simps(user.id)
@@ -1467,7 +1468,7 @@ async def activity(interaction: discord.Interaction, user: discord.Member, ignor
 @discord.app_commands.choices(which=[discord.app_commands.Choice(name=b, value=b) for b in memes.get_bingos()])
 async def bingo(interaction: discord.Interaction, which: typing.Optional[discord.app_commands.Choice[str]]):
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     if not await utils.safe_defer(interaction): return
@@ -1578,7 +1579,7 @@ async def dailytopten(interaction: discord.Interaction, date: typing.Optional[st
 @bot.tree.command(description='Pop pop pop!')
 async def bubblewrap(interaction: discord.Interaction):
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     width, height = 10, 10
@@ -1700,7 +1701,7 @@ if FEATURE_ENABLE_NNN:
     async def countnnn(interaction: discord.Interaction):
         log_info(interaction, f"{interaction.user} is checking NNN")
 
-        await utils.safe_send(interaction, content=aprilfools())
+        await utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         joined, failed = sql.nnn_count()
@@ -1719,7 +1720,7 @@ if FEATURE_ENABLE_NNN:
 async def nut(interaction: discord.Interaction):
     log_info(interaction, f"{interaction.user} is adding a nut")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     total = sql.add_nut(interaction.user.id)
@@ -1796,7 +1797,7 @@ if FEATURE_ENABLE_HORNYJAIL:
 async def lmgtfy(interaction: discord.Interaction, user: discord.Member, query: str):
     log_info(interaction, f"{interaction.user} is pinging {user} for query {query}")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     safe_query = "https://letmegooglethat.com/?q=" + urllib.parse.quote_plus(query)
@@ -1984,7 +1985,7 @@ async def sleepme(interaction: discord.Interaction, duration: discord.app_comman
 
     log_info(interaction, f"{interaction.user} is sleeping themselves ({duration.name}/{duration.value}h)")
 
-    await utils.safe_send(interaction, content=aprilfools())
+    await utils.safe_send(interaction, content=aprilfools.aprilfools())
     return
 
     content = {"eep": "Gn {}! Cya tomorrow~", "nap": "Have a nice nappies {}! Cya later~"}[duration.name]

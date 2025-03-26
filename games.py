@@ -5,6 +5,7 @@ import typing
 
 import botlogger
 import bot_utils
+import aprilfools
 
 logger = botlogger.get_logger(__name__)
 
@@ -13,9 +14,6 @@ async def _silent_reply(interaction: discord.Interaction):
         await interaction.response.send_message()
     except discord.errors.HTTPException:
         pass # Silently ignore
-
-def aprilfools():
-    return "no " + random.choice([':3', 'c:', ':/', ':p', 'uwu', 'owo'])
 
 class RPSGameBase(discord.ui.View):
     def __init__(self, tag: str, interaction: discord.Interaction, opponent: discord.Member, rules: typing.Dict[enum.Enum, typing.Dict[enum.Enum, str]]):
@@ -565,7 +563,7 @@ class Game(discord.app_commands.Group):
     async def rps(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]):
         logger.info(f"{interaction.user} requested RPS against {user}")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         content, valid = self._validate_rps(interaction, user)
@@ -580,7 +578,7 @@ class Game(discord.app_commands.Group):
     async def rpsls(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]):
         logger.info(f"{interaction.user} requested RPSLS against {user}")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         content, valid = self._validate_rps(interaction, user)
@@ -595,7 +593,7 @@ class Game(discord.app_commands.Group):
     async def rps25(self, interaction: discord.Interaction, user: typing.Optional[discord.Member]):
         logger.info(f"{interaction.user} requested RPS25 against {user}")
 
-        await self.utils.safe_send(interaction, content=aprilfools())
+        await self.utils.safe_send(interaction, content=aprilfools.aprilfools())
         return
 
         content, valid = self._validate_rps(interaction, user)
