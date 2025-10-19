@@ -32,8 +32,8 @@ aliases_version = 1
 aliases_db_file = _dbfile('aliases', aliases_version)
 worldmap_version = 1
 worldmap_db_file = _dbfile('worldmap', worldmap_version)
-nnn_2023_version = 1
-nnn_2023_db_file = _dbfile('nnn_2023', nnn_2023_version)
+nnn_2025_version = 1
+nnn_2025_db_file = _dbfile('nnn_2025', nnn_2025_version)
 nuts_version = 1
 nuts_db_file = _dbfile('nuts', nuts_version)
 attachments_version = 2
@@ -72,7 +72,7 @@ sql_files = [
     pins_archive_db_file,
     aliases_db_file,
     worldmap_db_file,
-    nnn_2023_db_file,
+    nnn_2025_db_file,
     nuts_db_file,
     attachments_db_file,
     kinks_db_file,
@@ -166,16 +166,17 @@ schemas = {
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
-    nnn_2023_db_file: ['''
+    nnn_2025_db_file: ['''
             CREATE TABLE users (
                 user int NOT NULL,
-                wager int,
+                team int,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );''',
             '''
             CREATE TABLE failed (
                 user int NOT NULL,
+                devil int,
                 created_at TIMESTAMP,
                 PRIMARY KEY (user)
             );'''],
@@ -772,11 +773,11 @@ class database:
         except:
             return 0
     
-    def nnn_join(self, user, wager=False):
+    def nnn_join(self, user, team):
         try:
-            con = sqlite3.connect(nnn_2023_db_file)
+            con = sqlite3.connect(nnn_2025_db_file)
             cur = con.cursor()
-            cur.execute("INSERT INTO users VALUES (?, ?, ?)", [user, 1 if wager else 0, datetime.datetime.now()])
+            cur.execute("INSERT INTO users VALUES (?, ?, ?)", [user, team, datetime.datetime.now()])
             con.commit()
             con.close()
             return True
@@ -785,37 +786,47 @@ class database:
 
     def nnn_status(self, user):
         try:
-            con = sqlite3.connect(nnn_2023_db_file)
+            con = sqlite3.connect(nnn_2025_db_file)
             cur = con.cursor()
-            res = cur.execute("SELECT * FROM users WHERE user=:id", {"id": user}).fetchone()
-            con.commit()
+            res = cur.execute("SELECT created_at, team FROM users WHERE user=:id", {"id": user}).fetchone()
             con.close()
             return res
         except:
             return None
     
-    def nnn_fail(self, user):
+    def nnn_fail(self, user, devil=None):
         try:
-            con = sqlite3.connect(nnn_2023_db_file)
+            con = sqlite3.connect(nnn_2025_db_file)
             cur = con.cursor()
-            cur.execute("INSERT INTO failed VALUES (?, ?)", [user, datetime.datetime.now()])
+            cur.execute("INSERT INTO failed VALUES (?, ?, ?)", [user, devil or 0, datetime.datetime.now()])
             con.commit()
             con.close()
             return True
         except:
             return False
 
+    def nnn_failed(self, user):
+        try:
+            con = sqlite3.connect(nnn_2025_db_file)
+            cur = con.cursor()
+            res = cur.execute("SELECT created_at, devil FROM failed WHERE user=:id", {"id": user}).fetchone()
+            con.close()
+            return res or (None, None)
+        except:
+            return (None, None)
+
     def nnn_count(self):
         try:
-            con = sqlite3.connect(nnn_2023_db_file)
+            con = sqlite3.connect(nnn_2025_db_file)
             cur = con.cursor()
-            res1 = cur.execute("SELECT count(*) FROM users").fetchone()
-            res2 = cur.execute("SELECT count(*) FROM failed").fetchone()
+            angels = cur.execute("SELECT count(*) FROM users WHERE team=0").fetchone()
+            devils = cur.execute("SELECT count(*) FROM users WHERE team=1").fetchone()
+            fails = cur.execute("SELECT count(*) FROM failed").fetchone()
             con.commit()
             con.close()
-            return (res1[0], res2[0])
+            return (angels[0], devils[0], fails[0])
         except:
-            return (0, 0)
+            return (0, 0, 0)
 
     def add_nut(self, user):
         con = sqlite3.connect(nuts_db_file)

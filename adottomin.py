@@ -1590,14 +1590,22 @@ if FEATURE_ENABLE_WORLDMAP:
 
 if FEATURE_ENABLE_NNN:
     @bot.tree.command(description=f'Join NNN {nnn_year}! Please be aware you can only join ONCE!')
-    #@discord.app_commands.describe(wager='Are you willing to wager one of your roles?')
-    async def joinnnn(interaction: discord.Interaction):#, wager: typing.Optional[bool]):
+    @discord.app_commands.describe(team='Choose a team! Angels must stay pure the whole month, while Devils must persuade them to give in')
+    @discord.app_commands.choices(team=[discord.app_commands.Choice(name="👼 Angels 👼", value=0), discord.app_commands.Choice(name="😈 Devils 😈", value=1)])
+    async def joinnnn(interaction: discord.Interaction, team: discord.app_commands.Choice[int]):#, wager: typing.Optional[bool]):
         log_info(interaction, f"{interaction.user} is joining NNN")
 
-        joined = sql.nnn_join(interaction.user.id, False)
+        if not isinstance(team, int):
+            team = team.value
+
+        joined = sql.nnn_join(interaction.user.id, team)
 
         if joined:
-            content = f"Thank you for signing up for NNN {nnn_year}, {interaction.user.mention}! GLHF~"
+            content = f"Thank you for signing up for NNN {nnn_year}, {interaction.user.mention}!\n"
+            if team == 0:
+                content += '👼 May the light of the angels shine bright on you~'
+            else:
+                content += '😈 Take those pesky Angels down a peg~'
         else:
             log_info(interaction, f"{interaction.user} already joined NNN")
             content = f"You've already signed up for NNN {nnn_year}, {interaction.user.mention}~"
@@ -1605,11 +1613,27 @@ if FEATURE_ENABLE_NNN:
         await utils.safe_send(interaction, content=content, send_anyway=True)
 
     @bot.tree.command(description=f'Admit defeat in NNN {nnn_year}! Please be aware you cannot take this back!!!')
-    async def failnnn(interaction: discord.Interaction):
-        log_info(interaction, f"{interaction.user} is joining NNN")
+    @discord.app_commands.describe(devil='Was it one of those nasty Devils who made you fail? If so, let me know so I can tally their score!')
+    async def failnnn(interaction: discord.Interaction, devil: typing.Optional[discord.Member]):
+        log_info(interaction, f"{interaction.user} failed NNN ({devil=})")
 
-        if datetime.datetime.now().month != 11:
-            await utils.safe_send(interaction, content=f"You can't fail NNN if it's not november yet, silly~", ephemeral=True)
+        if datetime.datetime.now().month < 11:
+            await utils.safe_send(interaction, content="You can't fail NNN if it's not november yet, silly~", ephemeral=True)
+            return
+        if datetime.datetime.now().month > 11:
+            await utils.safe_send(interaction, content="NNN is already over, you're free to nut to your heart's content, silly~", ephemeral=True)
+            return
+
+        if interaction.user.id == devil.id:
+            await utils.safe_send(interaction, content="You can't be your own devil, silly~", ephemeral=True)
+            return
+
+        if devil.id == bot.user.id:
+            await utils.safe_send(interaction, content="I'm not a devil, silly~!", ephemeral=True)
+            return
+
+        if devil.bot:
+            await utils.safe_send(interaction, content="Bots can't be devils, silly!", ephemeral=True)
             return
 
         data = sql.nnn_status(interaction.user.id)
@@ -1618,10 +1642,28 @@ if FEATURE_ENABLE_NNN:
             await utils.safe_send(interaction, content=f"You didn't sign up yet, {interaction.user.mention}! You can do that with `/joinnnn`~", send_anyway=True)
             return
 
-        failed = sql.nnn_fail(interaction.user.id)
+        user_team = data[1]
 
-        if failed:
-            content = f"Aww there's always next year, {interaction.user.mention}! Thanks for participating and GG no RE~"
+        if devil is not None:
+            devil_data = sql.nnn_status(devil.id)
+            if devil_data is None:
+                await utils.safe_send(interaction, content=f"{devil.mention} hasn't signed up yet! They can do that with `/joinnnn`~", ephemeral=True)
+                return
+            devil_team = devil_data[1]
+            if devil_team == 0: # Angels
+                await utils.safe_send(interaction, content=f"{devil.mention} is an Angel! Are you sure you're tagging the right person?", ephemeral=True)
+                return
+
+        devil_id = 0 if devil is None else devil.id
+        failed_successfully = sql.nnn_fail(interaction.user.id, devil=devil_id)
+
+        if failed_successfully:
+            if user_team == 0: # Angels
+                content = f"👼 Aww there's always next year, {interaction.user.mention}! Thanks for participating~"
+                if devil is not None:
+                    content += f"\nAnd hey, that's one more in the bag for 😈 {devil.mention}!"
+            else:
+                content = f"😈 Well, I guess you weren't really going for purity, huh {interaction.user.mention}? Thanks for participating tho~"
         else:
             log_info(interaction, f"{interaction.user} already failed NNN {nnn_year}")
             content = f"You've already failed NNN {nnn_year}, {interaction.user.mention}, try again next year~"
@@ -1632,17 +1674,48 @@ if FEATURE_ENABLE_NNN:
     async def countnnn(interaction: discord.Interaction):
         log_info(interaction, f"{interaction.user} is checking NNN")
 
-        joined, failed = sql.nnn_count()
+        angels, devils, failed = sql.nnn_count()
 
-        content = f"`{joined}` users have joined, and `{failed}` have failed NNN {nnn_year}~"
+        content = f"NNN {nnn_year} stats~!\n👼 `{angels}`\n😈 `{devils}`\n❌ `{failed}`"
 
         await utils.safe_send(interaction, content=content, send_anyway=True)
+
+    @bot.tree.command(description=f"Check which NNN {nnn_year} team someone is on")
+    async def teamnnn(interaction: discord.Interaction, user: discord.Member):
+        log_info(interaction, f"{interaction.user} is checking {user} NNN team")
+
+        if user.id == bot.user.id:
+            await utils.safe_send(interaction, content="I'm abstaining from the competition this year~", ephemeral=True)
+            return
+
+        if user.bot:
+            await utils.safe_send(interaction, content="Bots are forbidden from joining NNN, silly~", ephemeral=True)
+            return
+
+        if data := sql.nnn_status(user.id):
+            _, team = data
+            team_str = '👼 Angels 👼' if team == 0 else '😈 Devils 😈'
+            content = f"{user.mention} is on team {team_str}!"
+
+            created_at, devil = sql.nnn_failed(user.id)
+            if created_at is not None:
+                content += " But they've already failed..."
+                if devil is not None:
+                    content += f" And it's {utils.to_mention(devil)}'s fault!"
+        else:
+            content = f"{user.mention} hasn't signed up for NNN {nnn_year}, maybe you should go encourage them~"
+
+        await utils.safe_send(interaction, content=content, ephemeral=True)
 
 # NNN queries
 # Longer lasting fails: 
 # SELECT users.user, date(users.created_at) as start_date, date(failed.created_at) as fail_date, julianday(failed.created_at) - julianday(users.created_at) AS duration_in_days FROM users INNER JOIN failed on users.user = failed.user ORDER BY duration DESC;
 # Survivors:
 # SELECT users.user, date(users.created_at) FROM users LEFT JOIN failed on users.user = failed.user WHERE failed.user IS NULL;
+# Angel survivors:
+# SELECT users.user, users.team, date(users.created_at) FROM users LEFT JOIN failed on users.user = failed.user WHERE failed.user IS NULL AND users.team = 0;
+# Devil leaderboard:
+# SELECT devil, COUNT(devil) FROM failed WHERE devil != 0 GROUP BY devil ORDER BY COUNT(devil) DESC;
 
 @bot.tree.command(description='Nut counter!')
 async def nut(interaction: discord.Interaction):
