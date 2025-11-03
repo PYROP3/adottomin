@@ -1614,7 +1614,7 @@ if FEATURE_ENABLE_NNN:
 
     @bot.tree.command(description=f'Admit defeat in NNN {nnn_year}! Please be aware you cannot take this back!!!')
     @discord.app_commands.describe(devil='Was it one of those nasty Devils who made you fail? If so, let me know so I can tally their score!')
-    async def failnnn(interaction: discord.Interaction, devil: typing.Optional[discord.Member]):
+    async def failnnn(interaction: discord.Interaction, devil: typing.Optional[discord.Member]=None):
         log_info(interaction, f"{interaction.user} failed NNN ({devil=})")
 
         if datetime.datetime.now().month < 11:
@@ -1624,17 +1624,18 @@ if FEATURE_ENABLE_NNN:
             await utils.safe_send(interaction, content="NNN is already over, you're free to nut to your heart's content, silly~", ephemeral=True)
             return
 
-        if interaction.user.id == devil.id:
-            await utils.safe_send(interaction, content="You can't be your own devil, silly~", ephemeral=True)
-            return
+        if devil is not None:
+            if interaction.user.id == devil.id:
+                await utils.safe_send(interaction, content="You can't be your own devil, silly~", ephemeral=True)
+                return
 
-        if devil.id == bot.user.id:
-            await utils.safe_send(interaction, content="I'm not a devil, silly~!", ephemeral=True)
-            return
+            if devil.id == bot.user.id:
+                await utils.safe_send(interaction, content="I'm not a devil, silly~!", ephemeral=True)
+                return
 
-        if devil.bot:
-            await utils.safe_send(interaction, content="Bots can't be devils, silly!", ephemeral=True)
-            return
+            if devil.bot:
+                await utils.safe_send(interaction, content="Bots can't be devils, silly!", ephemeral=True)
+                return
 
         data = sql.nnn_status(interaction.user.id)
         log_debug(interaction, f"Got status = {data}")
